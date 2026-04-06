@@ -1,9 +1,9 @@
-generator client {
+﻿generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -380,3 +380,4 @@ model IncidentReport {
   @@index([reviewedById])
   @@map("incident_reports")
 }
+

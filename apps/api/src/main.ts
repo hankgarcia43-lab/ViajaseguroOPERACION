@@ -4,23 +4,35 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { AppModule } from './app.module';
 
-function getAllowedCorsOrigins() {
-  const rawOrigins = process.env.CORS_ORIGIN ?? 'http://localhost:3000';
+function normalizeOrigin(origin: string) {
+  return origin.trim().replace(/\/$/, '');
+}
 
-  return rawOrigins
+function getCorsConfig() {
+  const rawOrigins = process.env.CORS_ORIGIN ?? 'http://localhost:3000';
+  const allowAll = rawOrigins.includes('*');
+  const allowedOrigins = rawOrigins
     .split(',')
-    .map((origin) => origin.trim())
-    .filter((origin) => origin.length > 0);
+    .map((origin) => normalizeOrigin(origin))
+    .filter((origin) => origin.length > 0 && origin !== '*');
+
+  return { allowAll, allowedOrigins };
 }
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  const allowedOrigins = getAllowedCorsOrigins();
+  const { allowAll, allowedOrigins } = getCorsConfig();
 
   app.setGlobalPrefix('api');
   app.enableCors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (allowAll || !origin) {
+        callback(null, true);
+        return;
+      }
+
+      const normalizedOrigin = normalizeOrigin(origin);
+      if (allowedOrigins.includes(normalizedOrigin)) {
         callback(null, true);
         return;
       }

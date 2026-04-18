@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-const DEFAULT_TARGET = 'https://viaja-seguro-mvp.onrender.com/api';
+const DEFAULT_TARGETS = [
+  'http://localhost:4000/api',
+  'https://viaja-seguro-mvp.onrender.com/api'
+];
+
+const UPSTREAM_TIMEOUT_MS = Number(process.env.API_PROXY_TIMEOUT_MS ?? 12000);
 
 function normalizeBaseUrl(raw: string) {
   return raw.trim().replace(/\/+$/, '');
@@ -14,38 +19,74 @@ async function resolvePathSegments(context: any): Promise<string[]> {
   return Array.isArray(value) ? value : [];
 }
 
-async function forward(request: NextRequest, context: any) {
-  const base = normalizeBaseUrl(process.env.API_PROXY_TARGET ?? DEFAULT_TARGET);
-  const segments = await resolvePathSegments(context);
-  const incomingUrl = new URL(request.url);
-  const targetUrl = `${base}/${segments.join('/')}${incomingUrl.search}`;
+function buildTargets() {
+  const envTarget = process.env.API_PROXY_TARGET?.trim();
+  const list = envTarget ? [envTarget, ...DEFAULT_TARGETS] : [...DEFAULT_TARGETS];
+  return Array.from(new Set(list.map(normalizeBaseUrl).filter(Boolean)));
+}
+
+async function tryForward(request: NextRequest, targetBase: string, pathSuffix: string) {
+  const targetUrl = `${targetBase}/${pathSuffix}`;
 
   const headers = new Headers(request.headers);
   headers.delete('host');
   headers.delete('connection');
   headers.delete('content-length');
 
-  const init: RequestInit = {
-    method: request.method,
-    headers,
-    redirect: 'follow'
-  };
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
 
-  if (request.method !== 'GET' && request.method !== 'HEAD') {
-    init.body = await request.arrayBuffer();
+  try {
+    const init: RequestInit = {
+      method: request.method,
+      headers,
+      redirect: 'follow',
+      signal: controller.signal
+    };
+
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      init.body = await request.arrayBuffer();
+    }
+
+    return await fetch(targetUrl, init);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function forward(request: NextRequest, context: any) {
+  const segments = await resolvePathSegments(context);
+  const incomingUrl = new URL(request.url);
+  const pathSuffix = `${segments.join('/')}${incomingUrl.search}`;
+  const targets = buildTargets();
+
+  let lastError: unknown = null;
+
+  for (const target of targets) {
+    try {
+      const upstream = await tryForward(request, target, pathSuffix);
+      const responseHeaders = new Headers(upstream.headers);
+      responseHeaders.delete('content-encoding');
+      responseHeaders.delete('content-length');
+      responseHeaders.delete('transfer-encoding');
+
+      const body = await upstream.arrayBuffer();
+      return new NextResponse(body, {
+        status: upstream.status,
+        headers: responseHeaders
+      });
+    } catch (error) {
+      lastError = error;
+    }
   }
 
-  const upstream = await fetch(targetUrl, init);
-  const responseHeaders = new Headers(upstream.headers);
-  responseHeaders.delete('content-encoding');
-  responseHeaders.delete('content-length');
-  responseHeaders.delete('transfer-encoding');
-
-  const body = await upstream.arrayBuffer();
-  return new NextResponse(body, {
-    status: upstream.status,
-    headers: responseHeaders
-  });
+  return NextResponse.json(
+    {
+      message: 'No fue posible conectar con la API de respaldo desde el proxy.',
+      detail: lastError instanceof Error ? lastError.message : String(lastError)
+    },
+    { status: 502 }
+  );
 }
 
 export async function GET(request: NextRequest, context: any) {

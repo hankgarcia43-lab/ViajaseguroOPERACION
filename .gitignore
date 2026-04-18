@@ -7,3 +7,12 @@ coverage
 *.log
 apps/api/prisma/*.db-shm
 apps/api/prisma/*.db-wal
+
+# Local/generated noise
+.vscode/
+*.tsbuildinfo
+apps/web/tsconfig.tsbuildinfo
+apps/api/uploads/**
+!apps/api/uploads/.gitkeep
+*.out.log
+*.err.log

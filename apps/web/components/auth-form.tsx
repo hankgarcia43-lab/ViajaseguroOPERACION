@@ -20,7 +20,7 @@ const COPY = {
     bullets: ['Rutas fijas diarias', 'Conductores verificados', 'Precio transparente'],
     button: 'Iniciar sesion',
     secondaryHref: '/register/passenger',
-    secondaryText: '¿No tienes cuenta? Registrate gratis'
+    secondaryText: 'No tienes cuenta? Registrate gratis'
   },
   passenger: {
     title: 'Bienvenido, Pasajero',
@@ -30,7 +30,7 @@ const COPY = {
     bullets: ['Rutas fijas diarias', 'Conductores verificados', 'Precio transparente'],
     button: 'Crear cuenta de pasajero',
     secondaryHref: '/login',
-    secondaryText: '¿Ya tienes cuenta? Inicia sesion'
+    secondaryText: 'Ya tienes cuenta? Inicia sesion'
   },
   driver: {
     title: 'Bienvenido, Conductor',
@@ -40,7 +40,7 @@ const COPY = {
     bullets: ['Comision operativa visible', 'Verificacion confiable', 'Define tus horarios'],
     button: 'Crear cuenta de conductor',
     secondaryHref: '/login',
-    secondaryText: '¿Ya tienes cuenta? Inicia sesion'
+    secondaryText: 'Ya tienes cuenta? Inicia sesion'
   }
 } as const;
 
@@ -114,7 +114,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         <ul className="space-y-2 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
           {copy.bullets.map((bullet) => (
             <li key={bullet} className="flex items-center gap-3">
-              <span className="grid h-7 w-7 place-items-center rounded-lg bg-white text-blue-600">•</span>
+              <span className="grid h-7 w-7 place-items-center rounded-lg bg-white text-blue-600">*</span>
               <span>{bullet}</span>
             </li>
           ))}

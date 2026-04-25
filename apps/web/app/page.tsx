@@ -68,7 +68,7 @@ export default function HomePage() {
       </article>
 
       <section className="vs-card">
-        <h2 className="text-3xl font-semibold tracking-tight text-slate-950">¿Por que elegir ViajaSeguro?</h2>
+        <h2 className="text-3xl font-semibold tracking-tight text-slate-950">Por que elegir ViajaSeguro</h2>
         <p className="mt-2 text-sm leading-6 text-slate-600">Una experiencia simple, profesional y pensada para operacion real.</p>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-3">

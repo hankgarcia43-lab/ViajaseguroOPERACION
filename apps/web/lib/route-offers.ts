@@ -1,4 +1,4 @@
-﻿export type RouteOfferServiceType = 'one_time' | 'weekly';
+export type RouteOfferServiceType = 'one_time' | 'weekly' | 'round_trip';
 export type RouteOfferStatus = 'active' | 'paused';
 
 export interface BaseRouteSummary {
@@ -15,6 +15,7 @@ export interface BaseRouteSummary {
   pricePerSeat: number;
   status: string;
   stopsText?: string | null;
+  activeDriversCount?: number;
 }
 
 export interface RouteOffer {
@@ -73,8 +74,12 @@ export interface ReservationByOfferResponse {
   routeOfferId: string;
   totalDays: number;
   totalSeats: number;
+  grossAmount: number;
   totalAmount: number;
+  finalAmount: number;
+  weeklyDiscountApplied: boolean;
   reservations: any[];
   message: string;
 }
+
 

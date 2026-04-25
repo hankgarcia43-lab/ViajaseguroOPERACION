@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { apiRequest, getToken } from '@/lib/api';
 import { BaseRouteSummary, CreateRouteOfferPayload, RouteOffer } from '@/lib/route-offers';
@@ -20,18 +20,33 @@ const DAYS: Array<{ key: string; label: string }> = [
   { key: 'sunday', label: 'Domingo' }
 ];
 
+function isValidHour(value: string) {
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+}
+
 function parseBoardingReference(raw: string | null | undefined) {
   const text = String(raw ?? '');
-  const refMatch = text.match(/Referencia:\s*(.*?)\.\s*Direccion exacta:/i);
-  const addressMatch = text.match(/Direccion exacta:\s*(.*)$/i);
+
+  const outboundRefMatch = text.match(/Salida - Referencia:\s*(.*?)\.\s*Salida - Direccion exacta:/i);
+  const outboundAddressMatch = text.match(/Salida - Direccion exacta:\s*(.*?)(?:\.\s*Regreso CDMX - Hora:|$)/i);
+
+  const legacyRefMatch = text.match(/Referencia:\s*(.*?)\.\s*Direccion exacta:/i);
+  const legacyAddressMatch = text.match(/Direccion exacta:\s*(.*?)(?:\.\s*Regreso CDMX - Hora:|$)/i);
+
+  const returnTimeMatch = text.match(/Regreso CDMX - Hora:\s*([01]\d|2[0-3]):[0-5]\d/i);
+  const returnRefMatch = text.match(/Regreso CDMX - Referencia:\s*(.*?)\.\s*Regreso CDMX - Direccion exacta:/i);
+  const returnAddressMatch = text.match(/Regreso CDMX - Direccion exacta:\s*(.*)$/i);
 
   return {
-    reference: refMatch?.[1]?.trim() ?? text.trim(),
-    address: addressMatch?.[1]?.trim() ?? ''
+    reference: outboundRefMatch?.[1]?.trim() ?? legacyRefMatch?.[1]?.trim() ?? text.trim(),
+    address: outboundAddressMatch?.[1]?.trim() ?? legacyAddressMatch?.[1]?.trim() ?? '',
+    returnTime: returnTimeMatch?.[1]?.trim() ?? '',
+    returnReference: returnRefMatch?.[1]?.trim() ?? '',
+    returnAddress: returnAddressMatch?.[1]?.trim() ?? ''
   };
 }
 
-export default function DriverTakeRoutePage({ params }: { params: { id: string } }) {
+export default function DriverTakeRoutePage() {
   const [route, setRoute] = useState<BaseRouteSummary | null>(null);
   const [existingOffer, setExistingOffer] = useState<RouteOffer | null>(null);
   const [loading, setLoading] = useState(true);
@@ -41,13 +56,19 @@ export default function DriverTakeRoutePage({ params }: { params: { id: string }
 
   const [boardingReference, setBoardingReference] = useState('');
   const [boardingAddress, setBoardingAddress] = useState('');
+  const [returnDepartureTime, setReturnDepartureTime] = useState('');
+  const [returnBoardingReference, setReturnBoardingReference] = useState('');
+  const [returnBoardingAddress, setReturnBoardingAddress] = useState('');
+
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
-  const [serviceType, setServiceType] = useState<'one_time' | 'weekly'>('weekly');
+  const [serviceType, setServiceType] = useState<'one_time' | 'weekly' | 'round_trip'>('weekly');
   const [availableSeats, setAvailableSeats] = useState('4');
   const [departureTime, setDepartureTime] = useState('');
   const [estimatedArrivalTime, setEstimatedArrivalTime] = useState('');
 
   const router = useRouter();
+  const params = useParams<{ id: string }>();
+  const routeParamId = String(params?.id ?? '').trim();
 
   const routeLabel = useMemo(() => {
     if (!route) return 'Ruta';
@@ -72,14 +93,19 @@ export default function DriverTakeRoutePage({ params }: { params: { id: string }
           return;
         }
 
-        const [routes, offers] = await Promise.all([
+        const [baseRoutes, myRoutes, publicRoutes] = await Promise.all([
           apiRequest<BaseRouteSummary[]>('/route-offers/routes', { headers }),
-          apiRequest<RouteOffer[]>('/route-offers/my-offers', { headers })
+          apiRequest<BaseRouteSummary[]>('/routes/my-routes', { headers }).catch(() => []),
+          apiRequest<BaseRouteSummary[]>('/routes/public', { headers }).catch(() => [])
         ]);
 
-        const foundRoute = routes.find((item) => item.id === params.id) ?? null;
+        const normalizedRouteParam = routeParamId;
+        const routes = [...baseRoutes, ...myRoutes, ...publicRoutes];
+        const foundRoute =
+          routes.find((item) => item.id === normalizedRouteParam || String(item.publicId ?? '') === normalizedRouteParam) ?? null;
+
         if (!foundRoute) {
-          setError('Ruta no encontrada o no disponible.');
+          setError('No se encontro la ruta seleccionada. Regresa al feed y selecciona una ruta publicada para tomarla.');
           setLoading(false);
           return;
         }
@@ -88,15 +114,23 @@ export default function DriverTakeRoutePage({ params }: { params: { id: string }
         setDepartureTime(foundRoute.departureTime ?? '');
         setEstimatedArrivalTime(foundRoute.estimatedArrivalTime ?? '');
 
-        const foundOffer = offers.find((item) => item.routeId === params.id && item.status === 'active') ?? null;
-        if (foundOffer) {
-          setExistingOffer(foundOffer);
-          const parsed = parseBoardingReference(foundOffer.boardingReference);
-          setBoardingReference(parsed.reference);
-          setBoardingAddress(parsed.address);
-          setSelectedDays(foundOffer.weekdays ?? []);
-          setServiceType(foundOffer.serviceType ?? 'weekly');
-          setAvailableSeats(String(foundOffer.availableSeats ?? 4));
+        try {
+          const offers = await apiRequest<RouteOffer[]>('/route-offers/my-offers', { headers });
+          const foundOffer = offers.find((item) => item.routeId === foundRoute.id && item.status === 'active') ?? null;
+          if (foundOffer) {
+            setExistingOffer(foundOffer);
+            const parsed = parseBoardingReference(foundOffer.boardingReference);
+            setBoardingReference(parsed.reference);
+            setBoardingAddress(parsed.address);
+            setReturnDepartureTime(parsed.returnTime);
+            setReturnBoardingReference(parsed.returnReference);
+            setReturnBoardingAddress(parsed.returnAddress);
+            setSelectedDays(foundOffer.weekdays ?? []);
+            setServiceType(foundOffer.serviceType ?? 'weekly');
+            setAvailableSeats(String(foundOffer.availableSeats ?? 4));
+          }
+        } catch {
+          setExistingOffer(null);
         }
       } catch (e) {
         setError(e instanceof Error ? e.message : 'No se pudo cargar la configuracion de la ruta.');
@@ -106,7 +140,7 @@ export default function DriverTakeRoutePage({ params }: { params: { id: string }
     }
 
     void loadData();
-  }, [params.id]);
+  }, [routeParamId]);
 
   function toggleDay(day: string) {
     setSelectedDays((prev) => (prev.includes(day) ? prev.filter((item) => item !== day) : [...prev, day]));
@@ -141,14 +175,31 @@ export default function DriverTakeRoutePage({ params }: { params: { id: string }
       return;
     }
 
-    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(departureTime)) {
+    if (!isValidHour(departureTime)) {
       setError('La hora de salida debe estar en formato HH:mm.');
       return;
     }
 
-    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(estimatedArrivalTime)) {
+    if (!isValidHour(estimatedArrivalTime)) {
       setError('La hora estimada de llegada debe estar en formato HH:mm.');
       return;
+    }
+
+    if (serviceType === 'round_trip') {
+      if (!isValidHour(returnDepartureTime)) {
+        setError('Para ida y vuelta, la hora de regreso debe estar en formato HH:mm.');
+        return;
+      }
+
+      if (!returnBoardingReference.trim()) {
+        setError('Para ida y vuelta, escribe la referencia de abordaje en CDMX para el regreso.');
+        return;
+      }
+
+      if (!returnBoardingAddress.trim()) {
+        setError('Para ida y vuelta, escribe la direccion exacta de abordaje en CDMX para el regreso.');
+        return;
+      }
     }
 
     const seats = Number.parseInt(availableSeats, 10);
@@ -158,7 +209,7 @@ export default function DriverTakeRoutePage({ params }: { params: { id: string }
     }
 
     if (!route) {
-      setError('No se encontro la ruta seleccionada.');
+      setError('No se pudo identificar la ruta seleccionada. Vuelve al feed y entra de nuevo desde "Tomar ruta".');
       return;
     }
 
@@ -168,9 +219,15 @@ export default function DriverTakeRoutePage({ params }: { params: { id: string }
 
     try {
       const headers = { Authorization: `Bearer ${token}` };
+      let boardingReferenceText = `Salida - Referencia: ${boardingReference.trim()}. Salida - Direccion exacta: ${boardingAddress.trim()}.`;
+
+      if (serviceType === 'round_trip') {
+        boardingReferenceText += ` Regreso CDMX - Hora: ${returnDepartureTime.trim()}. Regreso CDMX - Referencia: ${returnBoardingReference.trim()}. Regreso CDMX - Direccion exacta: ${returnBoardingAddress.trim()}.`;
+      }
+
       const payload: CreateRouteOfferPayload = {
         routeId: route.id,
-        boardingReference: `Referencia: ${boardingReference.trim()}. Direccion exacta: ${boardingAddress.trim()}.`,
+        boardingReference: boardingReferenceText,
         weekdays: selectedDays,
         serviceType,
         availableSeats: seats
@@ -229,6 +286,16 @@ export default function DriverTakeRoutePage({ params }: { params: { id: string }
 
       {error && <p className="rounded-md bg-red-50 p-3 text-red-700">{error}</p>}
       {success && <p className="rounded-md bg-emerald-50 p-3 text-emerald-700">{success}</p>}
+
+      {!route && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <p className="font-semibold">No se pudo cargar la ruta publicada.</p>
+          <p className="mt-1">Regresa al feed y pulsa de nuevo en "Tomar ruta" para crear o editar tu viaje.</p>
+          <Link href="/dashboard/routes" className="mt-3 inline-block rounded-md border border-amber-300 px-3 py-2 text-xs text-amber-900">
+            Volver al feed de rutas
+          </Link>
+        </div>
+      )}
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
         <form onSubmit={onSubmit} className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -296,11 +363,12 @@ export default function DriverTakeRoutePage({ params }: { params: { id: string }
               Tipo de servicio
               <select
                 value={serviceType}
-                onChange={(event) => setServiceType(event.target.value as 'one_time' | 'weekly')}
+                onChange={(event) => setServiceType(event.target.value as 'one_time' | 'weekly' | 'round_trip')}
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
               >
                 <option value="weekly">Recurrente semanal</option>
                 <option value="one_time">Servicio unico</option>
+                <option value="round_trip">Ida y vuelta</option>
               </select>
             </label>
             <label className="text-sm text-slate-700">
@@ -316,8 +384,43 @@ export default function DriverTakeRoutePage({ params }: { params: { id: string }
             </label>
           </div>
 
+          {serviceType === 'round_trip' && (
+            <div className="space-y-3 rounded-lg border border-cyan-200 bg-cyan-50 p-4">
+              <p className="text-sm font-semibold text-cyan-900">Datos de regreso desde CDMX</p>
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="text-sm text-slate-700">
+                  Hora de regreso
+                  <input
+                    type="time"
+                    value={returnDepartureTime}
+                    onChange={(event) => setReturnDepartureTime(event.target.value)}
+                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                  />
+                </label>
+                <label className="text-sm text-slate-700 md:col-span-2">
+                  Referencia de abordaje en CDMX (regreso)
+                  <input
+                    value={returnBoardingReference}
+                    onChange={(event) => setReturnBoardingReference(event.target.value)}
+                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                    placeholder="Ej. Salida principal del Metro Indios Verdes"
+                  />
+                </label>
+                <label className="text-sm text-slate-700 md:col-span-2">
+                  Direccion exacta de abordaje en CDMX (regreso)
+                  <input
+                    value={returnBoardingAddress}
+                    onChange={(event) => setReturnBoardingAddress(event.target.value)}
+                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                    placeholder="Ej. Av. Insurgentes Norte 1234, GAM, CDMX"
+                  />
+                </label>
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-2">
-            <button type="submit" disabled={saving} className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">
+            <button type="submit" disabled={saving || !route} className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">
               {saving ? 'Guardando...' : existingOffer ? 'Actualizar viaje' : 'Confirmar y tomar ruta'}
             </button>
             <Link href="/dashboard/routes" className="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700">

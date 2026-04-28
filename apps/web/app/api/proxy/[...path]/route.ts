@@ -3,11 +3,11 @@ import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 const DEFAULT_TARGETS = [
-  'https://viaja-seguro-mvp.onrender.com/api',
+  'https://viajasegurooperacion.onrender.com/api',
   'http://localhost:4000/api'
 ];
 
-const UPSTREAM_TIMEOUT_MS = Number(process.env.API_PROXY_TIMEOUT_MS ?? 2500);
+const UPSTREAM_TIMEOUT_MS = Number(process.env.API_PROXY_TIMEOUT_MS ?? 4000);
 
 function normalizeBaseUrl(raw: string) {
   return raw.trim().replace(/\/+$/, '');

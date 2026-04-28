@@ -1,6 +1,6 @@
 const EXPLICIT_API_URL = process.env.NEXT_PUBLIC_API_URL?.trim();
 const LOCAL_API_URL = 'http://localhost:4000/api';
-const REMOTE_API_URL = 'https://viaja-seguro-mvp.onrender.com/api';
+const REMOTE_API_URL = 'https://viajasegurooperacion.onrender.com/api';
 const PROXY_API_URL = '/api/proxy';
 
 function isLocalBrowser() {
@@ -15,7 +15,7 @@ function isLocalLike(url: string) {
   return /localhost|127\.0\.0\.1|::1/i.test(url);
 }
 
-function resolvePrimaryApiUrl() {
+function resolveDirectApiUrl() {
   if (EXPLICIT_API_URL) {
     return EXPLICIT_API_URL;
   }
@@ -23,16 +23,34 @@ function resolvePrimaryApiUrl() {
   return isLocalBrowser() ? LOCAL_API_URL : REMOTE_API_URL;
 }
 
+function resolvePrimaryApiUrl() {
+  if (typeof window !== 'undefined') {
+    return PROXY_API_URL;
+  }
+
+  return resolveDirectApiUrl();
+}
+
 function resolveFallbackApiUrl(primaryApiUrl: string) {
+  const directApiUrl = resolveDirectApiUrl();
+
+  if (primaryApiUrl === PROXY_API_URL) {
+    return directApiUrl;
+  }
+
   if (isLocalLike(primaryApiUrl)) {
     return REMOTE_API_URL;
+  }
+
+  if (!isLocalLike(primaryApiUrl) && primaryApiUrl !== LOCAL_API_URL) {
+    return LOCAL_API_URL;
   }
 
   return null;
 }
 
 export const API_URL = resolvePrimaryApiUrl();
-export const API_ORIGIN = API_URL.startsWith('/') ? '' : API_URL.replace(/\/api\/?$/, '');
+export const API_ORIGIN = resolveDirectApiUrl().replace(/\/api\/?$/, '');
 
 const SESSION_TOKEN_KEY = 'vs_token';
 const SESSION_ROLE_KEY = 'vs_role';
@@ -124,6 +142,7 @@ export async function apiRequest<T>(path: string, options?: RequestInit): Promis
   };
 
   const primaryApiUrl = resolvePrimaryApiUrl();
+
   try {
     return await performRequest(primaryApiUrl);
   } catch {
@@ -132,17 +151,14 @@ export async function apiRequest<T>(path: string, options?: RequestInit): Promis
       try {
         return await performRequest(fallbackApiUrl);
       } catch {
-        // continue to proxy fallback
+        // Continue to final error.
       }
     }
 
-    try {
-      return await performRequest(PROXY_API_URL);
-    } catch {
-      throw new Error(
-        `No se pudo conectar con el servidor API (${primaryApiUrl}) ni con el respaldo (${fallbackApiUrl ?? PROXY_API_URL}). Verifica NEXT_PUBLIC_API_URL y CORS_ORIGIN.`
-      );
-    }
+    const fallbackText = fallbackApiUrl ? `, ${fallbackApiUrl}` : '';
+    throw new Error(
+      `No se pudo conectar con la API. Se intentaron: ${primaryApiUrl}${fallbackText}. Verifica NEXT_PUBLIC_API_URL, API_PROXY_TARGET y CORS_ORIGIN.`
+    );
   }
 }
 

@@ -116,8 +116,9 @@ export default function MyReservationsPage() {
             Buscar viajes
           </Link>
         </div>
-</div>
-{error && <p className="rounded-md bg-red-50 p-3 text-red-700">{error}</p>}
+      </div>
+
+      {error && <p className="rounded-md bg-red-50 p-3 text-red-700">{error}</p>}
       {success && <p className="rounded-md bg-emerald-50 p-3 text-emerald-700">{success}</p>}
 
       {reservations.length === 0 ? (
@@ -137,13 +138,19 @@ export default function MyReservationsPage() {
                   {reservation.trip?.route?.title || `${reservation.trip?.route?.origin || 'Ruta'} -> ${reservation.trip?.route?.destination || ''}`}
                 </h2>
                 <p className="text-xs text-slate-500">Reserva # {reservation.publicId ?? '-'}</p>
-                <p className="text-sm text-slate-700">Fecha: {reservation.trip ? formatShortDate(reservation.trip.tripDate) : '-'}</p>`r`n                <p className="text-sm text-slate-700">Referencia de abordaje: {reservation.trip?.boardingReference ?? 'Pendiente de publicacion del viaje'}</p>
+                <p className="text-sm text-slate-700">Fecha: {reservation.trip ? formatShortDate(reservation.trip.tripDate) : '-'}</p>
+                <p className="text-sm text-slate-700">Referencia de abordaje: {reservation.trip?.boardingReference ?? 'Pendiente de publicacion del viaje'}</p>
                 <p className="text-sm text-slate-700">Asientos: {reservation.totalSeats}</p>
                 <p className="text-sm text-slate-700">Total reserva: {formatCurrency(reservation.totalAmount)}</p>
                 <p className="mt-2 text-sm text-slate-700">
                   Estado reserva:{' '}
                   <span className={`rounded-full px-2 py-1 text-xs font-medium ${reservationStatusMeta.className}`}>{reservationStatusMeta.label}</span>
                 </p>
+                {reservation.trip?.status === 'started' && (
+                  <p className="mt-2 rounded-md bg-emerald-50 p-2 text-xs text-emerald-800">
+                    El conductor ya inicio el viaje y te esta esperando en la zona de abordaje indicada.
+                  </p>
+                )}
 
                 {reservation.payment && (
                   <div className="mt-3 space-y-2 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
@@ -163,11 +170,22 @@ export default function MyReservationsPage() {
                     <p className="rounded-md bg-amber-50 p-3 text-xs text-amber-800">{getPaymentFlowMessage(reservation.payment.status)}</p>
                     <p className="rounded-md bg-brand-50 p-3 text-xs text-brand-800">{PAYMENT_RETENTION_NOTICE}</p>
                   </div>
-)}
+                )}
+
+                {vehiclePhotoUrl && reservation.payment?.status === 'approved' && (
+                  <div className="mt-3">
+                    <p className="text-xs font-medium text-slate-700">Vehiculo asignado</p>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={vehiclePhotoUrl} alt="Foto del vehiculo" className="mt-1 h-32 w-full rounded-md object-cover" />
+                  </div>
+                )}
 
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Link href={`/dashboard/my-reservations/${reservation.id}/ticket`} className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">
                     Ver comprobante
+                  </Link>
+                  <Link href={`/dashboard/chat/${reservation.id}`} className="rounded-md border border-cyan-300 px-3 py-2 text-sm text-cyan-700">
+                    Chat con conductor
                   </Link>
 
                   {canUploadProof && (
@@ -192,21 +210,11 @@ export default function MyReservationsPage() {
                     </button>
                   )}
                 </div>
-</article>
+              </article>
             );
           })}
         </div>
-)}
+      )}
     </section>
   );
 }
-
-
-
-
-
-
-
-
-
-

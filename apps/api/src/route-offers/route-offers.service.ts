@@ -1,4 +1,4 @@
-﻿import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { VehiclesService } from '../vehicles/vehicles.service';
 import { CreateRouteOfferDto } from './dto/create-route-offer.dto';
@@ -15,11 +15,24 @@ export class RouteOffersService {
 
   async listBaseRoutes() {
     const routes = await this.routeDelegate().findMany({ where: { status: 'active' }, orderBy: [{ createdAt: 'desc' }] });
+    const routeIds = routes.map((route: any) => route.id);
+
+    const offers = routeIds.length
+      ? await this.routeOfferDelegate().findMany({
+          where: { routeId: { in: routeIds }, status: OFFER_STATUS.ACTIVE },
+          select: { routeId: true }
+        })
+      : [];
+
+    const activeDriversByRoute = new Map<string, number>();
+    for (const offer of offers) {
+      activeDriversByRoute.set(offer.routeId, (activeDriversByRoute.get(offer.routeId) ?? 0) + 1);
+    }
 
     return routes.map((route: any) => ({
-        id: route.id,
-        publicId: route.publicId ?? null,
-        templateKey: route.templateKey ?? null,
+      id: route.id,
+      publicId: route.publicId ?? null,
+      templateKey: route.templateKey ?? null,
       title: route.title,
       origin: route.origin,
       destination: route.destination,
@@ -29,7 +42,8 @@ export class RouteOffersService {
       distanceKm: route.distanceKm,
       pricePerSeat: route.pricePerSeat,
       status: route.status,
-      stopsText: route.stopsText ?? null
+      stopsText: route.stopsText ?? null,
+      activeDriversCount: activeDriversByRoute.get(route.id) ?? 0
     }));
   }
 
@@ -242,6 +256,7 @@ export class RouteOffersService {
     return (this.prisma as any).route;
   }
 }
+
 
 
 

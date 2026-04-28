@@ -25,6 +25,8 @@ model User {
   routes              Route[]
   trips               Trip[]
   reservations        Reservation[]
+  chatMessagesSent    TripChatMessage[] @relation("TripChatSender")
+  chatMessagesReceived TripChatMessage[] @relation("TripChatReceiver")
   userDocuments       UserDocument[]
   vehicle             Vehicle?
   refundsHandled      Refund[]          @relation("RefundAdminUser")
@@ -143,6 +145,7 @@ model Trip {
   routeOffer   RouteOffer?   @relation(fields: [routeOfferId], references: [id], onDelete: SetNull)
   driver       User          @relation(fields: [driverUserId], references: [id], onDelete: Cascade)
   reservations Reservation[]
+  chatMessages TripChatMessage[]
 
   @@index([routeId])
   @@index([driverUserId])
@@ -172,6 +175,7 @@ model Reservation {
   passenger  User        @relation(fields: [passengerUserId], references: [id], onDelete: Cascade)
   payment    Payment?
   refunds    Refund[]
+  chatMessages TripChatMessage[]
 
   @@index([tripId])
   @@index([passengerUserId])
@@ -342,6 +346,7 @@ model RouteOffer {
   driver       User          @relation(fields: [driverUserId], references: [id], onDelete: Cascade)
   trips        Trip[]
   reservations Reservation[]
+  chatMessages TripChatMessage[]
 
   @@index([routeId])
   @@index([driverUserId])
@@ -350,6 +355,30 @@ model RouteOffer {
   @@map("route_offers")
 }
 
+model TripChatMessage {
+  id             String   @id @default(uuid())
+  reservationId  String   @map("reservation_id")
+  tripId         String   @map("trip_id")
+  routeOfferId   String?  @map("route_offer_id")
+  senderUserId   String   @map("sender_user_id")
+  receiverUserId String   @map("receiver_user_id")
+  message        String
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  trip        Trip        @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  routeOffer  RouteOffer? @relation(fields: [routeOfferId], references: [id], onDelete: SetNull)
+  sender      User        @relation("TripChatSender", fields: [senderUserId], references: [id], onDelete: Cascade)
+  receiver    User        @relation("TripChatReceiver", fields: [receiverUserId], references: [id], onDelete: Cascade)
+
+  @@index([reservationId])
+  @@index([tripId])
+  @@index([routeOfferId])
+  @@index([senderUserId])
+  @@index([receiverUserId])
+  @@index([createdAt])
+  @@map("trip_chat_messages")
+}
 model IncidentReport {
   id             String    @id @default(uuid())
   reporterUserId String    @map("reporter_user_id")

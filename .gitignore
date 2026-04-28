@@ -5,8 +5,14 @@ coverage
 .env
 .env.local
 *.log
+*.tmp
 apps/api/prisma/*.db-shm
 apps/api/prisma/*.db-wal
+apps/api/prisma/*.db
+apps/api/prisma/*.sqlite
+apps/api/prisma/seed.js
+apps/api/prisma/seed.js.map
+apps/api/prisma/seed.d.ts
 
 # Local/generated noise
 .vscode/

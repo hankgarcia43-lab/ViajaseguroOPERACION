@@ -9,7 +9,7 @@ function normalizeOrigin(origin: string) {
 }
 
 function getCorsConfig() {
-  const rawOrigins = process.env.CORS_ORIGIN ?? 'http://localhost:3000';
+  const rawOrigins = process.env.CORS_ORIGIN ?? 'http://localhost:3000,http://127.0.0.1:3000';
   const allowAll = rawOrigins.includes('*');
   const allowedOrigins = rawOrigins
     .split(',')

@@ -1,6 +1,7 @@
-﻿import { Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
+import { ChatModule } from './chat/chat.module';
 import { DriverProfilesModule } from './driver-profiles/driver-profiles.module';
 import { FarePolicyModule } from './fare-policy/fare-policy.module';
 import { HealthModule } from './health/health.module';
@@ -24,6 +25,7 @@ import { WeeklyPayoutsModule } from './weekly-payouts/weekly-payouts.module';
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
     AuthModule,
+    ChatModule,
     UsersModule,
     DriverProfilesModule,
     PassengerProfilesModule,

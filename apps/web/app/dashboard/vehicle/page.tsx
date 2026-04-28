@@ -1,10 +1,10 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { apiRequest, buildApiAssetUrl, getToken } from '@/lib/api';
 import { getVehicleStatusMeta, getVerificationStatusMeta } from '@/lib/status';
-import { VEHICLE_DOCUMENT_TYPE_OPTIONS, Vehicle, VehicleDocument, VehiclePayload } from '@/lib/vehicles';
+import { Vehicle, VehicleDocument, VehicleDocumentType, VehiclePayload } from '@/lib/vehicles';
 
 interface MeResponse {
   id: string;
@@ -32,13 +32,42 @@ const INITIAL_FORM: VehicleFormState = {
   seatCount: ''
 };
 
+const EVIDENCE_FIELDS: Array<{ type: VehicleDocumentType; title: string; hint: string }> = [
+  {
+    type: 'insurance_policy',
+    title: 'Poliza de seguro (obligatoria)',
+    hint: 'Sube una imagen o PDF legible y vigente de la poliza.'
+  },
+  {
+    type: 'vehicle_registration',
+    title: 'Tarjeta de circulacion (obligatoria)',
+    hint: 'Sube ambos datos claros del documento oficial.'
+  },
+  {
+    type: 'vehicle_photo',
+    title: 'Foto del vehiculo (obligatoria)',
+    hint: 'Muestra el auto completo en un lugar iluminado.'
+  },
+  {
+    type: 'driver_photo',
+    title: 'Foto del conductor (obligatoria)',
+    hint: 'Foto reciente y clara del conductor.'
+  }
+];
+
+const INITIAL_FILES: Record<VehicleDocumentType, File | null> = {
+  insurance_policy: null,
+  vehicle_registration: null,
+  vehicle_photo: null,
+  driver_photo: null
+};
+
 export default function VehiclePage() {
   const [me, setMe] = useState<MeResponse | null>(null);
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [form, setForm] = useState<VehicleFormState>(INITIAL_FORM);
-  const [documentType, setDocumentType] = useState(VEHICLE_DOCUMENT_TYPE_OPTIONS[0].value);
   const [documentNotes, setDocumentNotes] = useState('');
-  const [file, setFile] = useState<File | null>(null);
+  const [filesByType, setFilesByType] = useState<Record<VehicleDocumentType, File | null>>(INITIAL_FILES);
   const [loading, setLoading] = useState(true);
   const [savingVehicle, setSavingVehicle] = useState(false);
   const [savingDocument, setSavingDocument] = useState(false);
@@ -48,6 +77,10 @@ export default function VehiclePage() {
   const verificationMeta = getVerificationStatusMeta(me?.verificationStatus);
   const vehicleMeta = getVehicleStatusMeta(vehicle?.status);
   const canUploadDocuments = useMemo(() => Boolean(vehicle), [vehicle]);
+  const allRequiredFilesSelected = useMemo(
+    () => EVIDENCE_FIELDS.every((field) => Boolean(filesByType[field.type])),
+    [filesByType]
+  );
 
   function syncForm(nextVehicle: Vehicle | null) {
     if (!nextVehicle) {
@@ -103,6 +136,10 @@ export default function VehiclePage() {
 
   function updateField<K extends keyof VehicleFormState>(field: K, value: VehicleFormState[K]) {
     setForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  function updateEvidenceFile(type: VehicleDocumentType, file: File | null) {
+    setFilesByType((prev) => ({ ...prev, [type]: file }));
   }
 
   function validateVehiclePayload(): { payload: VehiclePayload | null; validationError: string | null } {
@@ -167,7 +204,20 @@ export default function VehiclePage() {
     }
   }
 
-  async function onUploadDocument(event: FormEvent<HTMLFormElement>) {
+  async function uploadSingleEvidence(token: string, type: VehicleDocumentType, file: File, notes: string) {
+    const formData = new FormData();
+    formData.append('documentType', type);
+    if (notes.trim()) formData.append('notes', notes.trim());
+    formData.append('file', file);
+
+    await apiRequest<VehicleDocument>('/vehicles/my-vehicle/documents', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData
+    });
+  }
+
+  async function onUploadDocuments(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
     setSuccess(null);
@@ -183,30 +233,25 @@ export default function VehiclePage() {
       return;
     }
 
-    if (!file) {
-      setError('Debes seleccionar un archivo de evidencia.');
+    const missing = EVIDENCE_FIELDS.filter((field) => !filesByType[field.type]);
+    if (missing.length > 0) {
+      setError(`Completa los 4 apartados obligatorios antes de subir. Faltan: ${missing.map((item) => item.title).join(', ')}.`);
       return;
     }
-
-    const formData = new FormData();
-    formData.append('documentType', documentType);
-    if (documentNotes.trim()) formData.append('notes', documentNotes.trim());
-    formData.append('file', file);
 
     setSavingDocument(true);
 
     try {
-      await apiRequest<VehicleDocument>('/vehicles/my-vehicle/documents', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData
-      });
-      setSuccess('Documento del vehiculo enviado correctamente.');
+      for (const field of EVIDENCE_FIELDS) {
+        await uploadSingleEvidence(token, field.type, filesByType[field.type] as File, documentNotes);
+      }
+
+      setSuccess('Las 4 evidencias se enviaron correctamente para revision.');
       setDocumentNotes('');
-      setFile(null);
+      setFilesByType(INITIAL_FILES);
       await loadData();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo subir el documento del vehiculo');
+      setError(e instanceof Error ? e.message : 'No se pudieron subir las evidencias del vehiculo');
     } finally {
       setSavingDocument(false);
     }
@@ -224,7 +269,7 @@ export default function VehiclePage() {
             <p className="vs-kicker">Unidad del conductor</p>
             <h1 className="text-3xl font-semibold text-slate-950">Tu vehiculo, listo para operar</h1>
             <p className="max-w-3xl text-sm leading-6 text-slate-600">
-              Registra tu unidad, sube evidencia y manten tu estado visible para operar viajes asignados con seguridad.
+              Registra tu unidad y sube evidencias claras para que el equipo admin valide tu operacion.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -262,7 +307,7 @@ export default function VehiclePage() {
 
         {vehicle?.status === 'rejected' && (
           <p className="rounded-2xl bg-amber-50 p-3 text-sm text-amber-800">
-            Tu vehiculo fue rechazado. Ajusta datos o sube nueva evidencia para volver a revision.
+            Tu vehiculo fue rechazado. Corrige los datos y vuelve a subir evidencias para pasar a revision.
           </p>
         )}
 
@@ -271,11 +316,19 @@ export default function VehiclePage() {
         </button>
       </form>
 
-      <form onSubmit={onUploadDocument} className="vs-card space-y-4">
+      <form onSubmit={onUploadDocuments} className="vs-card space-y-4">
         <div>
           <p className="vs-kicker">Evidencias</p>
-          <h2 className="mt-3 text-2xl font-semibold text-slate-950">Sube respaldo de tu unidad</h2>
-          <p className="mt-2 text-sm text-slate-600">Obligatorio para aprobacion: poliza, tarjeta de circulacion y foto del vehiculo.</p>
+          <h2 className="mt-3 text-2xl font-semibold text-slate-950">Sube el respaldo de tu unidad</h2>
+          <p className="mt-2 text-sm text-slate-600">
+            Esta seccion requiere 4 archivos obligatorios. Carga cada apartado y luego envia todo en un solo paso.
+          </p>
+          <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-600">
+            <li>Revisa que cada archivo sea legible y vigente.</li>
+            <li>Evita fotos borrosas, oscuras o incompletas.</li>
+            <li>Formatos permitidos: JPG, PNG o PDF (maximo 5 MB por archivo).</li>
+            <li>Si no cumples estos requisitos, el vehiculo no sera aceptado.</li>
+          </ul>
         </div>
 
         {!canUploadDocuments && (
@@ -283,21 +336,45 @@ export default function VehiclePage() {
         )}
 
         {vehicle?.requiredDocuments && (
-          <div className="grid gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 md:grid-cols-3">
+          <div className="grid gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 md:grid-cols-2">
             <p>- Poliza: {vehicle.requiredDocuments.insurance_policy ? 'OK' : 'Falta'}</p>
-            <p>- Tarjeta: {vehicle.requiredDocuments.vehicle_registration ? 'OK' : 'Falta'}</p>
-            <p>- Foto: {vehicle.requiredDocuments.vehicle_photo ? 'OK' : 'Falta'}</p>
+            <p>- Tarjeta de circulacion: {vehicle.requiredDocuments.vehicle_registration ? 'OK' : 'Falta'}</p>
+            <p>- Foto del vehiculo: {vehicle.requiredDocuments.vehicle_photo ? 'OK' : 'Falta'}</p>
+            <p>- Foto del conductor: {vehicle.requiredDocuments.driver_photo ? 'OK' : 'Falta'}</p>
           </div>
         )}
 
         <div className="grid gap-4 md:grid-cols-2">
-          <label className="block text-sm text-slate-700">Tipo de documento<select value={documentType} onChange={(event) => setDocumentType(event.target.value as typeof documentType)} className="mt-1 w-full rounded-2xl border border-slate-300 px-4 py-3">{VEHICLE_DOCUMENT_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-          <label className="block text-sm text-slate-700">Archivo<input type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={(event) => setFile(event.target.files?.[0] ?? null)} className="mt-1 w-full rounded-2xl border border-slate-300 px-4 py-3" /></label>
-          <label className="block text-sm text-slate-700 md:col-span-2">Notas (opcional)<textarea rows={3} value={documentNotes} onChange={(event) => setDocumentNotes(event.target.value)} className="mt-1 w-full rounded-2xl border border-slate-300 px-4 py-3" /></label>
+          {EVIDENCE_FIELDS.map((field) => (
+            <label key={field.type} className="block text-sm text-slate-700">
+              {field.title}
+              <p className="mt-1 text-xs text-slate-500">{field.hint}</p>
+              <input
+                type="file"
+                accept=".jpg,.jpeg,.png,.pdf"
+                onChange={(event) => updateEvidenceFile(field.type, event.target.files?.[0] ?? null)}
+                className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3"
+              />
+              <span className="mt-1 block text-xs text-slate-500">
+                {filesByType[field.type] ? `Archivo seleccionado: ${filesByType[field.type]?.name}` : 'Sin archivo seleccionado'}
+              </span>
+            </label>
+          ))}
+
+          <label className="block text-sm text-slate-700 md:col-span-2">
+            Notas para revision (opcional)
+            <textarea
+              rows={3}
+              value={documentNotes}
+              onChange={(event) => setDocumentNotes(event.target.value)}
+              className="mt-1 w-full rounded-2xl border border-slate-300 px-4 py-3"
+              placeholder="Ej. Documentos actualizados en abril"
+            />
+          </label>
         </div>
 
-        <button type="submit" disabled={savingDocument || !canUploadDocuments} className="vs-button-secondary">
-          {savingDocument ? 'Subiendo...' : 'Subir documento'}
+        <button type="submit" disabled={savingDocument || !canUploadDocuments || !allRequiredFilesSelected} className="vs-button-secondary">
+          {savingDocument ? 'Subiendo evidencias...' : 'Subir las 4 evidencias'}
         </button>
       </form>
 
@@ -313,7 +390,7 @@ export default function VehiclePage() {
             {vehicle.documents.map((document) => {
               const fileUrl = buildApiAssetUrl(document.fileUrl);
               const statusMeta = getVehicleStatusMeta(document.status);
-              const typeLabel = VEHICLE_DOCUMENT_TYPE_OPTIONS.find((item) => item.value === document.documentType)?.label ?? document.documentType;
+              const typeLabel = EVIDENCE_FIELDS.find((item) => item.type === document.documentType)?.title ?? document.documentType;
 
               return (
                 <article key={document.id} className="vs-card-soft">
@@ -336,3 +413,4 @@ export default function VehiclePage() {
     </section>
   );
 }
+

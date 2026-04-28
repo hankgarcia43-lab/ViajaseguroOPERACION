@@ -9,16 +9,13 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
   constructor() {
     const defaultSqliteUrl = 'file:./dev_local.db';
     const currentUrl = process.env.DATABASE_URL?.trim() ?? '';
-    const shouldUseLocalSqlite =
-      currentUrl.length === 0 ||
-      currentUrl.startsWith('prisma://') ||
-      currentUrl.startsWith('prisma+postgres://');
+    const datasourceUrl = currentUrl.length === 0 ? defaultSqliteUrl : currentUrl;
 
-    const datasourceUrl = shouldUseLocalSqlite ? defaultSqliteUrl : currentUrl;
-
-    if (shouldUseLocalSqlite) {
-      process.env.DATABASE_URL = datasourceUrl;
+    process.env.DATABASE_URL = datasourceUrl;
+    if (datasourceUrl.startsWith('file:')) {
       process.env.PRISMA_CLIENT_ENGINE_TYPE = 'library';
+    } else {
+      process.env.PRISMA_CLIENT_ENGINE_TYPE = 'binary';
     }
 
     super({

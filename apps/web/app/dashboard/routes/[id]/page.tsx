@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
@@ -67,12 +67,15 @@ export default function RouteOffersDetailPage({ params }: { params: { id: string
   const selectedOffer = useMemo(() => data?.offers.find((item) => item.id === selectedOfferId) ?? null, [data, selectedOfferId]);
   const availableWeekdays = useMemo(() => new Set(selectedOffer?.weekdays ?? []), [selectedOffer]);
 
-  const totalAmount = useMemo(() => {
+  const grossAmount = useMemo(() => {
     if (!selectedOffer) return 0;
     const seats = Number.parseInt(totalSeats, 10);
     if (!Number.isInteger(seats) || seats < 1) return 0;
     return selectedWeekdays.length * seats * selectedOffer.pricePerSeat;
   }, [selectedOffer, totalSeats, selectedWeekdays]);
+
+  const weeklyPromoApplied = selectedWeekdays.length >= 5;
+  const finalAmount = weeklyPromoApplied ? grossAmount * 0.9334 : grossAmount;
 
   function toggleWeekday(weekday: string) {
     if (!availableWeekdays.has(weekday)) {
@@ -125,12 +128,12 @@ export default function RouteOffersDetailPage({ params }: { params: { id: string
     };
 
     try {
-      const response = await apiRequest<{ totalDays: number; totalAmount: number; message: string }>('/reservations/by-offer', {
+      const response = await apiRequest<{ totalDays: number; totalAmount: number; grossAmount: number; finalAmount: number; weeklyDiscountApplied: boolean; message: string }>('/reservations/by-offer', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload)
       });
-      setSuccess(`${response.message} Total calculado: $${response.totalAmount.toFixed(2)} MXN.`);
+      setSuccess(response.message + ` Total final: $${response.finalAmount.toFixed(2)} MXN.`);
       setSelectedWeekdays([]);
       await loadData();
     } catch (e) {
@@ -177,7 +180,7 @@ export default function RouteOffersDetailPage({ params }: { params: { id: string
                       <p className="text-sm text-slate-700">Precio por asiento: ${offer.pricePerSeat.toFixed(2)} MXN</p>
                       <p className="text-sm text-slate-700">Referencia de abordaje: {offer.boardingReference}</p>
                       <p className="text-sm text-slate-700">Dias: {offer.weekdays.map((day) => formatWeekdayInSpanish(day)).join(', ')}</p>
-                      <p className="text-sm text-slate-700">Modalidad: {offer.serviceType === 'weekly' ? 'Semanal recurrente' : 'Servicio unico'}</p>
+                      <p className="text-sm text-slate-700">Modalidad: {offer.serviceType === 'weekly' ? 'Semanal recurrente' : offer.serviceType === 'round_trip' ? 'Ida y vuelta' : 'Servicio unico'}</p>
                     </div>
                     {vehiclePhoto ? <img src={vehiclePhoto} alt="Auto del conductor" className="h-20 w-28 rounded-md border border-slate-200 object-cover" /> : null}
                   </div>
@@ -226,7 +229,9 @@ export default function RouteOffersDetailPage({ params }: { params: { id: string
             {selectedWeekdays.length > 0 ? (
               <p className="mt-1 text-xs text-slate-600">{selectedWeekdays.map((day) => formatWeekdayInSpanish(day)).join(', ')}</p>
             ) : null}
-            <p className="mt-2">Total estimado: ${totalAmount.toFixed(2)} MXN</p>
+            <p className="mt-2 text-slate-600">Total bruto: ${grossAmount.toFixed(2)} MXN</p>
+            {weeklyPromoApplied ? <p className="mt-1 text-xs font-medium text-emerald-700">Reserva semanal detectada: se aplicara un beneficio especial al pagar.</p> : null}
+            <p className="mt-2 text-lg font-semibold text-emerald-700">Total final: ${finalAmount.toFixed(2)} MXN</p>
           </div>
 
           <button type="submit" disabled={saving || !selectedOffer} className="w-full rounded-md bg-brand-500 px-4 py-2 font-medium text-white disabled:opacity-60">
@@ -239,3 +244,5 @@ export default function RouteOffersDetailPage({ params }: { params: { id: string
     </section>
   );
 }
+
+

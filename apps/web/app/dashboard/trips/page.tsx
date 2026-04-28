@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -68,7 +68,7 @@ function TripsPageContent() {
         }
       });
       const successMap: Record<TripAction, string> = {
-        start: 'Viaje iniciado correctamente.',
+        start: 'Viaje iniciado correctamente. Los pasajeros ya ven el aviso de abordaje en su panel.',
         finish: 'Viaje finalizado correctamente.',
         cancel: 'Viaje cancelado correctamente.'
       };
@@ -108,6 +108,15 @@ function TripsPageContent() {
             </div>
           )}
           {success && <p className="rounded-md bg-emerald-50 p-3 text-emerald-700">{success}</p>}
+
+          <div className="rounded-lg border border-cyan-200 bg-cyan-50 p-3 text-sm text-cyan-900">
+            <p className="font-semibold">Reglas de salida del conductor</p>
+            <ul className="mt-1 list-disc space-y-1 pl-5 text-xs">
+              <li>Cuando estes listo para viajar, aprieta el boton Iniciar.</li>
+              <li>Al iniciar, los pasajeros veran aviso de que ya los esperas en la zona indicada.</li>
+              <li>Confirma que la referencia sea clara antes de validar abordaje.</li>
+            </ul>
+          </div>
 
           {takenRouteName && !error && (
             <p className="rounded-md bg-cyan-50 p-3 text-cyan-800">

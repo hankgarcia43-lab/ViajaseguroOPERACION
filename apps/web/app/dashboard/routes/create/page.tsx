@@ -1,14 +1,18 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { apiRequest, getToken } from '@/lib/api';
-import { CDMX_ALCALDIAS, EDOMEX_MUNICIPALITIES, ROUTE_SERVICE_SCOPE_OPTIONS, RouteServiceScope } from '@/lib/route-location-options';
+import { CDMX_ALCALDIAS, CDMX_DESTINATION_HUBS, EDOMEX_MUNICIPALITIES, ROUTE_SERVICE_SCOPE_OPTIONS, RouteServiceScope } from '@/lib/route-location-options';
 
 type Region = 'edomex' | 'cdmx';
 
-function optionsByRegion(region: Region) {
+function originOptionsByRegion(region: Region) {
   return region === 'edomex' ? EDOMEX_MUNICIPALITIES : CDMX_ALCALDIAS;
+}
+
+function destinationOptionsByRegion(region: Region) {
+  return region === 'edomex' ? EDOMEX_MUNICIPALITIES : CDMX_DESTINATION_HUBS;
 }
 
 export default function CreateRoutePage() {
@@ -23,8 +27,8 @@ export default function CreateRoutePage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const originOptions = useMemo(() => optionsByRegion(originRegion), [originRegion]);
-  const destinationOptions = useMemo(() => optionsByRegion(destinationRegion), [destinationRegion]);
+  const originOptions = useMemo(() => originOptionsByRegion(originRegion), [originRegion]);
+  const destinationOptions = useMemo(() => destinationOptionsByRegion(destinationRegion), [destinationRegion]);
 
   useEffect(() => {
     setOrigin('');
@@ -89,7 +93,7 @@ export default function CreateRoutePage() {
       <header className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <h1 className="text-2xl font-semibold text-slate-900">Crear ruta principal</h1>
         <p className="text-sm text-slate-600">
-          Selecciona region y punto de inicio/destino para crear una ruta clara y operativa.
+          Selecciona region y punto de inicio/destino para crear una ruta clara y operativa. Como conductor tambien puedes crear tu propia ruta para trabajar.
         </p>
       </header>
 
@@ -134,7 +138,7 @@ export default function CreateRoutePage() {
               </select>
             </label>
             <label className="block text-sm text-slate-700">
-              Destino
+              Destino (terminal, hospital o estacion principal)
               <select value={destination} onChange={(event) => setDestination(event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2">
                 <option value="">Selecciona destino</option>
                 {destinationOptions.map((item) => (
@@ -179,7 +183,7 @@ export default function CreateRoutePage() {
           </label>
 
           <button type="submit" disabled={saving} className="rounded-md bg-brand-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">
-            {saving ? 'Guardando...' : 'Crear ruta principal'}
+            {saving ? 'Guardando...' : 'Crear mi ruta para trabajar'}
           </button>
         </form>
 
@@ -199,4 +203,5 @@ export default function CreateRoutePage() {
     </section>
   );
 }
+
 

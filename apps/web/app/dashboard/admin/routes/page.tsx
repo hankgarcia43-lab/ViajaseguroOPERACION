@@ -1,9 +1,9 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { apiRequest, getToken } from '@/lib/api';
-import { CDMX_ALCALDIAS, EDOMEX_MUNICIPALITIES, ROUTE_SERVICE_SCOPE_OPTIONS, RouteServiceScope } from '@/lib/route-location-options';
+import { CDMX_ALCALDIAS, CDMX_DESTINATION_HUBS, EDOMEX_MUNICIPALITIES, ROUTE_SERVICE_SCOPE_OPTIONS, RouteServiceScope } from '@/lib/route-location-options';
 
 type AdminRoute = {
   id: string;
@@ -11,6 +11,10 @@ type AdminRoute = {
   title: string | null;
   origin: string;
   destination: string;
+  departureTime: string;
+  estimatedArrivalTime: string;
+  availableSeats: number;
+  distanceKm: number;
   pricePerSeat: number;
   stopsText: string | null;
   status: string;
@@ -26,9 +30,15 @@ type BulkDeleteResponse = {
 
 type Region = 'edomex' | 'cdmx';
 
-function optionsByRegion(region: Region) {
+function originOptionsByRegion(region: Region) {
   return region === 'edomex' ? EDOMEX_MUNICIPALITIES : CDMX_ALCALDIAS;
 }
+
+function destinationOptionsByRegion(region: Region) {
+  return region === 'edomex' ? EDOMEX_MUNICIPALITIES : CDMX_DESTINATION_HUBS;
+}
+
+const HHMM_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 export default function AdminRoutesPage() {
   const [routes, setRoutes] = useState<AdminRoute[]>([]);
@@ -36,6 +46,7 @@ export default function AdminRoutesPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deletingRouteId, setDeletingRouteId] = useState<string | null>(null);
+  const [busyRouteAction, setBusyRouteAction] = useState<string | null>(null);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -48,8 +59,8 @@ export default function AdminRoutesPage() {
   const [serviceScope, setServiceScope] = useState<RouteServiceScope>('edomex_to_cdmx');
   const [description, setDescription] = useState('');
 
-  const originOptions = useMemo(() => optionsByRegion(originRegion), [originRegion]);
-  const destinationOptions = useMemo(() => optionsByRegion(destinationRegion), [destinationRegion]);
+  const originOptions = useMemo(() => originOptionsByRegion(originRegion), [originRegion]);
+  const destinationOptions = useMemo(() => destinationOptionsByRegion(destinationRegion), [destinationRegion]);
 
   const allVisibleSelected = routes.length > 0 && routes.every((route) => selectedRouteIds.includes(route.id));
 
@@ -228,6 +239,86 @@ export default function AdminRoutesPage() {
     }
   }
 
+  async function handleQuickEdit(route: AdminRoute) {
+    const token = getToken();
+    if (!token) {
+      setError('No hay sesion activa.');
+      return;
+    }
+
+    const nextDeparture = window.prompt('Nueva hora de salida (HH:mm):', route.departureTime)?.trim();
+    if (!nextDeparture) return;
+    if (!HHMM_REGEX.test(nextDeparture)) {
+      setError('La hora de salida debe tener formato HH:mm.');
+      return;
+    }
+
+    const nextArrival = window.prompt('Nueva hora estimada de llegada (HH:mm):', route.estimatedArrivalTime)?.trim();
+    if (!nextArrival) return;
+    if (!HHMM_REGEX.test(nextArrival)) {
+      setError('La hora de llegada debe tener formato HH:mm.');
+      return;
+    }
+
+    const nextPriceRaw = window.prompt('Nuevo precio por asiento (1 a 500):', route.pricePerSeat.toFixed(2))?.trim();
+    if (!nextPriceRaw) return;
+    const nextPrice = Number(nextPriceRaw);
+    if (!Number.isFinite(nextPrice) || nextPrice < 1 || nextPrice > 500) {
+      setError('El precio por asiento debe estar entre 1 y 500.');
+      return;
+    }
+
+    setBusyRouteAction(`edit:${route.id}`);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      await apiRequest(`/admin/routes/${route.id}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          departureTime: nextDeparture,
+          estimatedArrivalTime: nextArrival,
+          pricePerSeat: nextPrice
+        })
+      });
+      setSuccess('Ruta actualizada correctamente (precio y horarios).');
+      await loadRoutes();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'No se pudo actualizar la ruta.');
+    } finally {
+      setBusyRouteAction(null);
+    }
+  }
+
+  async function handleToggleStatus(route: AdminRoute) {
+    const token = getToken();
+    if (!token) {
+      setError('No hay sesion activa.');
+      return;
+    }
+
+    const routeIsActive = String(route.status).toLowerCase() === 'active';
+    const endpoint = routeIsActive ? 'pause' : 'activate';
+
+    setBusyRouteAction(`status:${route.id}`);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      await apiRequest(`/admin/routes/${route.id}/${endpoint}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSuccess(routeIsActive ? 'Ruta pausada correctamente.' : 'Ruta activada correctamente.');
+      await loadRoutes();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'No se pudo cambiar el estado de la ruta.');
+    } finally {
+      setBusyRouteAction(null);
+    }
+  }
+
   if (loading) {
     return <p className="text-slate-700">Cargando rutas admin...</p>;
   }
@@ -284,7 +375,7 @@ export default function AdminRoutesPage() {
               </select>
             </label>
             <label className="block text-sm text-slate-700">
-              Destino
+              Destino (terminal, hospital o estacion principal)
               <select value={destination} onChange={(event) => setDestination(event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2">
                 <option value="">Selecciona destino</option>
                 {destinationOptions.map((item) => (
@@ -339,7 +430,7 @@ export default function AdminRoutesPage() {
             <li>Primero elige region y despues ubicacion exacta.</li>
             <li>Punto de inicio y destino deben ser claros y reales.</li>
             <li>El precio por asiento no puede superar 500 MXN.</li>
-            <li>El conductor toma la ruta y agrega su operacion del viaje.</li>
+            <li>Ahora puedes editar precio y horarios desde cada tarjeta.</li>
           </ul>
           <Link href="/dashboard/routes" className="mt-4 inline-block rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">
             Ver feed de rutas
@@ -373,6 +464,10 @@ export default function AdminRoutesPage() {
             {routes.map((route) => {
               const isSelected = selectedRouteIds.includes(route.id);
               const isDeleting = deletingRouteId === route.id;
+              const isEditing = busyRouteAction === `edit:${route.id}`;
+              const isStatusBusy = busyRouteAction === `status:${route.id}`;
+              const routeIsActive = String(route.status).toLowerCase() === 'active';
+
               return (
                 <article key={route.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                   <div className="mb-2 flex items-start justify-between gap-3">
@@ -392,8 +487,31 @@ export default function AdminRoutesPage() {
                   <p className="text-xs text-slate-500">Ruta #{route.publicId ?? '-'}</p>
                   <h3 className="text-base font-semibold text-slate-900">{route.title || `${route.origin} -> ${route.destination}`}</h3>
                   <p className="text-sm text-slate-700">{route.origin} {'->'} {route.destination}</p>
+                  <p className="text-sm text-slate-700">Horario: {route.departureTime} - {route.estimatedArrivalTime}</p>
+                  <p className="text-sm text-slate-700">Distancia: {route.distanceKm.toFixed(2)} km</p>
+                  <p className="text-sm text-slate-700">Asientos base: {route.availableSeats}</p>
                   <p className="text-sm font-medium text-slate-900">Precio por asiento: ${route.pricePerSeat.toFixed(2)} MXN</p>
                   <p className="mt-1 text-xs text-slate-600">{route.stopsText || 'Sin descripcion.'}</p>
+                  <p className="mt-1 text-xs text-slate-600">Estado: {routeIsActive ? 'Activa' : 'Pausada'}</p>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void handleQuickEdit(route)}
+                      disabled={isEditing}
+                      className="rounded-md border border-blue-300 bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 disabled:opacity-60"
+                    >
+                      {isEditing ? 'Guardando...' : 'Editar precio/horario'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleToggleStatus(route)}
+                      disabled={isStatusBusy}
+                      className="rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 disabled:opacity-60"
+                    >
+                      {isStatusBusy ? 'Actualizando...' : routeIsActive ? 'Pausar ruta' : 'Activar ruta'}
+                    </button>
+                  </div>
                 </article>
               );
             })}
@@ -403,3 +521,4 @@ export default function AdminRoutesPage() {
     </section>
   );
 }
+

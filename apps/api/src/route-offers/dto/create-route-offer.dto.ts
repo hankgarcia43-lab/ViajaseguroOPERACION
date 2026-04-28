@@ -1,8 +1,8 @@
-﻿import { Transform, Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { ArrayMaxSize, ArrayMinSize, IsArray, IsIn, IsInt, IsNotEmpty, IsString, IsUUID, Max, Min } from 'class-validator';
 
 const WEEKDAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
-const SERVICE_TYPES = ['one_time', 'weekly'] as const;
+const SERVICE_TYPES = ['one_time', 'weekly', 'round_trip'] as const;
 
 export class CreateRouteOfferDto {
   @IsUUID('4')
@@ -29,3 +29,5 @@ export class CreateRouteOfferDto {
   @Max(20)
   availableSeats!: number;
 }
+
+

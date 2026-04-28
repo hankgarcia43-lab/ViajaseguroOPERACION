@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -131,6 +131,10 @@ export default function ReserveTripPage() {
         <p className="text-sm text-slate-700">Asientos disponibles: {trip.remainingSeats}</p>
       </article>
 
+      <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-4 text-sm text-cyan-900">
+        <p className="font-semibold">Tip para usuarios frecuentes</p>
+        <p className="mt-1">Si vas a trabajar toda la semana, prioriza tu reserva semanal para asegurar lugar y mantener tarifa estable.</p>
+      </div>
       <form onSubmit={onSubmit} className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <label className="block text-sm text-slate-700">
           Total de asientos

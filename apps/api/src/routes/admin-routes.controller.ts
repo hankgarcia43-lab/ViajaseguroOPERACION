@@ -1,4 +1,4 @@
-﻿import { Body, Controller, Delete, ForbiddenException, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -40,18 +40,18 @@ export class AdminRoutesController {
   }
 
   @Patch(':id')
-  update(@Param('id') _routeId: string, @Body() _dto: UpdateRouteDto) {
-    throw new ForbiddenException('En esta fase la ruta base solo se crea por admin y no se edita para evitar inconsistencias.');
+  update(@Param('id') routeId: string, @Body() dto: UpdateRouteDto) {
+    return this.routesService.updateForAdmin(routeId, dto);
   }
 
   @Patch(':id/pause')
-  pause(@Param('id') _routeId: string) {
-    throw new ForbiddenException('En esta fase la pausa de rutas base esta deshabilitada.');
+  pause(@Param('id') routeId: string) {
+    return this.routesService.setStatusForAdmin(routeId, 'paused');
   }
 
   @Patch(':id/activate')
-  activate(@Param('id') _routeId: string) {
-    throw new ForbiddenException('En esta fase la activacion manual esta deshabilitada.');
+  activate(@Param('id') routeId: string) {
+    return this.routesService.setStatusForAdmin(routeId, 'active');
   }
 
   @Delete(':id')

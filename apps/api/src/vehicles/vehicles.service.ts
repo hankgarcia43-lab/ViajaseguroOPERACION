@@ -1,4 +1,4 @@
-﻿import {
+import {
   BadRequestException,
   ForbiddenException,
   Injectable,
@@ -45,7 +45,7 @@ const VEHICLE_STATUS = {
   REJECTED: 'rejected'
 } as const;
 
-const REQUIRED_VEHICLE_DOCUMENT_TYPES = ['insurance_policy', 'vehicle_registration', 'vehicle_photo'] as const;
+const REQUIRED_VEHICLE_DOCUMENT_TYPES = ['insurance_policy', 'vehicle_registration', 'vehicle_photo', 'driver_photo'] as const;
 
 @Injectable()
 export class VehiclesService {
@@ -347,7 +347,8 @@ export class VehiclesService {
     return {
       insurance_policy: documents.some((document) => document.documentType === 'insurance_policy'),
       vehicle_registration: documents.some((document) => document.documentType === 'vehicle_registration'),
-      vehicle_photo: documents.some((document) => document.documentType === 'vehicle_photo')
+      vehicle_photo: documents.some((document) => document.documentType === 'vehicle_photo'),
+      driver_photo: documents.some((document) => document.documentType === 'driver_photo')
     };
   }
   private mapVehicleDocument(document: VehicleDocumentRecord) {
@@ -396,6 +397,7 @@ export class VehiclesService {
     return (this.prisma as unknown as { vehicle: any }).vehicle;
   }
 }
+
 
 
 

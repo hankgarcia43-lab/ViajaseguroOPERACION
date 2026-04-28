@@ -1,4 +1,4 @@
-﻿export const EDOMEX_MUNICIPALITIES = [
+export const EDOMEX_MUNICIPALITIES = [
   'Acambay de Ruiz Castaneda',
   'Acolman',
   'Aculco',
@@ -143,6 +143,79 @@ export const CDMX_ALCALDIAS = [
   'Tlalpan',
   'Venustiano Carranza',
   'Xochimilco'
+] as const;
+
+export const CDMX_DESTINATION_HUBS = [
+  'Alvaro Obregon - Observatorio (CETRAM)',
+  'Alvaro Obregon - Tacubaya (Metro/CETRAM)',
+  'Azcapotzalco - El Rosario (CETRAM)',
+  'Azcapotzalco - Ferreria (Tren Suburbano)',
+  'Benito Juarez - Centro Medico (Metro)',
+  'Benito Juarez - Mixcoac (Metro)',
+  'Coyoacan - Taxquena (CETRAM)',
+  'Coyoacan - Universidad (Metro)',
+  'Cuajimalpa - Santa Fe (Centro de Transferencia)',
+  'Cuajimalpa - Centro Comercial Santa Fe (Nodo laboral)',
+  'Cuauhtemoc - Buenavista (Suburbano/Metrobus)',
+  'Cuauhtemoc - Hidalgo (Metro)',
+  'Gustavo A. Madero - Indios Verdes (CETRAM)',
+  'Gustavo A. Madero - Martin Carrera (Metro)',
+  'Iztacalco - Ciudad Deportiva (Metro)',
+  'Iztacalco - Puebla (Metro)',
+  'Iztapalapa - Constitucion de 1917 (CETRAM)',
+  'Iztapalapa - Santa Marta (CETRAM)',
+  'La Magdalena Contreras - Hospital Angeles Pedregal',
+  'La Magdalena Contreras - Periferico Sur / Luis Cabrera',
+  'Miguel Hidalgo - Tacuba (Metro)',
+  'Miguel Hidalgo - Auditorio (Metro)',
+  'Milpa Alta - Milpa Alta Centro',
+  'Milpa Alta - Villa Milpa Alta (Nodo local)',
+  'Tlahuac - Tlahuac (Metro)',
+  'Tlahuac - Olivos (Metro)',
+  'Tlalpan - El Caminero (CETRAM)',
+  'Tlalpan - Hospitales (Metro)',
+  'Venustiano Carranza - Pantitlan (CETRAM)',
+  'Venustiano Carranza - San Lazaro (Metro/TAPO)',
+  'Xochimilco - Tasquena (CETRAM)',
+  'Xochimilco - Tren Ligero Xochimilco',
+
+  'Hospital General de Mexico Dr. Eduardo Liceaga',
+  'Centro Medico Nacional Siglo XXI',
+  'Hospital Juarez de Mexico',
+  'Hospital General La Raza IMSS',
+  'Hospital Infantil de Mexico Federico Gomez',
+  'Hospital General Balbuena',
+  'Hospital ABC Observatorio',
+  'Instituto Nacional de Cancerologia (INCan)',
+
+  'La Raza (Metro)',
+  'Pino Suarez (Metro)',
+  'Bellas Artes (Metro)',
+  'Zapata (Metro)',
+  'Chabacano (Metro)',
+  'Guerrero (Metro)',
+  'Politecnico (Metro)',
+  'Chapultepec (Metro)',
+  'Insurgentes (Metro)',
+  'Tacuba (Metro)'
+] as const;
+
+export const TERMINALES_CDMX_TOP_15 = [
+  'Indios Verdes',
+  'Martin Carrera',
+  'Pantitlan',
+  'Observatorio',
+  'Taxquena',
+  'Tacubaya',
+  'Chapultepec',
+  'Buenavista',
+  'La Raza',
+  'Constitucion de 1917',
+  'Pino Suarez',
+  'Hidalgo',
+  'San Lazaro',
+  'Cuatro Caminos',
+  'Politecnico'
 ] as const;
 
 export const ROUTE_LOCATION_OPTIONS = [...EDOMEX_MUNICIPALITIES, ...CDMX_ALCALDIAS] as const;

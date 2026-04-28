@@ -202,8 +202,11 @@ export default function DriverPayoutsPage() {
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-slate-900">Mis liquidaciones semanales</h1>
-        <p className="text-sm text-slate-600">La cuenta debe estar a nombre del usuario de la cuenta de Viaje Seguro.</p>`r`n        <p className="text-xs text-slate-500">Mantén tu operacion ordenada: verifica estados de viaje y pago antes de solicitar liquidacion.</p>
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold text-slate-900">Mis liquidaciones semanales</h1>
+          <p className="text-sm text-slate-600">La cuenta debe estar a nombre del usuario de la cuenta de Viaje Seguro.</p>
+          <p className="text-xs text-slate-500">Tu pago se libera cuando terminas tus viajes del periodo y el admin marca la liquidacion como pagada.</p>
+        </div>
         <div className="flex gap-2">
           <Link href="/dashboard/trips" className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">
             Mis viajes
@@ -212,8 +215,9 @@ export default function DriverPayoutsPage() {
             Dashboard
           </Link>
         </div>
-</div>
-{error && <p className="rounded-md bg-red-50 p-3 text-red-700">{error}</p>}
+      </div>
+
+      {error && <p className="rounded-md bg-red-50 p-3 text-red-700">{error}</p>}
       {success && <p className="rounded-md bg-emerald-50 p-3 text-emerald-700">{success}</p>}
 
       <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">

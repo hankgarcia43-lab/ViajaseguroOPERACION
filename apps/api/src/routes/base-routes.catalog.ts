@@ -1,4 +1,4 @@
-﻿export type BaseRouteTemplate = {
+export type BaseRouteTemplate = {
   templateKey: string;
   title: string;
   origin: string;
@@ -12,148 +12,63 @@
   recommendedPricePerSeat: number;
 };
 
+export const ROUTE_TEST_TARIFF_PER_KM = 3.33;
+
+const WORKDAYS: BaseRouteTemplate['weekdays'] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+const WORKDAYS_PLUS_SAT: BaseRouteTemplate['weekdays'] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+function fareByKm(distanceKm: number) {
+  return Math.round(distanceKm * ROUTE_TEST_TARIFF_PER_KM * 100) / 100;
+}
+
+function template(
+  templateKey: string,
+  title: string,
+  origin: string,
+  destination: string,
+  distanceKm: number,
+  departureTime: string,
+  estimatedArrivalTime: string,
+  weekdays: BaseRouteTemplate['weekdays'] = WORKDAYS_PLUS_SAT,
+  stopsText = 'Ruta laboral frecuente. Define abordaje visible y en zona publica para operacion segura.'
+): BaseRouteTemplate {
+  return {
+    templateKey,
+    title,
+    origin,
+    destination,
+    stopsText,
+    weekdays,
+    departureTime,
+    estimatedArrivalTime,
+    availableSeats: 4,
+    distanceKm,
+    recommendedPricePerSeat: fareByKm(distanceKm)
+  };
+}
+
 export const BASE_ROUTE_TEMPLATES: BaseRouteTemplate[] = [
-  {
-    templateKey: 'corredor-norte-ecatepec-indios-verdes',
-    title: 'Corredor Norte: Ecatepec -> Indios Verdes',
-    origin: 'Ecatepec',
-    destination: 'Indios Verdes',
-    stopsText: 'Ruta laboral frecuente. Punto de abordaje sugerido en zona publica y visible de Ecatepec.',
-    weekdays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'],
-    departureTime: '06:20',
-    estimatedArrivalTime: '07:35',
-    availableSeats: 4,
-    distanceKm: 24,
-    recommendedPricePerSeat: 42
-  },
-  {
-    templateKey: 'corredor-norte-acolman-indios-verdes',
-    title: 'Corredor Norte: Acolman -> Indios Verdes',
-    origin: 'Acolman',
-    destination: 'Indios Verdes',
-    stopsText: 'Ruta laboral frecuente para zona norte. Referencia clara de abordaje para operacion segura.',
-    weekdays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
-    departureTime: '05:50',
-    estimatedArrivalTime: '07:20',
-    availableSeats: 4,
-    distanceKm: 34,
-    recommendedPricePerSeat: 55
-  },
-  {
-    templateKey: 'corredor-norte-teotihuacan-indios-verdes',
-    title: 'Corredor Norte: Teotihuacan -> Indios Verdes',
-    origin: 'Teotihuacan',
-    destination: 'Indios Verdes',
-    stopsText: 'Corredor de alta demanda semanal. Operar con punto de abordaje visible y facil de identificar.',
-    weekdays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
-    departureTime: '05:40',
-    estimatedArrivalTime: '07:15',
-    availableSeats: 4,
-    distanceKm: 38,
-    recommendedPricePerSeat: 62
-  },
-  {
-    templateKey: 'corredor-norte-otumba-indios-verdes',
-    title: 'Corredor Norte: Otumba -> Indios Verdes',
-    origin: 'Otumba',
-    destination: 'Indios Verdes',
-    stopsText: 'Ruta extendida para trabajadores recurrentes. Recomendar abordaje en punto publico.',
-    weekdays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
-    departureTime: '05:30',
-    estimatedArrivalTime: '07:20',
-    availableSeats: 4,
-    distanceKm: 42,
-    recommendedPricePerSeat: 70
-  },
-  {
-    templateKey: 'corredor-norte-tecamac-indios-verdes',
-    title: 'Corredor Norte: Tecamac -> Indios Verdes',
-    origin: 'Tecamac',
-    destination: 'Indios Verdes',
-    stopsText: 'Ruta laboral frecuente para conexion rapida al nodo Indios Verdes.',
-    weekdays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'],
-    departureTime: '06:10',
-    estimatedArrivalTime: '07:30',
-    availableSeats: 4,
-    distanceKm: 28,
-    recommendedPricePerSeat: 46
-  },
-  {
-    templateKey: 'corredor-oriente-neza-pantitlan',
-    title: 'Corredor Oriente: Nezahualcoyotl -> Pantitlan',
-    origin: 'Nezahualcoyotl',
-    destination: 'Pantitlan',
-    stopsText: 'Ruta laboral frecuente para zona oriente con llegada a nodo Pantitlan.',
-    weekdays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'],
-    departureTime: '06:10',
-    estimatedArrivalTime: '07:10',
-    availableSeats: 4,
-    distanceKm: 18,
-    recommendedPricePerSeat: 30
-  },
-  {
-    templateKey: 'corredor-oriente-chimalhuacan-pantitlan',
-    title: 'Corredor Oriente: Chimalhuacan -> Pantitlan',
-    origin: 'Chimalhuacan',
-    destination: 'Pantitlan',
-    stopsText: 'Corredor operativo para trabajadores del oriente hacia CDMX.',
-    weekdays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
-    departureTime: '05:55',
-    estimatedArrivalTime: '07:05',
-    availableSeats: 4,
-    distanceKm: 22,
-    recommendedPricePerSeat: 34
-  },
-  {
-    templateKey: 'corredor-oriente-chicoloapan-pantitlan',
-    title: 'Corredor Oriente: Chicoloapan -> Pantitlan',
-    origin: 'Chicoloapan',
-    destination: 'Pantitlan',
-    stopsText: 'Ruta laboral frecuente con enfoque en traslado puntual de entrada.',
-    weekdays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
-    departureTime: '05:45',
-    estimatedArrivalTime: '07:10',
-    availableSeats: 4,
-    distanceKm: 27,
-    recommendedPricePerSeat: 40
-  },
-  {
-    templateKey: 'corredor-suburbano-cuautitlan-buenavista',
-    title: 'Corredor Suburbano: Cuautitlan -> Buenavista',
-    origin: 'Cuautitlan',
-    destination: 'Buenavista',
-    stopsText: 'Ruta hacia nodo laboral y de transbordo de Buenavista.',
-    weekdays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
-    departureTime: '06:00',
-    estimatedArrivalTime: '07:25',
-    availableSeats: 4,
-    distanceKm: 31,
-    recommendedPricePerSeat: 48
-  },
-  {
-    templateKey: 'corredor-norponiente-naucalpan-cuatro-caminos',
-    title: 'Corredor Norponiente: Naucalpan -> Cuatro Caminos',
-    origin: 'Naucalpan',
-    destination: 'Cuatro Caminos',
-    stopsText: 'Ruta laboral frecuente para acceso rapido a Toreo y conexiones CDMX.',
-    weekdays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'],
-    departureTime: '06:30',
-    estimatedArrivalTime: '07:30',
-    availableSeats: 4,
-    distanceKm: 16,
-    recommendedPricePerSeat: 28
-  },
-  {
-    templateKey: 'corredor-cdmx-centro-laboral',
-    title: 'Corredor CDMX: Centro Laboral',
-    origin: 'EdoMex (punto de abordaje)',
-    destination: 'Centro CDMX',
-    stopsText: 'Ruta flexible hacia zonas laborales centrales y terminales de alta demanda.',
-    weekdays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
-    departureTime: '06:40',
-    estimatedArrivalTime: '08:00',
-    availableSeats: 4,
-    distanceKm: 35,
-    recommendedPricePerSeat: 52
-  }
+  template('corredor-norte-ecatepec-indios-verdes', 'Corredor Norte: Ecatepec -> Indios Verdes', 'Ecatepec de Morelos', 'Indios Verdes', 23, '06:20', '07:10'),
+  template('corredor-norte-acolman-indios-verdes', 'Corredor Norte: Acolman -> Indios Verdes', 'Acolman', 'Indios Verdes', 31.3, '05:55', '07:00'),
+  template('corredor-norte-teotihuacan-indios-verdes', 'Corredor Norte: Teotihuacan -> Indios Verdes', 'Teotihuacan', 'Indios Verdes', 40, '05:40', '07:10', WORKDAYS),
+  template('corredor-norte-otumba-indios-verdes', 'Corredor Norte: Otumba -> Indios Verdes', 'Otumba', 'Indios Verdes', 51, '05:20', '07:20', WORKDAYS),
+  template('corredor-norte-tecamac-indios-verdes', 'Corredor Norte: Tecamac -> Indios Verdes', 'Tecamac', 'Indios Verdes', 31, '06:00', '07:10'),
+  template('corredor-norte-zumpango-indios-verdes', 'Corredor Norte: Zumpango -> Indios Verdes', 'Zumpango', 'Indios Verdes', 47, '05:15', '07:15', WORKDAYS),
+  template('corredor-norte-coacalco-indios-verdes', 'Corredor Norte: Coacalco -> Indios Verdes', 'Coacalco de Berriozabal', 'Indios Verdes', 23.7, '06:10', '07:00'),
+  template('corredor-norte-tlalnepantla-indios-verdes', 'Corredor Norte: Tlalnepantla -> Indios Verdes', 'Tlalnepantla de Baz', 'Indios Verdes', 16, '06:25', '07:00'),
+
+  template('corredor-suburbano-tultitlan-buenavista', 'Corredor Suburbano: Tultitlan -> Buenavista', 'Tultitlan', 'Buenavista', 30, '06:05', '07:20'),
+  template('corredor-suburbano-cuautitlan-buenavista', 'Corredor Suburbano: Cuautitlan -> Buenavista', 'Cuautitlan', 'Buenavista', 39, '05:55', '07:20'),
+  template('corredor-norponiente-izcalli-cuatro-caminos', 'Corredor Norponiente: Cuautitlan Izcalli -> Cuatro Caminos', 'Cuautitlan Izcalli', 'Cuatro Caminos', 27, '06:10', '07:20'),
+  template('corredor-norponiente-naucalpan-cuatro-caminos', 'Corredor Norponiente: Naucalpan -> Cuatro Caminos', 'Naucalpan de Juarez', 'Cuatro Caminos', 5, '06:30', '06:50'),
+  template('corredor-norponiente-atizapan-cuatro-caminos', 'Corredor Norponiente: Atizapan -> Cuatro Caminos', 'Atizapan de Zaragoza', 'Cuatro Caminos', 18, '06:20', '07:10'),
+
+  template('corredor-oriente-neza-pantitlan', 'Corredor Oriente: Nezahualcoyotl -> Pantitlan', 'Nezahualcoyotl', 'Pantitlan', 14, '06:15', '06:55'),
+  template('corredor-oriente-chimalhuacan-pantitlan', 'Corredor Oriente: Chimalhuacan -> Pantitlan', 'Chimalhuacan', 'Pantitlan', 14.7, '06:00', '06:50'),
+  template('corredor-oriente-chicoloapan-pantitlan', 'Corredor Oriente: Chicoloapan -> Pantitlan', 'Chicoloapan', 'Pantitlan', 24, '05:45', '06:50'),
+  template('corredor-oriente-ixtapaluca-pantitlan', 'Corredor Oriente: Ixtapaluca -> Pantitlan', 'Ixtapaluca', 'Pantitlan', 32, '05:35', '06:55', WORKDAYS),
+  template('corredor-oriente-la-paz-pantitlan', 'Corredor Oriente: La Paz -> Pantitlan', 'La Paz', 'Pantitlan', 14, '06:20', '06:55'),
+
+  template('corredor-oriente-texcoco-san-lazaro', 'Corredor Oriente: Texcoco -> San Lazaro', 'Texcoco', 'San Lazaro', 31, '05:50', '07:10', WORKDAYS),
+  template('corredor-poniente-toluca-observatorio', 'Corredor Poniente: Toluca -> Observatorio', 'Toluca', 'Observatorio', 58, '05:10', '06:50', WORKDAYS)
 ];

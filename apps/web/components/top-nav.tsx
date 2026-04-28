@@ -1,5 +1,6 @@
-﻿'use client';
+'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -19,8 +20,8 @@ export function TopNav() {
       <nav className="mx-auto w-full max-w-7xl px-4 py-3 md:px-6 md:py-4">
         <div className="flex items-center justify-between gap-3">
           <Link href="/" className="flex min-w-0 items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-sm font-semibold text-white shadow-lg shadow-slate-900/15 md:h-11 md:w-11">
-              VS
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg shadow-slate-900/10 md:h-11 md:w-11">
+              <Image src="/LOGOVJ.png" alt="Logo Viaja Seguro" width={44} height={44} className="h-full w-full object-cover" priority />
             </span>
             <span className="min-w-0">
               <span className="block truncate text-base font-semibold text-slate-950 md:text-lg">Viaja Seguro</span>

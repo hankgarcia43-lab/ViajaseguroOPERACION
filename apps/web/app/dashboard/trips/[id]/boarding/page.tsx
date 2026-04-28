@@ -288,19 +288,23 @@ export default function TripBoardingPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Validar abordaje</h1>
-          <p className="text-sm text-slate-600">El flujo principal es ingresar manualmente el codigo numerico de la reserva.</p>`r`n          <p className="mt-1 text-xs text-slate-500">Usa puntos de abordaje publicos y visibles para proteger al pasajero y al conductor.</p>
+          <p className="text-sm text-slate-600">El flujo principal es ingresar manualmente el codigo numerico de la reserva.</p>
+          <p className="mt-1 text-xs text-slate-500">Usa puntos de abordaje publicos y visibles para proteger al pasajero y al conductor.</p>
         </div>
-<div className="flex gap-2">
+        <div className="flex gap-2">
           <Link href="/dashboard/trips" className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">Volver a mis viajes</Link>
         </div>
-</div>
-<article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">{trip.route?.title || `${trip.route?.origin || 'Ruta'} {'->'} ${trip.route?.destination || ''}`}</h2>
+      </div>
+
+      <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-900">{trip.route?.title || `${trip.route?.origin || 'Ruta'} -> ${trip.route?.destination || ''}`}</h2>
         <p className="text-sm text-slate-700">Fecha: {new Date(trip.tripDate).toLocaleDateString()}</p>
         <p className="text-sm text-slate-700">Estado del viaje: <span className={`rounded-full px-2 py-1 text-xs font-medium ${tripStatusMeta.className}`}>{tripStatusMeta.label}</span></p>
         <p className="text-sm text-slate-700">Reservas activas: {trip.reservationSummary?.reservationsCount ?? 0}</p>
         <p className="text-sm text-slate-700">Asientos reservados: {trip.reservationSummary?.reservedSeats ?? 0}</p>
-        <p className="text-sm text-slate-700">Asientos disponibles: {trip.reservationSummary?.remainingSeats ?? trip.availableSeatsSnapshot}</p>`r`n        <p className="text-sm text-slate-700">Referencia de abordaje: {trip.boardingReference ?? "Sin definir"}</p>`r`n        <p className="mt-2 rounded-md bg-amber-50 p-2 text-xs text-amber-800">Confirma que el encuentro sea en un punto publico, identificado y seguro.</p>
+        <p className="text-sm text-slate-700">Asientos disponibles: {trip.reservationSummary?.remainingSeats ?? trip.availableSeatsSnapshot}</p>
+        <p className="text-sm text-slate-700">Referencia de abordaje: {trip.boardingReference ?? 'Sin definir'}</p>
+        <p className="mt-2 rounded-md bg-amber-50 p-2 text-xs text-amber-800">Confirma que el encuentro sea en un punto publico, identificado y seguro.</p>
       </article>
 
       <form onSubmit={onSubmit} className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -308,7 +312,8 @@ export default function TripBoardingPage() {
           <p className="text-sm font-semibold text-brand-700">Paso principal</p>
           <p className="mt-1 text-sm text-slate-700">Pide al pasajero su codigo numerico y escribelo aqui. El QR se mantiene solo como apoyo.</p>
         </div>
-<label className="block text-sm text-slate-700">
+
+        <label className="block text-sm text-slate-700">
           Codigo numerico
           <input type="text" inputMode="numeric" maxLength={6} value={numericCode} onChange={(event) => setNumericCode(event.target.value.replace(/\D/g, '').slice(0, 6))} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-lg tracking-[0.35em]" placeholder="123456" />
         </label>
@@ -341,7 +346,8 @@ export default function TripBoardingPage() {
               </button>
             )}
           </div>
-{!scannerSupported && (
+
+          {!scannerSupported && (
             <p className="mt-2 text-xs text-amber-700">Este navegador no soporta lector QR nativo. Usa codigo numerico o token manual.</p>
           )}
 
@@ -353,15 +359,16 @@ export default function TripBoardingPage() {
             <div className={`mt-3 overflow-hidden rounded-md border ${qrDetectedSignal ? 'border-emerald-400' : 'border-slate-300'} bg-black`}>
               <video ref={videoRef} autoPlay playsInline muted className="h-64 w-full object-cover" />
             </div>
-)}
+          )}
         </div>
-{error && (
+
+        {error && (
           <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
             <p>{error}</p>
             {showVerificationLink && <Link href="/dashboard/verification" className="mt-2 inline-block underline">Completar verificacion</Link>}
             {showVehicleLink && <Link href="/dashboard/vehicle" className="mt-2 ml-3 inline-block underline">Registrar o revisar mi vehiculo</Link>}
           </div>
-)}
+        )}
         {success && <p className="rounded-md bg-emerald-50 p-3 text-sm text-emerald-700">{success}</p>}
 
         <button type="submit" disabled={submitting} className="w-full rounded-md bg-brand-500 px-4 py-2 font-medium text-white disabled:opacity-60">
@@ -374,23 +381,14 @@ export default function TripBoardingPage() {
           <h3 className="font-semibold text-green-900">Abordaje validado</h3>
           <p className="text-sm text-green-800">Reserva: {result.id}</p>
           <p className="text-sm text-green-800">Codigo: {result.numericCode}</p>
-          <p className="text-sm text-green-800">Pasajero titular: {result.passenger?.fullName ?? "No disponible"}</p>
+          <p className="text-sm text-green-800">Pasajero titular: {result.passenger?.fullName ?? 'No disponible'}</p>
           <p className="text-sm text-green-800">Asientos pagados: {result.totalSeats}</p>
           <p className="text-sm text-green-800">Estado actual: <span className={resultStatusMeta.className}>{resultStatusMeta.label}</span></p>
+          <Link href={`/dashboard/chat/${result.id}`} className="mt-2 inline-block rounded-md border border-emerald-300 px-3 py-1 text-xs text-emerald-800">
+            Chat con pasajero
+          </Link>
         </article>
       )}
     </section>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-

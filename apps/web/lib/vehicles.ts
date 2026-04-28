@@ -1,10 +1,11 @@
-﻿export type VehicleStatus = 'pending' | 'approved' | 'rejected';
-export type VehicleDocumentType = 'vehicle_registration' | 'insurance_policy' | 'vehicle_photo';
+export type VehicleStatus = 'pending' | 'approved' | 'rejected';
+export type VehicleDocumentType = 'vehicle_registration' | 'insurance_policy' | 'vehicle_photo' | 'driver_photo';
 
 export const VEHICLE_DOCUMENT_TYPE_OPTIONS: Array<{ value: VehicleDocumentType; label: string }> = [
   { value: 'vehicle_registration', label: 'Tarjeta de circulacion' },
   { value: 'insurance_policy', label: 'Poliza de seguro' },
-  { value: 'vehicle_photo', label: 'Foto del vehiculo' }
+  { value: 'vehicle_photo', label: 'Foto del vehiculo' },
+  { value: 'driver_photo', label: 'Foto del conductor' }
 ];
 
 export interface VehicleDocument {
@@ -38,6 +39,7 @@ export interface Vehicle {
     insurance_policy: boolean;
     vehicle_registration: boolean;
     vehicle_photo: boolean;
+    driver_photo: boolean;
   };
 }
 

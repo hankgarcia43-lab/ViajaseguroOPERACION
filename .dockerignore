@@ -1,0 +1,11 @@
+.git
+node_modules
+**/node_modules
+apps/web/.next
+apps/api/dist
+**/*.log
+test-results
+.env
+apps/api/.env
+apps/web/.env.local
+apps/api/uploads

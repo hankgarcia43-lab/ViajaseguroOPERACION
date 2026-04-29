@@ -9,6 +9,7 @@
     "lint": "eslint \"src/**/*.ts\"",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
+    "prisma:push": "prisma db push --accept-data-loss",
     "prisma:seed": "prisma db seed",
     "routes:seed-base": "tsx prisma/seed-base-routes.ts",
     "admin:reset-password": "tsx prisma/reset-admin-password.ts"

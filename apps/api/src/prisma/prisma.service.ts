@@ -7,16 +7,20 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
   private readonly resolvedDatasourceUrl: string;
 
   constructor() {
-    const defaultSqliteUrl = 'file:./dev_local.db';
     const currentUrl = process.env.DATABASE_URL?.trim() ?? '';
-    const datasourceUrl = currentUrl.length === 0 ? defaultSqliteUrl : currentUrl;
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    if (currentUrl.length === 0 && isProduction) {
+      throw new Error('DATABASE_URL es obligatoria en produccion. Configurala en Render con la URL de Neon/PostgreSQL.');
+    }
+
+    const datasourceUrl = currentUrl.length === 0 ? 'file:./dev_local.db' : currentUrl;
+
+    if (isProduction && !datasourceUrl.startsWith('postgresql://') && !datasourceUrl.startsWith('postgres://')) {
+      throw new Error('DATABASE_URL de produccion debe iniciar con postgresql:// o postgres://.');
+    }
 
     process.env.DATABASE_URL = datasourceUrl;
-    if (datasourceUrl.startsWith('file:')) {
-      process.env.PRISMA_CLIENT_ENGINE_TYPE = 'library';
-    } else {
-      process.env.PRISMA_CLIENT_ENGINE_TYPE = 'binary';
-    }
 
     super({
       datasources: {
@@ -30,7 +34,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
   }
 
   async onModuleInit() {
-    this.logger.log(`Prisma conectado usando datasource: ${this.resolvedDatasourceUrl}`);
+    this.logger.log(`Prisma conectado usando datasource: ${this.maskDatasourceUrl(this.resolvedDatasourceUrl)}`);
     await this.$connect();
     if (this.resolvedDatasourceUrl.startsWith('file:')) {
       await this.configureSqliteForLocalStability();
@@ -41,6 +45,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
     (this as PrismaClient).$on('beforeExit' as never, async () => {
       await app.close();
     });
+  }
+
+  private maskDatasourceUrl(url: string) {
+    return url.replace(/:\/\/([^:]+):([^@]+)@/, '://$1:***@');
   }
 
   private async configureSqliteForLocalStability() {
@@ -54,7 +62,3 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
     }
   }
 }
-
-
-
-

@@ -1,6 +1,6 @@
 const EXPLICIT_API_URL = process.env.NEXT_PUBLIC_API_URL?.trim();
 const LOCAL_API_URL = 'http://localhost:4000/api';
-const REMOTE_API_URL = 'https://viajasegurooperacion.onrender.com/api';
+const REMOTE_API_URL = 'https://viajasegurooperacion-api.onrender.com/api';
 const PROXY_API_URL = '/api/proxy';
 
 function isLocalBrowser() {

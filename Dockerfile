@@ -23,4 +23,4 @@ RUN npm run prisma:generate --workspace @viajaseguro/api \
 ENV NODE_ENV=production
 EXPOSE 4000
 
-CMD ["npm", "run", "start", "--workspace", "@viajaseguro/api"]
+CMD ["sh", "-c", "npm run prisma:push --workspace @viajaseguro/api && npm run start --workspace @viajaseguro/api"]

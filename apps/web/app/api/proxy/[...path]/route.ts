@@ -25,7 +25,7 @@ function buildTargets() {
   return Array.from(new Set(list.map(normalizeBaseUrl).filter(Boolean)));
 }
 
-async function tryForward(request: NextRequest, targetBase: string, pathSuffix: string) {
+async function tryForward(request: NextRequest, targetBase: string, pathSuffix: string, body?: ArrayBuffer) {
   const targetUrl = `${targetBase}/${pathSuffix}`;
 
   const headers = new Headers(request.headers);
@@ -44,8 +44,8 @@ async function tryForward(request: NextRequest, targetBase: string, pathSuffix: 
       signal: controller.signal
     };
 
-    if (request.method !== 'GET' && request.method !== 'HEAD') {
-      init.body = await request.arrayBuffer();
+    if (body) {
+      init.body = body;
     }
 
     return await fetch(targetUrl, init);
@@ -59,19 +59,20 @@ async function forward(request: NextRequest, context: any) {
   const incomingUrl = new URL(request.url);
   const pathSuffix = `${segments.join('/')}${incomingUrl.search}`;
   const targets = buildTargets();
+  const body = request.method !== 'GET' && request.method !== 'HEAD' ? await request.arrayBuffer() : undefined;
 
   let lastError: unknown = null;
 
   for (const target of targets) {
     try {
-      const upstream = await tryForward(request, target, pathSuffix);
+      const upstream = await tryForward(request, target, pathSuffix, body);
       const responseHeaders = new Headers(upstream.headers);
       responseHeaders.delete('content-encoding');
       responseHeaders.delete('content-length');
       responseHeaders.delete('transfer-encoding');
 
-      const body = await upstream.arrayBuffer();
-      return new NextResponse(body, {
+      const responseBody = await upstream.arrayBuffer();
+      return new NextResponse(responseBody, {
         status: upstream.status,
         headers: responseHeaders
       });

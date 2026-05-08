@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { apiRequest, buildApiAssetUrl, getToken } from '@/lib/api';
 import { inferRouteCorridor } from '@/lib/route-corridors';
@@ -22,7 +23,9 @@ function formatWeekdayInSpanish(value: string) {
   return WEEKDAY_ES_LABEL[value] ?? value;
 }
 
-export default function RouteOffersDetailPage({ params }: { params: { id: string } }) {
+export default function RouteOffersDetailPage() {
+  const params = useParams<{ id: string }>();
+  const routeId = String(params?.id ?? '').trim();
   const [data, setData] = useState<RouteOffersByRouteResponse | null>(null);
   const [selectedOfferId, setSelectedOfferId] = useState<string>('');
   const [selectedWeekdays, setSelectedWeekdays] = useState<string[]>([]);
@@ -41,7 +44,7 @@ export default function RouteOffersDetailPage({ params }: { params: { id: string
     }
 
     try {
-      const response = await apiRequest<RouteOffersByRouteResponse>(`/route-offers/route/${params.id}`, {
+      const response = await apiRequest<RouteOffersByRouteResponse>(`/route-offers/route/${routeId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setData(response);
@@ -57,7 +60,7 @@ export default function RouteOffersDetailPage({ params }: { params: { id: string
 
   useEffect(() => {
     void loadData();
-  }, [params.id]);
+  }, [routeId]);
 
   const corridor = useMemo(() => {
     if (!data?.route) return null;

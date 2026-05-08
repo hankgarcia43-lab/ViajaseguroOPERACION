@@ -14,6 +14,18 @@ interface MeResponse {
   role: UserRole;
 }
 
+function normalizeRouteText(value: string) {
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+function isPriorityIndiosVerdesRoute(route: BaseRouteSummary) {
+  const text = normalizeRouteText(`${route.title ?? ''} ${route.origin} ${route.destination}`);
+  return text.includes('indios verdes') && ['tepexpan', 'ojo de agua', 'san cristobal', 'acolman', 'tecamac', 'ecatepec'].some((keyword) => text.includes(keyword));
+}
+
 export default function RoutesPage() {
   const [me, setMe] = useState<MeResponse | null>(null);
   const [sessionRole, setSessionRole] = useState<UserRole | null>(null);
@@ -104,7 +116,7 @@ export default function RoutesPage() {
         <p className="text-sm text-slate-600">
           {isDriver
             ? 'Crea tu propia ruta para trabajar o toma una publicada y personaliza tu viaje para publicarlo rapidamente.'
-            : 'Explora corredores claros y elige la mejor opcion segun destino, horario y precio.'}
+            : 'Explora rutas publicadas por secciones. Primero veras las rutas prioritarias hacia Indios Verdes y despues el resto de corredores.'}
         </p>
         {(isDriver || isAdmin) && (
           <div className="mt-3">
@@ -148,6 +160,9 @@ export default function RoutesPage() {
                     .sort((a, b) => {
                       const aCount = a.activeDriversCount ?? 0;
                       const bCount = b.activeDriversCount ?? 0;
+                      const priorityA = isPriorityIndiosVerdesRoute(a) ? 1 : 0;
+                      const priorityB = isPriorityIndiosVerdesRoute(b) ? 1 : 0;
+                      if (priorityA !== priorityB) return priorityB - priorityA;
                       return isDriver ? aCount - bCount : bCount - aCount;
                     })
                     .map((route) => {
@@ -156,29 +171,44 @@ export default function RoutesPage() {
                       const activeDrivers = route.activeDriversCount ?? 0;
 
                       return (
-                        <article key={route.id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <article key={route.id} className={`rounded-xl border p-5 shadow-sm ${isPriorityIndiosVerdesRoute(route) ? 'border-brand-300 bg-gradient-to-br from-white to-blue-50' : 'border-slate-200 bg-white'}`}>
                           <div className="flex flex-wrap items-start justify-between gap-3">
                             <div>
                               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-700">{corridor.tagline}</p>
                               <h3 className="mt-1 text-lg font-semibold text-slate-900">{route.title || `${route.origin} -> ${route.destination}`}</h3>
                               <p className="text-sm text-slate-600">{route.origin} {'->'} {route.destination}</p>
                             </div>
-                            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">{corridor.destinationHub}</span>
+                            <div className="flex flex-wrap gap-2">
+                              {isPriorityIndiosVerdesRoute(route) && <span className="rounded-full bg-brand-100 px-3 py-1 text-xs font-semibold text-brand-700">Ruta prioritaria</span>}
+                              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">{corridor.destinationHub}</span>
+                            </div>
                           </div>
 
                           <p className="mt-2 text-sm text-slate-700">Horario base: {route.departureTime} - {route.estimatedArrivalTime}</p>
                           <p className="text-sm text-slate-700">Distancia aprox: {route.distanceKm.toFixed(2)} km</p>
                           <p className="text-sm font-medium text-slate-900">Precio por asiento: ${route.pricePerSeat.toFixed(2)} MXN</p>
                           <p className="text-sm text-slate-700">Conductores activos en esta ruta: <span className="font-semibold text-slate-900">{activeDrivers}</span></p>
-                          {route.stopsText && <p className="text-xs text-slate-600">{route.stopsText}</p>}
-
-                          {isPassenger && (
-                            <div className="mt-4">
-                              <Link href={`/dashboard/routes/${route.id}`} className="rounded-md bg-brand-500 px-4 py-2 text-sm font-medium text-white">
-                                Ver conductores disponibles
-                              </Link>
+                          {route.stopsText && (
+                            <div className="mt-3 rounded-lg border border-cyan-100 bg-cyan-50 p-3 text-xs text-cyan-950">
+                              <p className="font-semibold">Puntos especificos para operar esta ruta</p>
+                              <p className="mt-1">{route.stopsText}</p>
                             </div>
                           )}
+
+                          <div className="mt-4 grid gap-2 md:grid-cols-2">
+                            <Link href={`/dashboard/routes/${route.id}`} className="rounded-md bg-brand-500 px-4 py-2 text-center text-sm font-medium text-white">
+                              Pasajero: ver conductores y reservar
+                            </Link>
+                            {isDriver ? (
+                              <Link href={`/dashboard/routes/${route.id}/take`} className="rounded-md bg-emerald-600 px-4 py-2 text-center text-sm font-medium text-white">
+                                {alreadyTaken ? 'Conductor: editar mi viaje' : 'Conductor: tomar esta ruta'}
+                              </Link>
+                            ) : (
+                              <span className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2 text-center text-sm font-medium text-emerald-800">
+                                Conductor: entra con cuenta de chofer para tomarla
+                              </span>
+                            )}
+                          </div>
 
                           {isDriver && (
                             <div className="mt-4 space-y-2">
@@ -195,9 +225,7 @@ export default function RoutesPage() {
                                 ) : (
                                   <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">Disponible para tomar</span>
                                 )}
-                                <Link href={`/dashboard/routes/${route.id}/take`} className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white">
-                                  {alreadyTaken ? 'Editar datos de mi viaje' : 'Tomar ruta'}
-                                </Link>
+
                               </div>
                             </div>
                           )}

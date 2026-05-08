@@ -1,4 +1,4 @@
-﻿export const EDOMEX_MUNICIPALITIES = [
+export const EDOMEX_MUNICIPALITIES = [
   'Acambay de Ruiz Castaneda',
   'Acolman',
   'Aculco',
@@ -128,6 +128,47 @@
   'Xalatlaco'
 ] as const;
 
+
+export const EDOMEX_ROUTE_PICKUP_POINTS = [
+  'Tepexpan - Centro / Plaza principal',
+  'Tepexpan - Carretera Mexico-Tepexpan / acceso principal',
+  'Ojo de Agua - Centro / Plaza Ojo de Agua',
+  'Ojo de Agua - Real del Sol / Boulevard Ojo de Agua',
+  'San Cristobal Ecatepec - Centro / Catedral',
+  'San Cristobal Ecatepec - Palacio Municipal',
+  'Acolman - Centro / Palacio Municipal',
+  'Tecamac - Centro / Palacio Municipal',
+  'Tecamac - Los Heroes Tecamac',
+  'Ecatepec - Las Americas / Plaza comercial',
+  'Ecatepec - Ciudad Azteca / Metro Linea B',
+  'Coacalco - Plaza Coacalco',
+  'Tultitlan - Centro',
+  'Cuautitlan Izcalli - Centro Urbano'
+] as const;
+
+export const CDMX_DESTINATION_HUBS = [
+  'Gustavo A. Madero - Indios Verdes (CETRAM)',
+  'Gustavo A. Madero - Martin Carrera (Metro)',
+  'Gustavo A. Madero - La Raza (Metro/Hospital)',
+  'Gustavo A. Madero - Politecnico (Metro)',
+  'Venustiano Carranza - San Lazaro (Metro/TAPO)',
+  'Venustiano Carranza - Pantitlan (CETRAM)',
+  'Cuauhtemoc - Buenavista (Suburbano/Metrobus)',
+  'Cuauhtemoc - Hidalgo (Metro)',
+  'Miguel Hidalgo - Tacuba (Metro)',
+  'Miguel Hidalgo - Chapultepec (Metro)',
+  'Azcapotzalco - El Rosario (CETRAM)',
+  'Benito Juarez - Centro Medico (Metro/Hospital)',
+  'Tlalpan - Hospitales (Metro)',
+  'Tlalpan - El Caminero (CETRAM)',
+  'Coyoacan - Taxquena (CETRAM)',
+  'Iztapalapa - Constitucion de 1917 (CETRAM)',
+  'Iztapalapa - Santa Marta (CETRAM)',
+  'Hospital General de Mexico Dr. Eduardo Liceaga',
+  'Centro Medico Nacional Siglo XXI',
+  'Hospital Juarez de Mexico',
+  'Hospital General La Raza IMSS'
+] as const;
 export const CDMX_ALCALDIAS = [
   'Alvaro Obregon',
   'Azcapotzalco',
@@ -147,7 +188,7 @@ export const CDMX_ALCALDIAS = [
   'Xochimilco'
 ] as const;
 
-export const ROUTE_LOCATION_OPTIONS: readonly string[] = Array.from(new Set([...EDOMEX_MUNICIPALITIES, ...CDMX_ALCALDIAS]));
+export const ROUTE_LOCATION_OPTIONS: readonly string[] = Array.from(new Set([...EDOMEX_ROUTE_PICKUP_POINTS, ...EDOMEX_MUNICIPALITIES, ...CDMX_ALCALDIAS, ...CDMX_DESTINATION_HUBS]));
 
 export const ROUTE_SERVICE_SCOPE_OPTIONS = [
   'edomex_to_cdmx',

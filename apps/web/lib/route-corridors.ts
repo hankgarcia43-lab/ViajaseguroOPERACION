@@ -21,14 +21,14 @@ export const ROUTE_CORRIDORS: RouteCorridor[] = [
   {
     id: 'norte-indios-verdes',
     name: 'Corredor Norte -> Indios Verdes',
-    municipalities: 'Ecatepec, Tecamac, Ojo de Agua, Zumpango',
+    municipalities: 'Tepexpan, Acolman, Ojo de Agua, San Cristobal, Ecatepec, Tecamac',
     destinationHub: 'Indios Verdes (CETRAM)',
     description:
       'Embudo principal del norte metropolitano para trabajadores con transbordo rapido hacia CDMX.',
     tagline: 'Ruta laboral frecuente',
     routeTypeLabel: 'Troncal metropolitana',
     order: 1,
-    keywords: ['ecatepec', 'tecamac', 'ojo de agua', 'zumpango', 'indios verdes', 'mexibus l4', 'mexicable l2']
+    keywords: ['tepexpan', 'acolman', 'san cristobal', 'ecatepec', 'tecamac', 'ojo de agua', 'zumpango', 'indios verdes', 'mexibus l4', 'mexicable l2']
   },
   {
     id: 'oriente-pantitlan',

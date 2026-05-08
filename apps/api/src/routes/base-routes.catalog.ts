@@ -48,6 +48,73 @@ function template(
 }
 
 export const BASE_ROUTE_TEMPLATES: BaseRouteTemplate[] = [
+  template(
+    'ruta-prioritaria-tepexpan-indios-verdes',
+    'Tepexpan centro -> Indios Verdes CETRAM',
+    'Tepexpan - Centro / Plaza principal',
+    'Gustavo A. Madero - Indios Verdes (CETRAM)',
+    34,
+    '05:45',
+    '07:00',
+    WORKDAYS_PLUS_SAT,
+    'Abordaje sugerido: Plaza principal de Tepexpan, Oxxo del centro o acceso sobre Carretera Mexico-Tepexpan. Referencia para chofer: confirmar punto publico, iluminado y con espacio para detenerse. Llegada: CETRAM Indios Verdes, zona Metro/Metrobus.'
+  ),
+  template(
+    'ruta-prioritaria-ojo-agua-indios-verdes',
+    'Ojo de Agua -> Indios Verdes CETRAM',
+    'Ojo de Agua - Centro / Plaza Ojo de Agua',
+    'Gustavo A. Madero - Indios Verdes (CETRAM)',
+    28,
+    '06:00',
+    '07:05',
+    WORKDAYS_PLUS_SAT,
+    'Abordaje sugerido: Plaza Ojo de Agua, Boulevard Ojo de Agua o Real del Sol. Referencia para chofer: elegir punto visible y facil de ubicar por pasajeros. Llegada: CETRAM Indios Verdes, acceso Metro/Metrobus.'
+  ),
+  template(
+    'ruta-prioritaria-san-cristobal-indios-verdes',
+    'San Cristobal Ecatepec -> Indios Verdes CETRAM',
+    'San Cristobal Ecatepec - Centro / Catedral',
+    'Gustavo A. Madero - Indios Verdes (CETRAM)',
+    18,
+    '06:15',
+    '06:55',
+    WORKDAYS_PLUS_SAT,
+    'Abordaje sugerido: Catedral de San Cristobal, Palacio Municipal o punto visible del centro. Referencia para chofer: evitar calles cerradas y definir direccion exacta. Llegada: CETRAM Indios Verdes, zona de ascenso/descenso segura.'
+  ),
+  template(
+    'ruta-prioritaria-acolman-indios-verdes',
+    'Acolman centro -> Indios Verdes CETRAM',
+    'Acolman - Centro / Palacio Municipal',
+    'Gustavo A. Madero - Indios Verdes (CETRAM)',
+    32,
+    '05:50',
+    '07:00',
+    WORKDAYS_PLUS_SAT,
+    'Abordaje sugerido: Palacio Municipal de Acolman, acceso a carretera o punto central seguro. Referencia para chofer: confirmar punto con espacio para abordar sin bloquear vialidad. Llegada: Indios Verdes CETRAM.'
+  ),
+  template(
+    'ruta-prioritaria-tecamac-indios-verdes',
+    'Tecamac centro -> Indios Verdes CETRAM',
+    'Tecamac - Centro / Palacio Municipal',
+    'Gustavo A. Madero - Indios Verdes (CETRAM)',
+    31,
+    '06:00',
+    '07:10',
+    WORKDAYS_PLUS_SAT,
+    'Abordaje sugerido: Palacio Municipal de Tecamac, Los Heroes Tecamac o avenida principal acordada. Referencia para chofer: publicar direccion exacta y punto visible. Llegada: Indios Verdes CETRAM.'
+  ),
+  template(
+    'ruta-prioritaria-ecatepec-americas-indios-verdes',
+    'Ecatepec Las Americas -> Indios Verdes CETRAM',
+    'Ecatepec - Las Americas / Plaza comercial',
+    'Gustavo A. Madero - Indios Verdes (CETRAM)',
+    22,
+    '06:10',
+    '07:00',
+    WORKDAYS_PLUS_SAT,
+    'Abordaje sugerido: Plaza Las Americas, avenida central o punto publico de alto flujo. Referencia para chofer: usar punto seguro y facil de reconocer. Llegada: Indios Verdes CETRAM.'
+  ),
+
   template('corredor-norte-ecatepec-indios-verdes', 'Corredor Norte: Ecatepec -> Indios Verdes', 'Ecatepec de Morelos', 'Indios Verdes', 23, '06:20', '07:10'),
   template('corredor-norte-acolman-indios-verdes', 'Corredor Norte: Acolman -> Indios Verdes', 'Acolman', 'Indios Verdes', 31.3, '05:55', '07:00'),
   template('corredor-norte-teotihuacan-indios-verdes', 'Corredor Norte: Teotihuacan -> Indios Verdes', 'Teotihuacan', 'Indios Verdes', 40, '05:40', '07:10', WORKDAYS),

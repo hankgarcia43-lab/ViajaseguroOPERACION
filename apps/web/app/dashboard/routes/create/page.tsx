@@ -3,16 +3,16 @@
 import Link from 'next/link';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { apiRequest, getToken } from '@/lib/api';
-import { CDMX_ALCALDIAS, CDMX_DESTINATION_HUBS, EDOMEX_MUNICIPALITIES, ROUTE_SERVICE_SCOPE_OPTIONS, RouteServiceScope } from '@/lib/route-location-options';
+import { CDMX_DESTINATION_HUBS, EDOMEX_ORIGIN_OPTIONS, ROUTE_SERVICE_SCOPE_OPTIONS, RouteServiceScope } from '@/lib/route-location-options';
 
 type Region = 'edomex' | 'cdmx';
 
 function originOptionsByRegion(region: Region) {
-  return region === 'edomex' ? EDOMEX_MUNICIPALITIES : CDMX_ALCALDIAS;
+  return region === 'edomex' ? EDOMEX_ORIGIN_OPTIONS : CDMX_DESTINATION_HUBS;
 }
 
 function destinationOptionsByRegion(region: Region) {
-  return region === 'edomex' ? EDOMEX_MUNICIPALITIES : CDMX_DESTINATION_HUBS;
+  return region === 'edomex' ? EDOMEX_ORIGIN_OPTIONS : CDMX_DESTINATION_HUBS;
 }
 
 export default function CreateRoutePage() {

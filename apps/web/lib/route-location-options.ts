@@ -126,6 +126,25 @@ export const EDOMEX_MUNICIPALITIES = [
   'Zumpango'
 ] as const;
 
+
+export const EDOMEX_ROUTE_PICKUP_POINTS = [
+  'Tepexpan - Centro / Plaza principal',
+  'Tepexpan - Carretera Mexico-Tepexpan / acceso principal',
+  'Ojo de Agua - Centro / Plaza Ojo de Agua',
+  'Ojo de Agua - Real del Sol / Boulevard Ojo de Agua',
+  'San Cristobal Ecatepec - Centro / Catedral',
+  'San Cristobal Ecatepec - Palacio Municipal',
+  'Acolman - Centro / Palacio Municipal',
+  'Tecamac - Centro / Palacio Municipal',
+  'Tecamac - Los Heroes Tecamac',
+  'Ecatepec - Las Americas / Plaza comercial',
+  'Ecatepec - Ciudad Azteca / Metro Linea B',
+  'Coacalco - Plaza Coacalco',
+  'Tultitlan - Centro',
+  'Cuautitlan Izcalli - Centro Urbano'
+] as const;
+
+export const EDOMEX_ORIGIN_OPTIONS = [...EDOMEX_ROUTE_PICKUP_POINTS, ...EDOMEX_MUNICIPALITIES] as const;
 export const CDMX_ALCALDIAS = [
   'Alvaro Obregon',
   'Azcapotzalco',
@@ -218,7 +237,7 @@ export const TERMINALES_CDMX_TOP_15 = [
   'Politecnico'
 ] as const;
 
-export const ROUTE_LOCATION_OPTIONS = [...EDOMEX_MUNICIPALITIES, ...CDMX_ALCALDIAS] as const;
+export const ROUTE_LOCATION_OPTIONS = [...EDOMEX_ORIGIN_OPTIONS, ...CDMX_ALCALDIAS, ...CDMX_DESTINATION_HUBS] as const;
 
 export const ROUTE_SERVICE_SCOPE_OPTIONS = [
   { value: 'edomex_to_cdmx', label: 'EdoMex -> CDMX' },

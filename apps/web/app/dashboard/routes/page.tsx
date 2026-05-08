@@ -97,7 +97,7 @@ export default function RoutesPage() {
         </Link>
         {isDriver ? (
           <Link href={`/dashboard/routes/${route.id}/take`} className="rounded-md bg-emerald-600 px-4 py-2 text-center text-sm font-medium text-white">
-            {alreadyTaken ? 'Conductor: editar mi viaje' : 'Conductor: tomar esta ruta'}
+            {alreadyTaken ? 'Conductor: editar mi viaje' : 'Conductor: generar ingresos en esta ruta'}
           </Link>
         ) : (
           <span className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2 text-center text-sm font-medium text-emerald-800">
@@ -174,7 +174,7 @@ export default function RoutesPage() {
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700">Rutas prioritarias listas para tomar</p>
               <h2 className="mt-1 text-xl font-semibold text-slate-900">Indios Verdes: Tepexpan, Ojo de Agua y San Cristobal</h2>
-              <p className="text-sm text-slate-600">Estas son las rutas principales para operar ahora. Pasajero puede ver conductores; conductor puede tomar la ruta y personalizar horario/punto de abordaje.</p>
+              <p className="text-sm text-slate-600">Estas rutas conectan zonas de alta demanda. Pasajeros apartan asiento; conductores pueden generar ingresos moviendo personas que van hacia la misma zona o cerca de su trabajo.</p>
             </div>
             <button type="button" onClick={() => selectCorridor('norte-indios-verdes')} className="rounded-md border border-brand-300 px-3 py-2 text-sm font-medium text-brand-700">
               Ver todas las del corredor
@@ -227,7 +227,7 @@ export default function RoutesPage() {
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-700">Lista operativa</p>
             <h2 className="mt-1 text-lg font-semibold text-slate-900">{selectedCorridor?.name ?? 'Rutas publicadas'}</h2>
-            <p className="text-sm text-slate-600">Aqui si puedes abrir la ruta como pasajero o tomarla como conductor.</p>
+            <p className="text-sm text-slate-600">Abre una ruta para reservar como pasajero o tomala como conductor para publicar horarios, asientos y punto de abordaje.</p>
           </div>
           {visibleGroupedRoutes.length === 0 ? (
             <p className="rounded-xl border border-slate-200 bg-white p-6 text-slate-700">No hay rutas activas por ahora.</p>

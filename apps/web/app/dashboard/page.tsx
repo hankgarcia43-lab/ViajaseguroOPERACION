@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -61,14 +61,14 @@ export default function DashboardPage() {
 
   const roleCopy = {
     passenger: {
-      title: 'Reserva, paga y aborda sin complicaciones',
-      subtitle: 'Todo tu flujo en un solo panel: viajes, reservas, pagos y ticket de abordaje.',
-      chips: ['Tu asiento seguro, a tiempo', 'Tarifa clara y visible', 'Codigo habilitado con pago validado']
+      title: 'Encuentra una ruta confiable y reserva sin complicaciones',
+      subtitle: 'Elige corredor, compara conductor, selecciona dias de viaje y conserva tu boleto en el panel.',
+      chips: ['Punto de abordaje claro', 'Reserva semanal disponible', 'Boleto con datos del viaje']
     },
     driver: {
-      title: 'Toma viajes activos en segundos',
-      subtitle: 'Admin publica rutas y tu operas viajes de forma rapida: tomar viaje, definir referencia y validar abordaje.',
-      chips: ['Operacion simple', 'Punto de encuentro seguro', 'Liquidaciones claras']
+      title: 'Genera ingresos trasladando personas cerca de tu ruta diaria',
+      subtitle: 'Si ya manejas hacia una zona de trabajo, toma una ruta compatible, publica tus horarios y llena asientos disponibles con pasajeros verificados.',
+      chips: ['Aprovecha tu trayecto', 'Define horarios y referencias', 'Solicita liquidacion semanal']
     },
     admin: {
       title: 'Control total para una operacion ordenada',
@@ -97,9 +97,9 @@ export default function DashboardPage() {
           subtitle: 'Flujo rapido para operar sin friccion.',
           points: [
             'Manten tu verificacion y vehiculo en estado aprobado.',
-            'Toma cualquier ruta activa desde el panel de rutas.',
-            'Despues de tomar, registra referencia de abordaje.',
-            'Inicia viaje y valida abordaje con codigo numerico.',
+            'Toma una ruta que coincida con tu trayecto real de trabajo.',
+            'Registra horario, dias, asientos y referencia exacta de abordaje.',
+            'Inicia viaje y valida a cada pasajero con su codigo numerico.',
             'Consulta tus ganancias y liquidaciones.'
           ],
           nextStep: 'Tomar ruta activa y continuar en Mis viajes.',
@@ -159,7 +159,7 @@ export default function DashboardPage() {
               <article className="vs-card">
                 <p className="vs-kicker">Paso 2</p>
                 <h2 className="mt-3 text-xl font-semibold text-slate-950">Tomar ruta activa</h2>
-                <p className="mt-3 text-sm leading-6 text-slate-600">Elige cualquier ruta activa y tomala. El sistema te llevara a Mis viajes para iniciar.</p>
+                <p className="mt-3 text-sm leading-6 text-slate-600">Elige una ruta cercana a tu traslado diario. Publica tus horarios, punto de abordaje y asientos disponibles para recibir reservas.</p>
                 <div className="mt-5 flex flex-wrap gap-2">
                   <Link href="/dashboard/routes" className="vs-button-accent">Tomar rutas</Link>
                   <Link href="/dashboard/trips" className="vs-button-secondary">Ver mis viajes</Link>
@@ -168,7 +168,7 @@ export default function DashboardPage() {
               <article className="vs-card">
                 <p className="vs-kicker">Paso 3</p>
                 <h2 className="mt-3 text-xl font-semibold text-slate-950">Abordaje y liquidacion</h2>
-                <p className="mt-3 text-sm leading-6 text-slate-600">Valida pasajero con codigo numerico y revisa tus pagos semanales.</p>
+                <p className="mt-3 text-sm leading-6 text-slate-600">Cuando el pasajero pague y admin valide, veras la reserva. Al completar viajes, solicita tu liquidacion semanal.</p>
                 <div className="mt-5 flex flex-wrap gap-2">
                   <Link href="/dashboard/trips" className="vs-button-accent">Mis viajes</Link>
                   <Link href="/dashboard/driver/payouts" className="vs-button-secondary">Mis liquidaciones</Link>

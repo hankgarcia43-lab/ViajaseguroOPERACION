@@ -279,10 +279,25 @@ export default function DriverTakeRoutePage() {
   return (
     <section className="space-y-5">
       <header className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h1 className="text-2xl font-semibold text-slate-900">Tomar ruta y personalizar viaje</h1>
+        <h1 className="text-2xl font-semibold text-slate-900">Publica tu disponibilidad y empieza a generar ingresos</h1>
         <p className="text-sm text-slate-600">Ruta seleccionada: {routeLabel}</p>
-        <p className="text-xs text-slate-500">Completa estos datos para publicar tu viaje de forma clara y segura.</p>
+        <p className="text-xs text-slate-500">Indica cuando pasas, donde abordas y cuantos asientos puedes ofrecer. La idea es llenar lugares libres en un trayecto que ya haces o que te queda cerca.</p>
       </header>
+
+      <section className="grid gap-3 md:grid-cols-3">
+        <article className="rounded-xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-950">
+          <p className="font-semibold">Ingresos con tu trayecto</p>
+          <p className="mt-1">Si ya pasas por esa zona, publica tus asientos disponibles y aprovecha el camino.</p>
+        </article>
+        <article className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-950">
+          <p className="font-semibold">Que hace atractiva tu publicacion</p>
+          <p className="mt-1">Horario claro, referencia facil, punto seguro y dias reales de operacion.</p>
+        </article>
+        <article className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
+          <p className="font-semibold text-slate-950">Despues de publicar</p>
+          <p className="mt-1">Cuando un pasajero pague y admin valide, veras la reserva en tus viajes.</p>
+        </article>
+      </section>
 
       {error && <p className="rounded-md bg-red-50 p-3 text-red-700">{error}</p>}
       {success && <p className="rounded-md bg-emerald-50 p-3 text-emerald-700">{success}</p>}
@@ -300,16 +315,16 @@ export default function DriverTakeRoutePage() {
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
         <form onSubmit={onSubmit} className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-            <p className="font-semibold">Reglas basicas de seguridad</p>
+            <p className="font-semibold">Como publicar una ruta que venda y sea segura</p>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-xs">
-              <li>Usa puntos publicos y visibles para el abordaje.</li>
-              <li>Evita zonas aisladas o referencias confusas.</li>
-              <li>Comparte direccion exacta para reducir riesgos.</li>
+              <li>Elige puntos publicos, visibles y faciles de ubicar.</li>
+              <li>Escribe referencias que un pasajero pueda encontrar sin llamarte varias veces.</li>
+              <li>Publica solo horarios que puedas cumplir; eso genera confianza y reservas recurrentes.</li>
             </ul>
           </div>
 
           <label className="block text-sm text-slate-700">
-            Referencia de abordaje
+            Referencia de abordaje para pasajeros
             <input
               value={boardingReference}
               onChange={(event) => setBoardingReference(event.target.value)}
@@ -319,7 +334,7 @@ export default function DriverTakeRoutePage() {
           </label>
 
           <label className="block text-sm text-slate-700">
-            Direccion exacta de abordaje
+            Direccion exacta o punto seguro de encuentro
             <input
               value={boardingAddress}
               onChange={(event) => setBoardingAddress(event.target.value)}
@@ -329,7 +344,7 @@ export default function DriverTakeRoutePage() {
           </label>
 
           <div>
-            <p className="text-sm text-slate-700">Dias de operacion</p>
+            <p className="text-sm text-slate-700">Dias que puedes operar esta ruta</p>
             <div className="mt-2 grid grid-cols-2 gap-2 md:grid-cols-4">
               {DAYS.map((day) => (
                 <label key={day.key} className="inline-flex items-center gap-2 text-xs text-slate-700">
@@ -360,7 +375,7 @@ export default function DriverTakeRoutePage() {
               />
             </label>
             <label className="text-sm text-slate-700">
-              Tipo de servicio
+              Modalidad que vas a ofrecer
               <select
                 value={serviceType}
                 onChange={(event) => setServiceType(event.target.value as 'one_time' | 'weekly' | 'round_trip')}
@@ -372,7 +387,7 @@ export default function DriverTakeRoutePage() {
               </select>
             </label>
             <label className="text-sm text-slate-700">
-              Asientos disponibles
+              Asientos que puedes vender
               <input
                 type="number"
                 min={1}
@@ -398,7 +413,7 @@ export default function DriverTakeRoutePage() {
                   />
                 </label>
                 <label className="text-sm text-slate-700 md:col-span-2">
-                  Referencia de abordaje en CDMX (regreso)
+                  Referencia de abordaje para pasajeros en CDMX (regreso)
                   <input
                     value={returnBoardingReference}
                     onChange={(event) => setReturnBoardingReference(event.target.value)}
@@ -407,7 +422,7 @@ export default function DriverTakeRoutePage() {
                   />
                 </label>
                 <label className="text-sm text-slate-700 md:col-span-2">
-                  Direccion exacta de abordaje en CDMX (regreso)
+                  Direccion exacta o punto seguro de encuentro en CDMX (regreso)
                   <input
                     value={returnBoardingAddress}
                     onChange={(event) => setReturnBoardingAddress(event.target.value)}
@@ -421,7 +436,7 @@ export default function DriverTakeRoutePage() {
 
           <div className="flex flex-wrap gap-2">
             <button type="submit" disabled={saving || !route} className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">
-              {saving ? 'Guardando...' : existingOffer ? 'Actualizar viaje' : 'Confirmar y tomar ruta'}
+              {saving ? 'Guardando...' : existingOffer ? 'Actualizar mi disponibilidad' : 'Publicar mi disponibilidad'}
             </button>
             <Link href="/dashboard/routes" className="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700">
               Volver a corredores
@@ -430,7 +445,7 @@ export default function DriverTakeRoutePage() {
         </form>
 
         <aside className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Resumen de la ruta</h2>
+          <h2 className="text-lg font-semibold text-slate-900">Ruta que estas monetizando</h2>
           {route ? (
             <div className="mt-3 space-y-2 text-sm text-slate-700">
               <p><strong>Origen:</strong> {route.origin}</p>

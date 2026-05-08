@@ -151,9 +151,9 @@ export default function RouteOffersDetailPage() {
   return (
     <section className="space-y-5">
       <header className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h1 className="text-2xl font-semibold text-slate-900">Conductores disponibles por corredor</h1>
+        <h1 className="text-2xl font-semibold text-slate-900">Elige conductor y aparta tu lugar</h1>
         <p className="text-sm text-slate-600">
-          Ruta: {data?.route.title || `${data?.route.origin ?? ''} -> ${data?.route.destination ?? ''}`}. Elige conductor por referencia, precio y dias disponibles.
+          Ruta: {data?.route.title || `${data?.route.origin ?? ''} -> ${data?.route.destination ?? ''}`}. Revisa referencia de abordaje, dias disponibles, modalidad y precio antes de reservar. Si reservas varios dias, la app te muestra el total final antes de pagar.
         </p>
         {corridor && (
           <div className="mt-3 rounded-lg border border-cyan-200 bg-cyan-50 p-3 text-sm text-cyan-900">
@@ -170,7 +170,7 @@ export default function RouteOffersDetailPage() {
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-4">
           {!data || data.offers.length === 0 ? (
-            <p className="rounded-xl border border-slate-200 bg-white p-6 text-slate-700">Aun no hay conductores adheridos a esta ruta.</p>
+            <p className="rounded-xl border border-slate-200 bg-white p-6 text-slate-700">Aun no hay conductores tomando esta ruta. Vuelve mas tarde o comparte esta ruta con un conductor que transite por esta zona.</p>
           ) : (
             data.offers.map((offer: RouteOffer) => {
               const vehiclePhoto = buildApiAssetUrl(offer.vehiclePhotoUrl);
@@ -197,8 +197,8 @@ export default function RouteOffersDetailPage() {
         </div>
 
         <form onSubmit={reserveByOffer} className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Reserva por dias de la semana</h2>
-          <p className="text-sm text-slate-600">Selecciona los dias (Lunes a Domingo) en que necesitas transporte.</p>
+          <h2 className="text-lg font-semibold text-slate-900">Arma tu reserva semanal o por dia</h2>
+          <p className="text-sm text-slate-600">Selecciona los dias que realmente vas a viajar. Reservar varios dias te ayuda a asegurar lugar y mantener tu traslado ordenado.</p>
 
           <label className="block text-sm text-slate-700">
             Asientos
@@ -224,7 +224,7 @@ export default function RouteOffersDetailPage() {
                 );
               })}
             </div>
-            <p className="mt-2 text-xs text-slate-500">Los dias deshabilitados no estan disponibles con el conductor seleccionado.</p>
+            <p className="mt-2 text-xs text-slate-500">Solo puedes elegir dias que el conductor tenga publicados. Cambia de conductor si necesitas otro horario.</p>
           </div>
 
           <div className="rounded-md bg-slate-50 p-3 text-sm text-slate-700">
@@ -238,7 +238,7 @@ export default function RouteOffersDetailPage() {
           </div>
 
           <button type="submit" disabled={saving || !selectedOffer} className="w-full rounded-md bg-brand-500 px-4 py-2 font-medium text-white disabled:opacity-60">
-            {saving ? 'Reservando...' : 'Reservar dias seleccionados'}
+            {saving ? 'Reservando...' : 'Confirmar reserva y continuar'}
           </button>
 
           <Link href="/dashboard/my-reservations" className="block text-center text-sm text-brand-700 underline">Ver mis reservas</Link>

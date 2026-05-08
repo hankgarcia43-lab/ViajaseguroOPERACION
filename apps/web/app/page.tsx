@@ -1,17 +1,32 @@
 import Link from 'next/link';
 
 const benefits = [
-  'Precio justo y claro',
-  'Conductores verificados',
-  'Rutas fijas diarias'
+  'Rutas laborales claras de EdoMex a CDMX',
+  'Conductores y pasajeros verificados',
+  'Reservas semanales para viajar con orden'
 ];
 
 const quickSteps = [
-  'Registrate',
-  'Valida tu cuenta',
-  'Reserva o publica',
-  'Realiza tu pago',
+  'Elige tu ruta',
+  'Reserva o toma viaje',
+  'Confirma datos',
+  'Valida pago',
   'Aborda con codigo'
+];
+
+const audienceCards = [
+  {
+    title: 'Para pasajeros',
+    body: 'Aparta tu asiento en rutas recurrentes, revisa el punto de abordaje y conserva tu boleto dentro de la app.'
+  },
+  {
+    title: 'Para conductores',
+    body: 'Genera ingresos trasladando personas que van hacia tu misma zona o cerca de tu sitio de trabajo. Tu defines dias, horarios y asientos.'
+  },
+  {
+    title: 'Para administracion',
+    body: 'Mantiene control de documentos, pagos, rutas publicadas y liquidaciones para operar con orden desde el primer dia.'
+  }
 ];
 
 export default function HomePage() {
@@ -41,15 +56,15 @@ export default function HomePage() {
               <span className="bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">Viaja economico.</span>
             </h1>
             <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-slate-200">
-              De EdoMex a CDMX con precio claro. Sin sorpresas en tu reserva.
+              Conecta rutas reales entre EdoMex y CDMX: pasajeros viajan con orden y conductores generan ingresos aprovechando trayectos cercanos a su zona de trabajo.
             </p>
 
             <div className="mx-auto mt-8 grid max-w-xl gap-3">
               <Link href="/register/passenger" className="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-3.5 text-base font-semibold text-white shadow-[0_16px_40px_-20px_rgba(79,70,229,0.9)] transition hover:from-blue-500 hover:to-indigo-500">
-                Viaja ahora
+                Reservar mi asiento
               </Link>
               <Link href="/register/driver" className="inline-flex items-center justify-center rounded-2xl border border-white/25 bg-white/5 px-5 py-3.5 text-base font-semibold text-slate-100 transition hover:bg-white/10">
-                Gana dinero
+                Generar ingresos manejando
               </Link>
             </div>
           </div>
@@ -68,14 +83,23 @@ export default function HomePage() {
       </article>
 
       <section className="vs-card">
-        <h2 className="text-3xl font-semibold tracking-tight text-slate-950">Por que elegir ViajaSeguro</h2>
-        <p className="mt-2 text-sm leading-6 text-slate-600">Una experiencia simple, profesional y pensada para operacion real.</p>
+        <h2 className="text-3xl font-semibold tracking-tight text-slate-950">ViajaSeguro organiza rutas que ya existen en la vida diaria</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-600">Pasajeros encuentran viajes claros. Conductores publican disponibilidad. Admin mantiene pagos, documentos y rutas bajo control.</p>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
           {benefits.map((item) => (
             <div key={item} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700">
               {item}
             </div>
+          ))}
+        </div>
+
+        <div className="mt-6 grid gap-3 md:grid-cols-3">
+          {audienceCards.map((card) => (
+            <article key={card.title} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <h3 className="text-base font-semibold text-slate-950">{card.title}</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{card.body}</p>
+            </article>
           ))}
         </div>
 

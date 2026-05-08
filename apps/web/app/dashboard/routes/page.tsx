@@ -33,6 +33,7 @@ export default function RoutesPage() {
   const [myOffers, setMyOffers] = useState<RouteOffer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedCorridorId, setSelectedCorridorId] = useState<string>('norte-indios-verdes');
 
   const role = me?.role ?? sessionRole;
   const isDriver = role === 'driver';
@@ -66,6 +67,46 @@ export default function RoutesPage() {
       return { corridor, count: routesInCorridor.length, driverCount };
     });
   }, [routes]);
+
+  const selectedCorridor = useMemo(
+    () => ROUTE_CORRIDORS.find((corridor) => corridor.id === selectedCorridorId) ?? ROUTE_CORRIDORS[0],
+    [selectedCorridorId]
+  );
+
+  const visibleGroupedRoutes = useMemo(() => {
+    if (!selectedCorridor) return groupedRoutes;
+    return groupedRoutes.filter((group) => group.corridorName === selectedCorridor.name);
+  }, [groupedRoutes, selectedCorridor]);
+
+  const priorityRoutes = useMemo(() => {
+    return routes
+      .filter(isPriorityIndiosVerdesRoute)
+      .sort((a, b) => (a.title ?? a.origin).localeCompare(b.title ?? b.origin));
+  }, [routes]);
+
+  function selectCorridor(corridorId: string) {
+    setSelectedCorridorId(corridorId);
+    window.setTimeout(() => document.getElementById('routes-list')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+  }
+
+  function renderRouteActions(route: BaseRouteSummary, alreadyTaken: boolean) {
+    return (
+      <div className="mt-4 grid gap-2 md:grid-cols-2">
+        <Link href={`/dashboard/routes/${route.id}`} className="rounded-md bg-brand-500 px-4 py-2 text-center text-sm font-medium text-white">
+          Pasajero: ver conductores y reservar
+        </Link>
+        {isDriver ? (
+          <Link href={`/dashboard/routes/${route.id}/take`} className="rounded-md bg-emerald-600 px-4 py-2 text-center text-sm font-medium text-white">
+            {alreadyTaken ? 'Conductor: editar mi viaje' : 'Conductor: tomar esta ruta'}
+          </Link>
+        ) : (
+          <span className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2 text-center text-sm font-medium text-emerald-800">
+            Conductor: entra con cuenta de chofer para tomarla
+          </span>
+        )}
+      </div>
+    );
+  }
 
   useEffect(() => {
     const rawRole = getSessionRole();
@@ -127,9 +168,44 @@ export default function RoutesPage() {
         )}
       </header>
 
+      {priorityRoutes.length > 0 && (
+        <section className="rounded-2xl border border-brand-200 bg-gradient-to-br from-blue-50 via-white to-cyan-50 p-4 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700">Rutas prioritarias listas para tomar</p>
+              <h2 className="mt-1 text-xl font-semibold text-slate-900">Indios Verdes: Tepexpan, Ojo de Agua y San Cristobal</h2>
+              <p className="text-sm text-slate-600">Estas son las rutas principales para operar ahora. Pasajero puede ver conductores; conductor puede tomar la ruta y personalizar horario/punto de abordaje.</p>
+            </div>
+            <button type="button" onClick={() => selectCorridor('norte-indios-verdes')} className="rounded-md border border-brand-300 px-3 py-2 text-sm font-medium text-brand-700">
+              Ver todas las del corredor
+            </button>
+          </div>
+
+          <div className="mt-4 grid gap-3 lg:grid-cols-3">
+            {priorityRoutes.slice(0, 6).map((route) => {
+              const alreadyTaken = offerRouteIds.has(route.id);
+              return (
+                <article key={`priority-${route.id}`} className="rounded-xl border border-white bg-white/90 p-4 shadow-sm">
+                  <h3 className="text-base font-semibold text-slate-900">{route.title || `${route.origin} -> ${route.destination}`}</h3>
+                  <p className="mt-1 text-xs text-slate-600">{route.origin} {'->'} {route.destination}</p>
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-700">
+                    <span className="rounded-md bg-slate-50 px-2 py-1">Salida: {route.departureTime}</span>
+                    <span className="rounded-md bg-slate-50 px-2 py-1">Llegada: {route.estimatedArrivalTime}</span>
+                    <span className="rounded-md bg-slate-50 px-2 py-1">{route.distanceKm.toFixed(1)} km</span>
+                    <span className="rounded-md bg-slate-50 px-2 py-1">${route.pricePerSeat.toFixed(2)} MXN</span>
+                  </div>
+                  {route.stopsText && <p className="mt-3 line-clamp-3 text-xs text-slate-600">{route.stopsText}</p>}
+                  {renderRouteActions(route, alreadyTaken)}
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {corridorSummary.map(({ corridor, count, driverCount }) => (
-          <article key={corridor.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <article key={corridor.id} className={`rounded-xl border p-4 shadow-sm ${selectedCorridorId === corridor.id ? 'border-brand-300 bg-blue-50' : 'border-slate-200 bg-white'}`}>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-700">{corridor.routeTypeLabel}</p>
             <h2 className="mt-2 text-base font-semibold text-slate-900">{corridor.name}</h2>
             <p className="mt-2 text-sm text-slate-600">{corridor.municipalities}</p>
@@ -137,18 +213,26 @@ export default function RoutesPage() {
             <p className="mt-2 text-xs text-slate-500">{corridor.description}</p>
             <p className="mt-2 text-xs font-medium text-emerald-700">Rutas publicadas: {count}</p>
             <p className="mt-1 text-xs font-medium text-cyan-700">Conductores activos: {driverCount}</p>
+            <button type="button" onClick={() => selectCorridor(corridor.id)} className="mt-3 w-full rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white">
+              Ver rutas del corredor
+            </button>
           </article>
         ))}
       </section>
 
       {error && <p className="rounded-md bg-red-50 p-3 text-red-700">{error}</p>}
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div id="routes-list" className="scroll-mt-4 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-6">
-          {groupedRoutes.length === 0 ? (
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-700">Lista operativa</p>
+            <h2 className="mt-1 text-lg font-semibold text-slate-900">{selectedCorridor?.name ?? 'Rutas publicadas'}</h2>
+            <p className="text-sm text-slate-600">Aqui si puedes abrir la ruta como pasajero o tomarla como conductor.</p>
+          </div>
+          {visibleGroupedRoutes.length === 0 ? (
             <p className="rounded-xl border border-slate-200 bg-white p-6 text-slate-700">No hay rutas activas por ahora.</p>
           ) : (
-            groupedRoutes.map((group) => (
+            visibleGroupedRoutes.map((group) => (
               <section key={group.corridorName} className="space-y-3">
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                   <h2 className="text-lg font-semibold text-slate-900">{group.corridorName}</h2>
@@ -195,20 +279,7 @@ export default function RoutesPage() {
                             </div>
                           )}
 
-                          <div className="mt-4 grid gap-2 md:grid-cols-2">
-                            <Link href={`/dashboard/routes/${route.id}`} className="rounded-md bg-brand-500 px-4 py-2 text-center text-sm font-medium text-white">
-                              Pasajero: ver conductores y reservar
-                            </Link>
-                            {isDriver ? (
-                              <Link href={`/dashboard/routes/${route.id}/take`} className="rounded-md bg-emerald-600 px-4 py-2 text-center text-sm font-medium text-white">
-                                {alreadyTaken ? 'Conductor: editar mi viaje' : 'Conductor: tomar esta ruta'}
-                              </Link>
-                            ) : (
-                              <span className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2 text-center text-sm font-medium text-emerald-800">
-                                Conductor: entra con cuenta de chofer para tomarla
-                              </span>
-                            )}
-                          </div>
+                          {renderRouteActions(route, alreadyTaken)}
 
                           {isDriver && (
                             <div className="mt-4 space-y-2">

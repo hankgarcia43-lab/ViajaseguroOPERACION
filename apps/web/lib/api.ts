@@ -24,11 +24,13 @@ function resolveDirectApiUrl() {
 }
 
 function resolvePrimaryApiUrl() {
+  const directApiUrl = resolveDirectApiUrl();
+
   if (typeof window !== 'undefined') {
-    return PROXY_API_URL;
+    return EXPLICIT_API_URL ? directApiUrl : PROXY_API_URL;
   }
 
-  return resolveDirectApiUrl();
+  return directApiUrl;
 }
 
 function resolveFallbackApiUrl(primaryApiUrl: string) {
@@ -92,6 +94,8 @@ function migrateLegacySession(storage: Storage) {
   }
 }
 
+class ApiHttpError extends Error {}
+
 function getApiErrorMessage(body: unknown) {
   if (!body || typeof body !== 'object') {
     return 'Ocurrio un error al conectar con la API';
@@ -134,8 +138,8 @@ export async function apiRequest<T>(path: string, options?: RequestInit): Promis
     const text = await response.text();
     const body = parseBody(text);
 
-    if (!response.ok) {
-      throw new Error(getApiErrorMessage(body));
+        if (!response.ok) {
+      throw new ApiHttpError(getApiErrorMessage(body));
     }
 
     return body as T;
@@ -145,13 +149,20 @@ export async function apiRequest<T>(path: string, options?: RequestInit): Promis
 
   try {
     return await performRequest(primaryApiUrl);
-  } catch {
+  } catch (error) {
+    if (error instanceof ApiHttpError) {
+      throw error;
+    }
+
     const fallbackApiUrl = resolveFallbackApiUrl(primaryApiUrl);
     if (fallbackApiUrl) {
       try {
         return await performRequest(fallbackApiUrl);
-      } catch {
-        // Continue to final error.
+      } catch (fallbackError) {
+        if (fallbackError instanceof ApiHttpError) {
+          throw fallbackError;
+        }
+        // Continue to final connection error.
       }
     }
 

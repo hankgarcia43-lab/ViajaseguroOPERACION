@@ -28,10 +28,6 @@ export function TopNav() {
               <span className="hidden text-xs text-slate-500 sm:block">Tu asiento seguro, a tiempo</span>
             </span>
           </Link>
-
-          <span className="hidden rounded-full border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs font-semibold text-cyan-700 sm:inline-flex">
-            Demo lista para piloto
-          </span>
         </div>
 
         <ul className="mt-3 flex items-center gap-2 overflow-x-auto pb-1 text-sm md:mt-4 md:flex-wrap md:overflow-visible md:pb-0">

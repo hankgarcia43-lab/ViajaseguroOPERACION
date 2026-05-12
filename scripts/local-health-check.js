@@ -7,7 +7,7 @@ const CHECKS = [
   { name: 'API health (local)', url: 'http://localhost:4000/api/health', required: false },
   { name: 'Web app (local)', url: 'http://localhost:3000/', required: true },
   { name: 'Proxy health (local)', url: 'http://localhost:3000/api/proxy/health', required: true },
-  { name: 'API health (remoto)', url: 'https://viaja-seguro-mvp.onrender.com/api/health', required: true }
+  { name: 'API health (remoto)', url: 'https://viajasegurooperacion-api.onrender.com/api/health', required: true }
 ];
 
 function checkPort(port) {

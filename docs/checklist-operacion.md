@@ -9,10 +9,10 @@
 - `DATABASE_URL` configurada con Neon en produccion.
 - `JWT_SECRET` configurado.
 - `CORS_ORIGIN` configurado con el dominio real de Vercel.
-- Verificar `https://viajasegurooperacion.onrender.com/api/health` en cada cambio importante.
+- Verificar `https://viajasegurooperacion-api.onrender.com/api/health` en cada cambio importante.
 
 ## Vercel Web
-- `NEXT_PUBLIC_API_URL=https://viajasegurooperacion.onrender.com/api`
+- `NEXT_PUBLIC_API_URL=https://viajasegurooperacion-api.onrender.com/api`
 - Root del proyecto alineado con el monorepo.
 - Redeploy sin cache cuando cambie configuracion de build o variables.
 

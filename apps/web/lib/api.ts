@@ -27,7 +27,7 @@ function resolvePrimaryApiUrl() {
   const directApiUrl = resolveDirectApiUrl();
 
   if (typeof window !== 'undefined') {
-    return EXPLICIT_API_URL ? directApiUrl : PROXY_API_URL;
+    return directApiUrl;
   }
 
   return directApiUrl;

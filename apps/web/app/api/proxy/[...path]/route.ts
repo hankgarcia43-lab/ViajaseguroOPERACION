@@ -21,7 +21,8 @@ async function resolvePathSegments(context: any): Promise<string[]> {
 
 function buildTargets() {
   const envTarget = process.env.API_PROXY_TARGET?.trim();
-  const list = envTarget ? [envTarget, ...DEFAULT_TARGETS] : [...DEFAULT_TARGETS];
+  const localTarget = process.env.NODE_ENV === 'production' ? [] : ['http://localhost:4000/api'];
+  const list = envTarget ? [envTarget, ...DEFAULT_TARGETS, ...localTarget] : [...DEFAULT_TARGETS, ...localTarget];
   return Array.from(new Set(list.map(normalizeBaseUrl).filter(Boolean)));
 }
 

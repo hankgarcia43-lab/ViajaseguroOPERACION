@@ -1036,6 +1036,18 @@ export class ReservationsService {
     };
   }
 
+  private resolvePaymentCheckoutUrl(payment: { checkoutUrl?: string | null; initPoint?: string | null; sandboxInitPoint?: string | null }) {
+    if (payment.checkoutUrl) {
+      return payment.checkoutUrl;
+    }
+
+    const sandboxMode = process.env.MERCADOPAGO_USE_SANDBOX === 'true' || process.env.NODE_ENV !== 'production';
+    if (sandboxMode && payment.sandboxInitPoint) {
+      return payment.sandboxInitPoint;
+    }
+
+    return payment.initPoint ?? payment.sandboxInitPoint ?? null;
+  }
   private hasApprovedPayment(paymentStatus?: string) {
     return String(paymentStatus || '').toLowerCase() === PAYMENT_STATUS.APPROVED;
   }
@@ -1153,6 +1165,11 @@ export class ReservationsService {
             status: reservation.payment.status,
             provider: reservation.payment.provider,
             providerReference: reservation.payment.providerReference,
+            providerPreferenceId: reservation.payment.providerPreferenceId ?? null,
+            checkoutUrl: this.resolvePaymentCheckoutUrl(reservation.payment),
+            initPoint: reservation.payment.initPoint ?? null,
+            sandboxInitPoint: reservation.payment.sandboxInitPoint ?? null,
+            paymentLink: this.resolvePaymentCheckoutUrl(reservation.payment),
             paymentMethodLabel: reservation.payment.paymentMethodLabel ?? paymentConfig.methodLabel,
             paymentBeneficiary: paymentConfig.beneficiary,
             paymentReference: paymentConfig.reference,

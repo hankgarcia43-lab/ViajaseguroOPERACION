@@ -194,6 +194,10 @@ model Payment {
   status                String    @default("pending")
   provider              String    @default("manual_transfer")
   providerReference     String?   @map("provider_reference")
+  providerPreferenceId  String?   @map("provider_preference_id")
+  checkoutUrl           String?   @map("checkout_url")
+  initPoint             String?   @map("init_point")
+  sandboxInitPoint      String?   @map("sandbox_init_point")
   paymentMethodLabel    String?   @map("payment_method_label")
   paymentInstructions   String?   @map("payment_instructions")
   proofFileName         String?   @map("proof_file_name")
@@ -212,6 +216,7 @@ model Payment {
 
   @@index([status])
   @@index([reservationId])
+  @@index([providerPreferenceId])
   @@index([reviewedByAdminUserId])
   @@map("payments")
 }

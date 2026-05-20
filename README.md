@@ -1,4 +1,4 @@
-﻿# Viaja Seguro - MVP Operativo
+# Viaja Seguro - MVP Operativo
 
 MVP para transporte programado con tres roles: pasajero, conductor y admin.
 
@@ -38,11 +38,10 @@ MANUAL_PAYMENT_PROCESSOR_LABEL="VIAJA SEGURO"
 MANUAL_PAYMENT_REFERENCE="VS-RESERVA"
 MANUAL_PAYMENT_INSTRUCTIONS="Beneficiario comercial: ...\nMetodo o banco: ...\nCuenta o CLABE del negocio: ...\nReferencia: ...\nSube tu comprobante para validacion manual del admin."
 
-# Mercado Pago (opcional)
+# Mercado Pago Checkout Pro (backend)
 MERCADOPAGO_ACCESS_TOKEN=""
-MERCADOPAGO_PUBLIC_KEY=""
 MERCADOPAGO_WEBHOOK_SECRET=""
-MERCADOPAGO_WEBHOOK_URL=""
+MERCADOPAGO_WEBHOOK_URL="http://localhost:4000/api/webhooks/mercadopago"
 MERCADOPAGO_USE_SANDBOX=true
 ```
 
@@ -50,7 +49,6 @@ MERCADOPAGO_USE_SANDBOX=true
 ```bash
 NEXT_PUBLIC_API_URL=http://localhost:4000/api
 NEXT_PUBLIC_ENABLE_DEV_PAYMENT_SIMULATION=true
-NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY=
 ```
 
 ## Seguridad de cuenta admin (paso a paso)

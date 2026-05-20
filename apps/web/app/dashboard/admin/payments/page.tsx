@@ -1,8 +1,8 @@
-﻿'use client';
+'use client';
 
 import { ChangeEvent, useEffect, useMemo, useState } from 'react';
 import { apiRequest, buildApiAssetUrl, getToken } from '@/lib/api';
-import { Payment } from '@/lib/payments';
+import { getPaymentCheckoutUrl, Payment } from '@/lib/payments';
 import { getPaymentStatusMeta } from '@/lib/status';
 
 const FILTERS = [
@@ -160,6 +160,7 @@ export default function AdminPaymentsPage() {
             const status = getPaymentStatusMeta(payment.status);
             const proofUrl = buildApiAssetUrl(payment.proofFileUrl);
             const isBusy = busyPaymentId === payment.id;
+            const checkoutUrl = getPaymentCheckoutUrl(payment);
             const canApprove = ['pending', 'submitted', 'rejected'].includes(payment.status);
             const canReject = ['pending', 'submitted'].includes(payment.status);
 
@@ -177,7 +178,17 @@ export default function AdminPaymentsPage() {
                 <p className="mt-3 text-lg font-semibold text-slate-900">${payment.amount.toFixed(2)} MXN</p>
                 <p className="mt-2 text-sm text-slate-700">Pasajero: {payment.reservation?.passenger?.fullName ?? 'N/A'}</p>
                 <p className="text-sm text-slate-700">Email: {payment.reservation?.passenger?.email ?? 'N/A'}</p>
+                <p className="text-sm text-slate-700">Proveedor: {payment.provider || 'manual_transfer'}</p>
                 <p className="text-sm text-slate-700">Metodo: {payment.paymentMethodLabel ?? 'Transferencia bancaria'}</p>
+                <p className="text-sm text-slate-700">Referencia proveedor: {payment.providerReference ?? 'Sin referencia'}</p>
+                <p className="text-sm text-slate-700">Preferencia MP: {payment.providerPreferenceId ?? 'Sin preferencia'}</p>
+                {checkoutUrl ? (
+                  <a href={checkoutUrl} target="_blank" rel="noreferrer" className="inline-block text-sm text-emerald-700 underline">
+                    Abrir link de pago
+                  </a>
+                ) : (
+                  <p className="text-sm text-amber-700">Sin link de checkout generado.</p>
+                )}
                 <p className="whitespace-pre-line text-xs text-slate-600">{payment.paymentInstructions}</p>
 
                 {payment.reservation?.trip?.route && (

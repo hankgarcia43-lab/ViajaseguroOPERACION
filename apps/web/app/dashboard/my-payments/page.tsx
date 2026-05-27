@@ -5,7 +5,7 @@ import { ChangeEvent, useEffect, useState } from 'react';
 import { apiRequest, buildApiAssetUrl, getToken } from '@/lib/api';
 import { APP_COMPANY_NAME, formatCurrency, formatShortDate } from '@/lib/app-config';
 import { getPaymentFlowMessage, PAYMENT_RETENTION_NOTICE } from '@/lib/payment-ui';
-import { Payment } from '@/lib/payments';
+import { MERCADO_PAGO_DIRECT_PAYMENT_LINK, MERCADO_PAGO_PAYMENT_REFERENCE, getMercadoPagoPaymentUrl, Payment } from '@/lib/payments';
 import { getPaymentStatusMeta, getReservationStatusMeta } from '@/lib/status';
 
 export default function MyPaymentsPage() {
@@ -14,7 +14,6 @@ export default function MyPaymentsPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [busyReservationId, setBusyReservationId] = useState<string | null>(null);
-  const mercadoPagoLink = process.env.NEXT_PUBLIC_MP_PAYMENT_LINK ?? 'https://link.mercadopago.com.mx/viajaseguro2026';
 
   async function loadPayments() {
     const token = getToken();
@@ -48,9 +47,9 @@ export default function MyPaymentsPage() {
     setBusyReservationId(payment.reservationId);
 
     try {
-      window.open(mercadoPagoLink, '_blank', 'noopener,noreferrer');
-      setSuccess('Se abrió Mercado Pago en una nueva pestaña. Ingresa exactamente el monto indicado.');
-    } catch (unexpectedError) {
+      window.open(getMercadoPagoPaymentUrl(payment), '_blank', 'noopener,noreferrer');
+      setSuccess(`Se abrio Mercado Pago. Ingresa el monto exacto y usa la referencia: ${MERCADO_PAGO_PAYMENT_REFERENCE}.`);
+    } catch {
       setError('No se pudo abrir Mercado Pago. Intenta nuevamente.');
     } finally {
       setBusyReservationId(null);
@@ -109,6 +108,16 @@ export default function MyPaymentsPage() {
       {error && <p className="rounded-md bg-red-50 p-3 text-red-700">{error}</p>}
       {success && <p className="rounded-md bg-emerald-50 p-3 text-emerald-700">{success}</p>}
 
+      <article className="rounded-3xl border border-sky-200 bg-sky-50 p-5 text-slate-900 shadow-sm">
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">Link oficial de pago</p>
+        <p className="mt-2 text-lg font-semibold">Mercado Pago Viaja Seguro</p>
+        <p className="mt-1 text-sm text-slate-600">Usalo cuando ya tengas una reserva y la app te muestre el monto exacto.</p>
+        <p className="mt-1 text-sm text-slate-600">Referencia para el pago: <span className="font-semibold text-slate-900">{MERCADO_PAGO_PAYMENT_REFERENCE}</span></p>
+        <a href={MERCADO_PAGO_DIRECT_PAYMENT_LINK} target="_blank" rel="noreferrer" className="mt-4 inline-flex rounded-3xl bg-sky-700 px-5 py-3 text-sm font-semibold text-white shadow-lg hover:bg-sky-600">
+          Abrir Mercado Pago
+        </a>
+      </article>
+
       {payments.length === 0 ? (
         <p className="rounded-xl border border-slate-200 bg-white p-6 text-slate-700">Aun no tienes pagos asociados.</p>
       ) : (
@@ -138,7 +147,8 @@ export default function MyPaymentsPage() {
                     <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">Pagar con Mercado Pago</p>
                     <p className="text-lg font-semibold text-slate-900">Monto exacto: {formatCurrency(payment.amount)}</p>
                     <p className="text-sm text-slate-600">Ingresa exactamente este monto dentro de Mercado Pago.</p>
-                    <p className="text-sm text-slate-600">Tu pago será validado manualmente.</p>
+                    <p className="text-sm text-slate-600">Tu pago sera validado manualmente.</p>
+                    <p className="text-sm text-slate-600">Referencia: <span className="font-semibold text-slate-900">{MERCADO_PAGO_PAYMENT_REFERENCE}</span></p>
                   </div>
                   {canPayOnline ? (
                     <button

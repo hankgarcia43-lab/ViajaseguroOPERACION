@@ -1,5 +1,8 @@
 import { apiRequest } from '@/lib/api';
 
+export const MERCADO_PAGO_DIRECT_PAYMENT_LINK = process.env.NEXT_PUBLIC_MP_PAYMENT_LINK?.trim() || 'https://link.mercadopago.com.mx/viajaseguro2026';
+export const MERCADO_PAGO_PAYMENT_REFERENCE = process.env.NEXT_PUBLIC_MP_PAYMENT_REFERENCE?.trim() || 'VIAJA SEGURO';
+
 export type PaymentStatus = 'pending' | 'submitted' | 'approved' | 'rejected' | 'refunded';
 
 export interface PaymentRouteSummary {
@@ -78,6 +81,10 @@ export interface MercadoPagoCheckoutResponse {
 
 export function getPaymentCheckoutUrl(payment: Pick<Payment, 'checkoutUrl' | 'paymentLink' | 'initPoint' | 'sandboxInitPoint'> | null | undefined) {
   return payment?.checkoutUrl ?? payment?.paymentLink ?? payment?.initPoint ?? payment?.sandboxInitPoint ?? null;
+}
+
+export function getMercadoPagoPaymentUrl(payment: Pick<Payment, 'checkoutUrl' | 'paymentLink' | 'initPoint' | 'sandboxInitPoint'> | null | undefined) {
+  return getPaymentCheckoutUrl(payment) ?? MERCADO_PAGO_DIRECT_PAYMENT_LINK;
 }
 
 export async function createMercadoPagoCheckout(reservationId: string, token: string) {

@@ -6,7 +6,8 @@
     "dev": "node scripts/dev-server.js",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "npm run typecheck"
   },
   "dependencies": {
     "@viajaseguro/shared": "0.1.0",

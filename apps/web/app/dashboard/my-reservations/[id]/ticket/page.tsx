@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import { apiRequest, buildApiAssetUrl, getToken } from '@/lib/api';
 import { APP_COMPANY_NAME, formatCurrency, formatShortDate } from '@/lib/app-config';
 import { getPaymentFlowMessage, PAYMENT_RETENTION_NOTICE } from '@/lib/payment-ui';
+import { MERCADO_PAGO_PAYMENT_REFERENCE, getMercadoPagoPaymentUrl } from '@/lib/payments';
 import { Reservation } from '@/lib/reservations';
 import { getPaymentStatusMeta, getReservationStatusMeta } from '@/lib/status';
 
@@ -19,7 +20,6 @@ export default function ReservationTicketPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
-  const mercadoPagoLink = process.env.NEXT_PUBLIC_MP_PAYMENT_LINK ?? 'https://link.mercadopago.com.mx/viajaseguro2026';
 
   async function loadTicket() {
     const token = getToken();
@@ -89,9 +89,9 @@ export default function ReservationTicketPage() {
     setSuccess(null);
 
     try {
-      window.open(mercadoPagoLink, '_blank', 'noopener,noreferrer');
-      setSuccess('Se abrió Mercado Pago en una nueva pestaña. Ingresa exactamente el monto indicado.');
-    } catch (unexpectedError) {
+      window.open(getMercadoPagoPaymentUrl(reservation.payment), '_blank', 'noopener,noreferrer');
+      setSuccess(`Se abrio Mercado Pago. Ingresa el monto exacto y usa la referencia: ${MERCADO_PAGO_PAYMENT_REFERENCE}.`);
+    } catch {
       setError('No se pudo abrir Mercado Pago. Intenta nuevamente.');
     } finally {
       setCheckoutBusy(false);
@@ -178,7 +178,8 @@ export default function ReservationTicketPage() {
                   <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">Pagar con Mercado Pago</p>
                   <p className="mt-3 text-3xl font-semibold text-slate-900">{formatCurrency(reservation.payment.amount)}</p>
                   <p className="mt-3 text-sm text-slate-600">Ingresa exactamente este monto dentro de Mercado Pago.</p>
-                  <p className="text-sm text-slate-600">Tu pago será validado manualmente.</p>
+                  <p className="text-sm text-slate-600">Tu pago sera validado manualmente.</p>
+                  <p className="text-sm text-slate-600">Referencia: <span className="font-semibold text-slate-900">{MERCADO_PAGO_PAYMENT_REFERENCE}</span></p>
                 </div>
 
                 {['pending', 'submitted', 'rejected'].includes(reservation.payment.status) ? (

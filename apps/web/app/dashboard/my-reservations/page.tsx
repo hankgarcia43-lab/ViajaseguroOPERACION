@@ -5,7 +5,7 @@ import { ChangeEvent, useEffect, useState } from 'react';
 import { apiRequest, buildApiAssetUrl, getToken } from '@/lib/api';
 import { APP_COMPANY_NAME, formatCurrency, formatShortDate } from '@/lib/app-config';
 import { getPaymentFlowMessage, PAYMENT_RETENTION_NOTICE } from '@/lib/payment-ui';
-import { createMercadoPagoCheckout, getPaymentCheckoutUrl, Payment } from '@/lib/payments';
+import { MERCADO_PAGO_PAYMENT_REFERENCE, getMercadoPagoPaymentUrl, Payment } from '@/lib/payments';
 import { Reservation } from '@/lib/reservations';
 import { getPaymentStatusMeta, getReservationStatusMeta } from '@/lib/status';
 
@@ -42,46 +42,21 @@ export default function MyReservationsPage() {
     void loadReservations();
   }, []);
 
-  async function payWithMercadoPago(reservation: Reservation) {
-    const token = getToken();
-    if (!token || !reservation.payment) {
-      setError('No hay sesion activa o pago disponible.');
+  function payWithMercadoPago(reservation: Reservation) {
+    if (!reservation.payment) {
+      setError('No hay pago disponible para esta reserva.');
       return;
     }
 
-    const existingCheckoutUrl = getPaymentCheckoutUrl(reservation.payment);
-    if (existingCheckoutUrl) {
-      window.open(existingCheckoutUrl, '_blank', 'noopener,noreferrer');
-      return;
-    }
-
-    const checkoutWindow = window.open('about:blank', '_blank');
     setBusyReservationId(reservation.id);
     setError(null);
     setSuccess(null);
 
     try {
-      const checkout = await createMercadoPagoCheckout(reservation.id, token);
-      const checkoutUrl = checkout.checkoutUrl || getPaymentCheckoutUrl(checkout.payment);
-
-      if (!checkoutUrl) {
-        throw new Error('Mercado Pago no devolvio un link de checkout.');
-      }
-
-      if (checkoutWindow) {
-        checkoutWindow.opener = null;
-        checkoutWindow.location.href = checkoutUrl;
-      } else {
-        window.location.href = checkoutUrl;
-      }
-
-      setSuccess('Link de Mercado Pago generado. Se abrio el checkout seguro para completar tu pago.');
-      await loadReservations();
-    } catch (requestError) {
-      if (checkoutWindow) {
-        checkoutWindow.close();
-      }
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo generar el pago con Mercado Pago');
+      window.open(getMercadoPagoPaymentUrl(reservation.payment), '_blank', 'noopener,noreferrer');
+      setSuccess(`Se abrio Mercado Pago. Ingresa el monto exacto y usa la referencia: ${MERCADO_PAGO_PAYMENT_REFERENCE}.`);
+    } catch {
+      setError('No se pudo abrir Mercado Pago. Intenta nuevamente.');
     } finally {
       setBusyReservationId(null);
     }
@@ -215,6 +190,7 @@ export default function MyReservationsPage() {
                     <div className="space-y-2 rounded-md border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-950">
                       <p className="font-semibold">Pago seguro en linea</p>
                       <p className="text-xs text-emerald-900">Paga directo en Mercado Pago con el monto exacto de tu reserva.</p>
+                      <p className="text-xs text-emerald-900">Referencia: <span className="font-semibold text-slate-900">{MERCADO_PAGO_PAYMENT_REFERENCE}</span></p>
                       {['pending', 'submitted', 'rejected'].includes(reservation.payment.status) ? (
                         <button
                           type="button"

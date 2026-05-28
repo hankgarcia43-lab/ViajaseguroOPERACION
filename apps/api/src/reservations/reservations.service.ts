@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomBytes, randomInt } from 'crypto';
+import { FarePolicyService } from '../fare-policy/fare-policy.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RouteOffersService } from '../route-offers/route-offers.service';
 import { UserDocumentsService } from '../user-documents/user-documents.service';
@@ -74,7 +75,8 @@ export class ReservationsService {
     private readonly prisma: PrismaService,
     private readonly userDocumentsService: UserDocumentsService,
     private readonly vehiclesService: VehiclesService,
-    private readonly routeOffersService: RouteOffersService
+    private readonly routeOffersService: RouteOffersService,
+    private readonly farePolicyService: FarePolicyService
   ) {}
 
   async create(passengerUserId: string, dto: CreateReservationDto) {
@@ -902,6 +904,8 @@ export class ReservationsService {
     status: string;
     routeOfferId?: string;
   }) {
+    const appCommissionPercent = await this.farePolicyService.getCurrentAppCommissionPercent();
+    const appCommissionRate = appCommissionPercent / 100;
     let retries = 5;
 
     while (retries > 0) {
@@ -925,8 +929,8 @@ export class ReservationsService {
                 paymentInstructions:
                   process.env.MANUAL_PAYMENT_INSTRUCTIONS ??
                   `Beneficiario: ${process.env.MANUAL_PAYMENT_BENEFICIARY ?? 'VIAJA SEGURO'}\nMetodo: ${process.env.MANUAL_PAYMENT_METHOD_LABEL ?? 'Transferencia bancaria'}\nReferencia: ${process.env.MANUAL_PAYMENT_REFERENCE ?? 'VS-RESERVA'}\nEnvia tu comprobante para validacion manual del admin.`,
-                appCommissionAmount: this.roundCurrency(data.totalAmount * 0.15),
-                driverNetAmount: this.roundCurrency(data.totalAmount * 0.85)
+                appCommissionAmount: this.roundCurrency(data.totalAmount * appCommissionRate),
+                driverNetAmount: this.roundCurrency(data.totalAmount * (1 - appCommissionRate))
               }
             }
           },

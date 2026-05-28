@@ -85,7 +85,7 @@ export default function ReserveTripPage() {
         body: JSON.stringify(payload)
       });
 
-      router.push(`/dashboard/my-reservations/${reservation.id}/ticket`);
+      router.push(`/dashboard/my-payments?reservation=${reservation.id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo crear la reserva');
     } finally {
@@ -150,7 +150,12 @@ export default function ReserveTripPage() {
           />
         </label>
 
-        <p className="text-sm text-slate-700">Total calculado: ${totalAmount.toFixed(2)} MXN</p>
+        <div className="rounded-md bg-slate-50 p-3 text-sm text-slate-700">
+          <p>Precio por asiento: ${trip.pricePerSeatSnapshot.toFixed(2)} MXN</p>
+          <p>Asientos seleccionados: {totalSeats}</p>
+          <p className="mt-1 text-lg font-semibold text-emerald-700">Total a pagar: ${totalAmount.toFixed(2)} MXN</p>
+          <p className="mt-1 text-xs text-slate-500">La app generara un solo pago por el total de tus asientos.</p>
+        </div>
 
         {error && (
           <div className="rounded-md bg-red-50 p-2 text-sm text-red-700">
@@ -168,7 +173,7 @@ export default function ReserveTripPage() {
           disabled={saving || trip.remainingSeats < 1}
           className="w-full rounded-md bg-brand-500 px-4 py-2 font-medium text-white disabled:opacity-60"
         >
-          {saving ? 'Reservando...' : 'Confirmar reserva'}
+          {saving ? 'Reservando...' : 'Confirmar reserva y pagar'}
         </button>
       </form>
     </section>

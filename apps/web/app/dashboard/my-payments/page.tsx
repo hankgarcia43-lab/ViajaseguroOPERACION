@@ -136,7 +136,8 @@ export default function MyPaymentsPage() {
                   {payment.reservation?.trip?.route?.title || `${payment.reservation?.trip?.route?.origin || 'Ruta'} -> ${payment.reservation?.trip?.route?.destination || ''}`}
                 </h2>
                 <p className="text-sm text-slate-700">Fecha: {payment.reservation?.trip ? formatShortDate(payment.reservation.trip.tripDate) : '-'}</p>
-                <p className="text-sm text-slate-700">Monto: {formatCurrency(payment.amount)}</p>
+                <p className="text-sm text-slate-700">Asientos reservados: {payment.reservation?.totalSeats ?? 1}</p>
+                <p className="text-sm text-slate-700">Monto total a pagar: {formatCurrency(payment.amount)}</p>
                 <p className="text-sm text-slate-700">
                   Estado pago:{' '}
                   <span className={`rounded-full px-2 py-1 text-xs font-medium ${paymentStatusMeta.className}`}>{paymentStatusMeta.label}</span>
@@ -145,7 +146,8 @@ export default function MyPaymentsPage() {
                 <div className="mt-4 space-y-4 rounded-3xl border border-sky-200 bg-sky-50 p-5 text-slate-900 shadow-sm">
                   <div className="space-y-2">
                     <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">Pagar con Mercado Pago</p>
-                    <p className="text-lg font-semibold text-slate-900">Monto exacto: {formatCurrency(payment.amount)}</p>
+                    <p className="text-lg font-semibold text-slate-900">Monto exacto total: {formatCurrency(payment.amount)}</p>
+                    <p className="text-sm text-slate-600">Este pago cubre {payment.reservation?.totalSeats ?? 1} asiento(s) de esta reserva.</p>
                     <ol className="space-y-1 pl-5 text-sm text-slate-600">
                       <li className="list-decimal">Entra al link oficial de Mercado Pago desde el boton de abajo.</li>
                       <li className="list-decimal">Escribe exactamente {formatCurrency(payment.amount)} como monto a pagar.</li>

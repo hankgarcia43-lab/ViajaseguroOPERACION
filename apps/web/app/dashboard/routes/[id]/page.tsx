@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { apiRequest, buildApiAssetUrl, getToken } from '@/lib/api';
 import { inferRouteCorridor } from '@/lib/route-corridors';
@@ -25,6 +25,7 @@ function formatWeekdayInSpanish(value: string) {
 
 export default function RouteOffersDetailPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const routeId = String(params?.id ?? '').trim();
   const [data, setData] = useState<RouteOffersByRouteResponse | null>(null);
   const [selectedOfferId, setSelectedOfferId] = useState<string>('');
@@ -136,9 +137,11 @@ export default function RouteOffersDetailPage() {
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload)
       });
-      setSuccess(response.message + ` Total final: $${response.finalAmount.toFixed(2)} MXN.`);
+      setSuccess(response.message + ` Total final: $${response.finalAmount.toFixed(2)} MXN. Te llevamos a pagos para subir tu comprobante.`);
       setSelectedWeekdays([]);
-      await loadData();
+      setTimeout(() => {
+        router.push('/dashboard/my-payments');
+      }, 700);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo crear la reserva por dias.');
     } finally {
@@ -235,10 +238,11 @@ export default function RouteOffersDetailPage() {
             <p className="mt-2 text-slate-600">Total bruto: ${grossAmount.toFixed(2)} MXN</p>
             {weeklyPromoApplied ? <p className="mt-1 text-xs font-medium text-emerald-700">Reserva semanal detectada: se aplicara un beneficio especial al pagar.</p> : null}
             <p className="mt-2 text-lg font-semibold text-emerald-700">Total final: ${finalAmount.toFixed(2)} MXN</p>
+            <p className="mt-1 text-xs text-slate-500">Cada reserva se cobrara por el total de asientos seleccionados, no asiento por asiento.</p>
           </div>
 
           <button type="submit" disabled={saving || !selectedOffer} className="w-full rounded-md bg-brand-500 px-4 py-2 font-medium text-white disabled:opacity-60">
-            {saving ? 'Reservando...' : 'Confirmar reserva y continuar'}
+            {saving ? 'Reservando...' : 'Confirmar reserva y pagar'}
           </button>
 
           <Link href="/dashboard/my-reservations" className="block text-center text-sm text-brand-700 underline">Ver mis reservas</Link>

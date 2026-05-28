@@ -11,6 +11,7 @@ type FarePolicyRecord = {
   id: string;
   mode: string;
   ratePerKm: number;
+  appCommissionPercent: number;
   currency: string;
   isActive: boolean;
   notes: string | null;
@@ -66,6 +67,7 @@ export class FarePolicyService {
         data: {
           mode: dto.mode,
           ratePerKm: this.roundCurrency(dto.ratePerKm),
+          appCommissionPercent: dto.appCommissionPercent,
           currency: dto.currency ?? 'MXN',
           notes: dto.notes?.trim() || null,
           createdByAdminUserId: adminUserId,
@@ -80,6 +82,11 @@ export class FarePolicyService {
     }
 
     return current;
+  }
+
+  async getCurrentAppCommissionPercent() {
+    const policy = await this.getCurrentPolicy();
+    return policy?.appCommissionPercent ?? 15;
   }
 
   async resolveRoutePricing(distanceKm: number, requestedPricePerSeat: number) {
@@ -136,6 +143,7 @@ export class FarePolicyService {
       id: policy.id,
       mode: policy.mode,
       ratePerKm: policy.ratePerKm,
+      appCommissionPercent: policy.appCommissionPercent,
       currency: policy.currency,
       isActive: policy.isActive,
       notes: policy.notes,

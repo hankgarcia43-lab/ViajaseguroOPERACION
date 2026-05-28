@@ -9,6 +9,10 @@ export class UpsertFarePolicyDto {
   @Min(0.1)
   ratePerKm!: number;
 
+  @Transform(({ value }) => Number(value))
+  @IsIn([5, 10, 15])
+  appCommissionPercent!: 5 | 10 | 15;
+
   @IsOptional()
   @IsString()
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))

@@ -4,6 +4,7 @@ export interface FarePolicy {
   id: string;
   mode: FarePolicyMode;
   ratePerKm: number;
+  appCommissionPercent: 5 | 10 | 15;
   currency: string;
   isActive: boolean;
   notes: string | null;
@@ -20,6 +21,7 @@ export interface FarePolicy {
 export interface FarePolicyPayload {
   mode: FarePolicyMode;
   ratePerKm: number;
+  appCommissionPercent: 5 | 10 | 15;
   currency?: string;
   notes?: string;
 }

@@ -16,6 +16,11 @@ export interface ReservationPayment {
   status: ReservationPaymentStatus;
   provider: string;
   providerReference: string | null;
+  providerPreferenceId: string | null;
+  checkoutUrl: string | null;
+  initPoint: string | null;
+  sandboxInitPoint: string | null;
+  paymentLink: string | null;
   paymentMethodLabel: string | null;
   paymentBeneficiary: string | null;
   paymentReference: string | null;

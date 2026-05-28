@@ -18,6 +18,10 @@ type PaymentRecord = {
   status: string;
   provider: string;
   providerReference: string | null;
+  providerPreferenceId: string | null;
+  checkoutUrl: string | null;
+  initPoint: string | null;
+  sandboxInitPoint: string | null;
   paymentMethodLabel: string | null;
   paymentInstructions: string | null;
   proofFileName: string | null;
@@ -209,6 +213,16 @@ export class PaymentsService {
 
     this.assertCheckoutAllowed(payment);
 
+    const existingCheckoutUrl = this.resolvePaymentCheckoutUrl(payment);
+    if (payment.provider === PAYMENT_PROVIDER.MERCADOPAGO && existingCheckoutUrl) {
+      return {
+        payment: this.mapPayment(payment),
+        checkoutUrl: existingCheckoutUrl,
+        preferenceId: payment.providerPreferenceId ?? payment.providerReference ?? null,
+        initPoint: payment.initPoint ?? null,
+        sandboxInitPoint: payment.sandboxInitPoint ?? null
+      };
+    }
     const accessToken = this.getMercadoPagoAccessToken();
     const appUrl = this.getFrontendBaseUrl();
     const ticketUrl = `${appUrl}/dashboard/my-reservations/${payment.reservationId}/ticket`;
@@ -266,11 +280,19 @@ export class PaymentsService {
       throw new BadGatewayException('Mercado Pago no devolvio URL de checkout');
     }
 
+    const preferenceId = mpPreference.id ? String(mpPreference.id) : null;
+
     await this.paymentDelegate().update({
       where: { id: payment.id },
       data: {
         provider: PAYMENT_PROVIDER.MERCADOPAGO,
-        providerReference: String(mpPreference.id ?? '') || payment.providerReference,
+        providerReference: preferenceId ?? payment.providerReference,
+        providerPreferenceId: preferenceId,
+        checkoutUrl,
+        initPoint: mpPreference.init_point ?? null,
+        sandboxInitPoint: mpPreference.sandbox_init_point ?? null,
+        paymentMethodLabel: 'Mercado Pago Checkout Pro',
+        paymentInstructions: 'Presiona el boton Pagar con Mercado Pago para abrir el checkout seguro. Tambien puedes conservar el flujo manual subiendo tu comprobante si soporte te lo indica.',
         status: PAYMENT_STATUS.PENDING
       }
     });
@@ -679,6 +701,18 @@ export class PaymentsService {
     return direct;
   }
 
+  private resolvePaymentCheckoutUrl(payment: Pick<PaymentRecord, 'checkoutUrl' | 'initPoint' | 'sandboxInitPoint'>) {
+    if (payment.checkoutUrl) {
+      return payment.checkoutUrl;
+    }
+
+    const sandboxMode = process.env.MERCADOPAGO_USE_SANDBOX === 'true' || process.env.NODE_ENV !== 'production';
+    if (sandboxMode && payment.sandboxInitPoint) {
+      return payment.sandboxInitPoint;
+    }
+
+    return payment.initPoint ?? payment.sandboxInitPoint ?? null;
+  }
   private async assertSimulationPermission(userId: string, role: string, payment: PaymentRecord) {
     if (role === 'admin') {
       return;
@@ -796,6 +830,11 @@ export class PaymentsService {
       status: this.normalizePaymentStatus(payment.status),
       provider: payment.provider,
       providerReference: payment.providerReference,
+      providerPreferenceId: payment.providerPreferenceId,
+      checkoutUrl: this.resolvePaymentCheckoutUrl(payment),
+      initPoint: payment.initPoint,
+      sandboxInitPoint: payment.sandboxInitPoint,
+      paymentLink: this.resolvePaymentCheckoutUrl(payment),
       paymentMethodLabel: payment.paymentMethodLabel ?? config.methodLabel,
       paymentBeneficiary: config.beneficiary,
       paymentReference: config.reference,

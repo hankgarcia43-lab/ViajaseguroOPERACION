@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import { apiRequest, buildApiAssetUrl, getToken } from '@/lib/api';
 import { APP_COMPANY_NAME, formatCurrency, formatShortDate } from '@/lib/app-config';
 import { getPaymentFlowMessage, PAYMENT_RETENTION_NOTICE } from '@/lib/payment-ui';
+import { MERCADO_PAGO_PAYMENT_REFERENCE, getMercadoPagoPaymentUrl } from '@/lib/payments';
 import { Reservation } from '@/lib/reservations';
 import { getPaymentStatusMeta, getReservationStatusMeta } from '@/lib/status';
 
@@ -18,7 +19,7 @@ export default function ReservationTicketPage() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const mpPaymentLink = process.env.NEXT_PUBLIC_MP_PAYMENT_LINK?.trim() ?? '';
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
 
   async function loadTicket() {
     const token = getToken();
@@ -74,6 +75,26 @@ export default function ReservationTicketPage() {
       setError(requestError instanceof Error ? requestError.message : 'No se pudo subir el comprobante');
     } finally {
       setUploading(false);
+    }
+  }
+
+  function payWithMercadoPago() {
+    if (!reservation?.payment) {
+      setError('No hay sesion activa o pago disponible.');
+      return;
+    }
+
+    setCheckoutBusy(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      window.open(getMercadoPagoPaymentUrl(reservation.payment), '_blank', 'noopener,noreferrer');
+      setSuccess(`Se abrio Mercado Pago. Ingresa el monto exacto y usa la referencia: ${MERCADO_PAGO_PAYMENT_REFERENCE}.`);
+    } catch {
+      setError('No se pudo abrir Mercado Pago. Intenta nuevamente.');
+    } finally {
+      setCheckoutBusy(false);
     }
   }
 
@@ -152,33 +173,40 @@ export default function ReservationTicketPage() {
           )}
 
           {reservation.payment && (
-            <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
-              <div>
-                <p className="font-semibold text-slate-900">Pago del negocio</p>
-                <p>Monto a pagar: {formatCurrency(reservation.payment.amount)}</p>
-                <p>Beneficiario comercial: {reservation.payment.paymentBeneficiary ?? APP_COMPANY_NAME}</p>
-                <p>Procesador o plataforma: {reservation.payment.paymentProcessorLabel ?? APP_COMPANY_NAME}</p>
-                <p>Metodo o banco: {reservation.payment.paymentMethodLabel ?? 'Transferencia bancaria empresarial'}</p>
-                {reservation.payment.paymentBusinessAccount && <p>Cuenta o CLABE del negocio: {reservation.payment.paymentBusinessAccount}</p>}
-                <p>Referencia: {reservation.payment.paymentReference ?? 'VS-RESERVA'}</p>
-              </div>
+<div className="space-y-5 rounded-3xl border border-sky-200 bg-sky-50 p-5">
+                <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">Pagar con Mercado Pago</p>
+                  <p className="mt-3 text-3xl font-semibold text-slate-900">{formatCurrency(reservation.payment.amount)}</p>
+                  <p className="mt-3 text-sm text-slate-600">Ingresa exactamente este monto dentro de Mercado Pago.</p>
+                  <p className="text-sm text-slate-600">Tu pago sera validado manualmente.</p>
+                  <p className="text-sm text-slate-600">Referencia: <span className="font-semibold text-slate-900">{MERCADO_PAGO_PAYMENT_REFERENCE}</span></p>
+                </div>
 
-              {reservation.payment.paymentProcessingMessage && (
-                <p className="rounded-md bg-slate-100 p-3 text-sm text-slate-700">{reservation.payment.paymentProcessingMessage}</p>
-              )}
-              <div className="space-y-2 rounded-md border border-sky-100 bg-sky-50 p-3 text-sm text-sky-900">
-                <p className="font-semibold text-sky-900">Pasos para completar tu pago</p>
-                <ol className="list-decimal space-y-1 pl-5 text-xs text-sky-900">
-                  <li>Entra al link de pago de Mercado Pago.</li>
-                  <li>Escribe el monto exacto de tu reserva: {formatCurrency(reservation.payment.amount)}.</li>
-                  <li>Sube tu comprobante y espera la validacion de soporte/admin.</li>
-                </ol>
-                {mpPaymentLink && (
-                  <a href={mpPaymentLink} target="_blank" rel="noreferrer" className="inline-block rounded-md border border-sky-300 bg-white px-3 py-2 text-xs font-medium text-sky-800">
-                    Ir al link de pago
-                  </a>
+                {['pending', 'submitted', 'rejected'].includes(reservation.payment.status) ? (
+                  <button
+                    type="button"
+                    onClick={() => payWithMercadoPago()}
+                    disabled={checkoutBusy}
+                    className="w-full rounded-3xl bg-sky-700 px-5 py-4 text-sm font-semibold text-white shadow-lg transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {checkoutBusy ? 'Abriendo Mercado Pago...' : 'Pagar con Mercado Pago'}
+                  </button>
+                ) : (
+                  <p className="rounded-2xl bg-white p-3 text-xs text-slate-700">Este pago ya no requiere un pago online.</p>
                 )}
-              </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
+                  <p className="font-semibold text-slate-900">Pago del negocio</p>
+                  <p className="mt-2">Beneficiario comercial: {reservation.payment.paymentBeneficiary ?? APP_COMPANY_NAME}</p>
+                  <p>Procesador o plataforma: {reservation.payment.paymentProcessorLabel ?? APP_COMPANY_NAME}</p>
+                  <p>Metodo o banco: {reservation.payment.paymentMethodLabel ?? 'Transferencia bancaria empresarial'}</p>
+                  {reservation.payment.paymentBusinessAccount && <p>Cuenta o CLABE del negocio: {reservation.payment.paymentBusinessAccount}</p>}
+                  <p>Referencia: {reservation.payment.paymentReference ?? 'VS-RESERVA'}</p>
+                </div>
+
+                {reservation.payment.paymentProcessingMessage && (
+                  <p className="rounded-md bg-slate-100 p-3 text-sm text-slate-700">{reservation.payment.paymentProcessingMessage}</p>
+                )}
 
               {reservation.payment.paymentInstructions && (
                 <div>

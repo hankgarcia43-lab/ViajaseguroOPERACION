@@ -5,7 +5,7 @@ import { ChangeEvent, useEffect, useState } from 'react';
 import { apiRequest, buildApiAssetUrl, getToken } from '@/lib/api';
 import { APP_COMPANY_NAME, formatCurrency, formatShortDate } from '@/lib/app-config';
 import { getPaymentFlowMessage, PAYMENT_RETENTION_NOTICE } from '@/lib/payment-ui';
-import { Payment } from '@/lib/payments';
+import { MERCADO_PAGO_PAYMENT_REFERENCE, getMercadoPagoPaymentUrl, Payment } from '@/lib/payments';
 import { Reservation } from '@/lib/reservations';
 import { getPaymentStatusMeta, getReservationStatusMeta } from '@/lib/status';
 
@@ -41,6 +41,26 @@ export default function MyReservationsPage() {
   useEffect(() => {
     void loadReservations();
   }, []);
+
+  function payWithMercadoPago(reservation: Reservation) {
+    if (!reservation.payment) {
+      setError('No hay pago disponible para esta reserva.');
+      return;
+    }
+
+    setBusyReservationId(reservation.id);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      window.open(getMercadoPagoPaymentUrl(reservation.payment), '_blank', 'noopener,noreferrer');
+      setSuccess(`Se abrio Mercado Pago. Ingresa el monto exacto y usa la referencia: ${MERCADO_PAGO_PAYMENT_REFERENCE}.`);
+    } catch {
+      setError('No se pudo abrir Mercado Pago. Intenta nuevamente.');
+    } finally {
+      setBusyReservationId(null);
+    }
+  }
 
   async function cancelReservation(reservationId: string) {
     const token = getToken();
@@ -167,6 +187,23 @@ export default function MyReservationsPage() {
                     <p>Referencia: {reservation.payment.paymentReference ?? 'VS-RESERVA'}</p>
                     {reservation.payment.paymentProcessingMessage && <p className="rounded-md bg-slate-100 p-3 text-sm text-slate-700">{reservation.payment.paymentProcessingMessage}</p>}
                     <p className="whitespace-pre-line text-xs text-slate-600">{reservation.payment.paymentInstructions}</p>
+                    <div className="space-y-2 rounded-md border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-950">
+                      <p className="font-semibold">Pago seguro en linea</p>
+                      <p className="text-xs text-emerald-900">Paga directo en Mercado Pago con el monto exacto de tu reserva.</p>
+                      <p className="text-xs text-emerald-900">Referencia: <span className="font-semibold text-slate-900">{MERCADO_PAGO_PAYMENT_REFERENCE}</span></p>
+                      {['pending', 'submitted', 'rejected'].includes(reservation.payment.status) ? (
+                        <button
+                          type="button"
+                          onClick={() => void payWithMercadoPago(reservation)}
+                          disabled={isBusy}
+                          className="inline-flex rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:opacity-50"
+                        >
+                          {isBusy ? 'Preparando pago...' : 'Pagar con Mercado Pago'}
+                        </button>
+                      ) : (
+                        <p className="rounded-md bg-white p-2 text-xs text-emerald-800">Este pago ya no requiere checkout.</p>
+                      )}
+                    </div>
                     <p className="rounded-md bg-amber-50 p-3 text-xs text-amber-800">{getPaymentFlowMessage(reservation.payment.status)}</p>
                     <p className="rounded-md bg-brand-50 p-3 text-xs text-brand-800">{PAYMENT_RETENTION_NOTICE}</p>
                   </div>
@@ -187,6 +224,17 @@ export default function MyReservationsPage() {
                   <Link href={`/dashboard/chat/${reservation.id}`} className="rounded-md border border-cyan-300 px-3 py-2 text-sm text-cyan-700">
                     Chat con conductor
                   </Link>
+
+                  {reservation.payment && ['pending', 'submitted', 'rejected'].includes(reservation.payment.status) && (
+                    <button
+                      type="button"
+                      disabled={isBusy}
+                      onClick={() => void payWithMercadoPago(reservation)}
+                      className="rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                    >
+                      {isBusy ? 'Preparando...' : 'Pagar con Mercado Pago'}
+                    </button>
+                  )}
 
                   {canUploadProof && (
                     <label className="cursor-pointer rounded-md border border-sky-300 px-3 py-2 text-sm text-sky-700">

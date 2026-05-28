@@ -48,7 +48,7 @@ export default function MyPaymentsPage() {
 
     try {
       window.open(getMercadoPagoPaymentUrl(payment), '_blank', 'noopener,noreferrer');
-      setSuccess(`Se abrio Mercado Pago. Ingresa el monto exacto y usa la referencia: ${MERCADO_PAGO_PAYMENT_REFERENCE}.`);
+      setSuccess(`Se abrio Mercado Pago. Ingresa el monto exacto, conserva tu comprobante y regresa a la app para subirlo. Referencia: ${MERCADO_PAGO_PAYMENT_REFERENCE}.`);
     } catch {
       setError('No se pudo abrir Mercado Pago. Intenta nuevamente.');
     } finally {
@@ -146,7 +146,13 @@ export default function MyPaymentsPage() {
                   <div className="space-y-2">
                     <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">Pagar con Mercado Pago</p>
                     <p className="text-lg font-semibold text-slate-900">Monto exacto: {formatCurrency(payment.amount)}</p>
-                    <p className="text-sm text-slate-600">Ingresa exactamente este monto dentro de Mercado Pago.</p>
+                    <ol className="space-y-1 pl-5 text-sm text-slate-600">
+                      <li className="list-decimal">Entra al link oficial de Mercado Pago desde el boton de abajo.</li>
+                      <li className="list-decimal">Escribe exactamente {formatCurrency(payment.amount)} como monto a pagar.</li>
+                      <li className="list-decimal">Realiza el pago y guarda tu comprobante o captura.</li>
+                      <li className="list-decimal">Regresa a VIAJA SEGURO y sube el comprobante en este pago.</li>
+                      <li className="list-decimal">Cuando el admin lo valide, abre tu ticket para confirmar tus boletos y codigo de abordaje.</li>
+                    </ol>
                     <p className="text-sm text-slate-600">Tu pago sera validado manualmente.</p>
                     <p className="text-sm text-slate-600">Referencia: <span className="font-semibold text-slate-900">{MERCADO_PAGO_PAYMENT_REFERENCE}</span></p>
                   </div>

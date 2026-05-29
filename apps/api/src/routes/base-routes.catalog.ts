@@ -49,6 +49,72 @@ function template(
 
 export const BASE_ROUTE_TEMPLATES: BaseRouteTemplate[] = [
   template(
+    'corredor-norte-indios-verdes',
+    'Corredor Norte -> Indios Verdes',
+    'Tepexpan / Acolman / Ojo de Agua / San Cristobal / Ecatepec / Tecamac',
+    'Indios Verdes (CETRAM)',
+    32,
+    '06:00',
+    '07:10',
+    WORKDAYS_PLUS_SAT,
+    'Corredor troncal metropolitano. Municipios sugeridos: Tepexpan, Acolman, Ojo de Agua, San Cristobal, Ecatepec y Tecamac. Destino fuerte: Indios Verdes CETRAM. Chofer: publica el punto exacto donde pasas y confirma abordaje en zona publica, visible e iluminada.'
+  ),
+  template(
+    'corredor-oriente-pantitlan',
+    'Corredor Oriente -> Pantitlan',
+    'Nezahualcoyotl / Chimalhuacan / Chicoloapan / La Paz',
+    'Pantitlan (CETRAM)',
+    20,
+    '06:00',
+    '06:55',
+    WORKDAYS_PLUS_SAT,
+    'Corredor troncal intermunicipal. Municipios sugeridos: Nezahualcoyotl, Chimalhuacan, Chicoloapan y La Paz. Destino fuerte: Pantitlan CETRAM. Pensado para movilidad laboral con enlace a Metro y corredores de alta demanda.'
+  ),
+  template(
+    'corredor-norponiente-cuatro-caminos',
+    'Corredor Norponiente -> Cuatro Caminos',
+    'Naucalpan / Tlalnepantla / Huixquilucan',
+    'Cuatro Caminos / Toreo',
+    14,
+    '06:15',
+    '07:00',
+    WORKDAYS_PLUS_SAT,
+    'Corredor troncal urbana. Municipios sugeridos: Naucalpan, Tlalnepantla y Huixquilucan. Destino fuerte: Cuatro Caminos / Toreo. Ideal para publicar viajes con puntos de encuentro en avenidas principales o zonas comerciales visibles.'
+  ),
+  template(
+    'corredor-suburbano-buenavista',
+    'Corredor Suburbano -> Buenavista',
+    'Cuautitlan / Tultitlan / Tlalnepantla / Cuautitlan Izcalli',
+    'Buenavista',
+    34,
+    '05:55',
+    '07:20',
+    WORKDAYS_PLUS_SAT,
+    'Corredor troncal suburbana. Municipios sugeridos: Cuautitlan, Tultitlan, Tlalnepantla y Cuautitlan Izcalli. Destino fuerte: Buenavista. Enlace laboral con nodos de tren y transbordo hacia CDMX.'
+  ),
+  template(
+    'corredor-ecatepec-ciudad-azteca',
+    'Corredor Ecatepec -> Ciudad Azteca',
+    'Ecatepec / Tecamac',
+    'Ciudad Azteca',
+    18,
+    '06:10',
+    '06:50',
+    WORKDAYS_PLUS_SAT,
+    'Corredor troncal de conexion. Municipios sugeridos: Ecatepec y Tecamac. Destino fuerte: Ciudad Azteca. Conecta con Metro Linea B y facilita traslados de entrada a CDMX.'
+  ),
+  template(
+    'corredor-nodos-laborales-cdmx',
+    'Corredor a nodos laborales CDMX',
+    'Municipios clave del EdoMex',
+    'Centro, zonas hospitalarias y terminales CDMX',
+    28,
+    '06:00',
+    '07:15',
+    WORKDAYS,
+    'Corredor de nodos laborales. Origen flexible desde municipios clave del EdoMex hacia Centro, zonas hospitalarias y terminales. Chofer: usa esta ruta cuando tu destino final sea un nodo laboral y publica el punto exacto de abordaje.'
+  ),
+  template(
     'ruta-prioritaria-tepexpan-indios-verdes',
     'Tepexpan centro -> Indios Verdes CETRAM',
     'Tepexpan - Centro / Plaza principal',

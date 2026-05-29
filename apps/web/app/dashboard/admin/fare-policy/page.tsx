@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { apiRequest, getToken } from '@/lib/api';
@@ -8,9 +8,12 @@ import { farePolicyModeLabel } from '@/lib/routes';
 const INITIAL_FORM: FarePolicyPayload = {
   mode: 'max_per_km',
   ratePerKm: 0,
+  appCommissionPercent: 15,
   currency: 'MXN',
   notes: ''
 };
+
+const APP_COMMISSION_OPTIONS: Array<5 | 10 | 15> = [5, 10, 15];
 
 export default function FarePolicyAdminPage() {
   const [currentPolicy, setCurrentPolicy] = useState<FarePolicy | null>(null);
@@ -44,6 +47,7 @@ export default function FarePolicyAdminPage() {
         setForm({
           mode: current.mode,
           ratePerKm: current.ratePerKm,
+          appCommissionPercent: current.appCommissionPercent,
           currency: current.currency,
           notes: current.notes ?? ''
         });
@@ -75,11 +79,17 @@ export default function FarePolicyAdminPage() {
       return;
     }
 
+    if (!APP_COMMISSION_OPTIONS.includes(form.appCommissionPercent)) {
+      setError('La tarifa de cobro al chofer debe ser 5%, 10% o 15%.');
+      return;
+    }
+
     setSaving(true);
     try {
       const payload: FarePolicyPayload = {
         mode: form.mode,
         ratePerKm: Number(form.ratePerKm),
+        appCommissionPercent: form.appCommissionPercent,
         currency: form.currency || 'MXN',
         notes: form.notes?.trim() || undefined
       };
@@ -93,7 +103,7 @@ export default function FarePolicyAdminPage() {
       });
 
       setCurrentPolicy(updated);
-      setSuccess('Politica de tarifa por kilometro actualizada correctamente.');
+      setSuccess('Politica de tarifa y cobro al chofer actualizada correctamente.');
       await loadData();
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'No se pudo guardar la politica de tarifa.');
@@ -109,9 +119,9 @@ export default function FarePolicyAdminPage() {
   return (
     <section className="space-y-5">
       <header className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-semibold text-slate-900">Tarifa por kilometro</h1>
+        <h1 className="text-2xl font-semibold text-slate-900">Tarifas y cobro al chofer</h1>
         <p className="mt-2 text-sm text-slate-600">
-          Controla la politica comercial que limita o calcula el precio por asiento en las rutas publicadas por conductores y admin.
+          Controla la politica comercial de precio por asiento y el porcentaje que VIAJA SEGURO cobra al chofer sobre pagos aprobados.
         </p>
       </header>
 
@@ -124,7 +134,7 @@ export default function FarePolicyAdminPage() {
             <p className="text-sm font-semibold text-slate-900">Politica activa</p>
             <p className="mt-1 text-sm text-slate-600">
               {currentPolicy
-                ? `${farePolicyModeLabel(currentPolicy.mode)} de $${currentPolicy.ratePerKm.toFixed(2)} ${currentPolicy.currency} por km.`
+                ? `${farePolicyModeLabel(currentPolicy.mode)} de $${currentPolicy.ratePerKm.toFixed(2)} ${currentPolicy.currency} por km. Cobro al chofer: ${currentPolicy.appCommissionPercent}%.`
                 : 'Aun no existe una politica activa.'}
             </p>
           </div>
@@ -154,6 +164,19 @@ export default function FarePolicyAdminPage() {
           </label>
 
           <label className="block text-sm text-slate-700">
+            Tarifa de cobro al chofer
+            <select
+              value={form.appCommissionPercent}
+              onChange={(event) => setForm((prev) => ({ ...prev, appCommissionPercent: Number(event.target.value) as 5 | 10 | 15 }))}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+            >
+              {APP_COMMISSION_OPTIONS.map((percent) => (
+                <option key={percent} value={percent}>{percent}% de cada pago aprobado</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block text-sm text-slate-700">
             Moneda
             <input
               value={form.currency ?? 'MXN'}
@@ -176,6 +199,7 @@ export default function FarePolicyAdminPage() {
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
             <p className="font-semibold text-slate-900">Vista previa</p>
             <p className="mt-2">{previewLabel}: ${Number(form.ratePerKm || 0).toFixed(2)} {form.currency ?? 'MXN'} por km.</p>
+            <p className="mt-1">VIAJA SEGURO cobrara {form.appCommissionPercent}% y el chofer recibira {100 - form.appCommissionPercent}% del pago aprobado.</p>
             <p className="mt-2 text-xs text-slate-500">
               {form.mode === 'fixed_per_km'
                 ? 'El sistema reemplazara el precio propuesto y calculara el precio final automaticamente.'
@@ -204,6 +228,7 @@ export default function FarePolicyAdminPage() {
                     <div>
                       <p className="font-semibold text-slate-900">{farePolicyModeLabel(policy.mode)}</p>
                       <p className="text-sm text-slate-600">${policy.ratePerKm.toFixed(2)} {policy.currency} por km</p>
+                      <p className="text-sm text-slate-600">Cobro al chofer: {policy.appCommissionPercent}%</p>
                     </div>
                     <span className={`rounded-full px-2 py-1 text-xs font-medium ${policy.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700'}`}>
                       {policy.isActive ? 'Activa' : 'Historica'}

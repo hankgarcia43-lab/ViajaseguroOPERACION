@@ -70,6 +70,7 @@ model FarePolicy {
   id                   String   @id @default(uuid())
   mode                 String   @default("max_per_km")
   ratePerKm            Float    @map("rate_per_km")
+  appCommissionPercent Float    @default(15) @map("app_commission_percent")
   currency             String   @default("MXN")
   isActive             Boolean  @default(true) @map("is_active")
   notes                String?

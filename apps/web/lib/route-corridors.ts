@@ -8,6 +8,9 @@ export interface RouteCorridor {
   routeTypeLabel: string;
   order: number;
   keywords: string[];
+  primaryTemplateKey: string;
+  passengerHint: string;
+  driverHint: string;
 }
 
 export interface CorridorTemplate {
@@ -28,7 +31,10 @@ export const ROUTE_CORRIDORS: RouteCorridor[] = [
     tagline: 'Ruta laboral frecuente',
     routeTypeLabel: 'Troncal metropolitana',
     order: 1,
-    keywords: ['tepexpan', 'acolman', 'san cristobal', 'ecatepec', 'tecamac', 'ojo de agua', 'zumpango', 'indios verdes', 'mexibus l4', 'mexicable l2']
+    keywords: ['tepexpan', 'acolman', 'san cristobal', 'ecatepec', 'tecamac', 'ojo de agua', 'zumpango', 'indios verdes', 'mexibus l4', 'mexicable l2'],
+    primaryTemplateKey: 'corredor-norte-indios-verdes',
+    passengerHint: 'Elige esta troncal si quieres llegar a Indios Verdes y luego transbordar rapido a Metro, Metrobus o rutas hacia CDMX.',
+    driverHint: 'Toma esta troncal si pasas por municipios del norte y puedes recoger pasajeros en puntos visibles rumbo a Indios Verdes.'
   },
   {
     id: 'oriente-pantitlan',
@@ -40,7 +46,10 @@ export const ROUTE_CORRIDORS: RouteCorridor[] = [
     tagline: 'Conector masivo de oriente',
     routeTypeLabel: 'Troncal intermunicipal',
     order: 2,
-    keywords: ['neza', 'nezahualcoyotl', 'chimalhuacan', 'chicoloapan', 'la paz', 'pantitlan', 'linea a', 'mexibus l3']
+    keywords: ['neza', 'nezahualcoyotl', 'chimalhuacan', 'chicoloapan', 'la paz', 'pantitlan', 'linea a', 'mexibus l3'],
+    primaryTemplateKey: 'corredor-oriente-pantitlan',
+    passengerHint: 'Elige esta troncal si tu destino conecta con Pantitlan, Metro o viajes laborales del oriente hacia CDMX.',
+    driverHint: 'Toma esta troncal si ya cruzas Neza, Chimalhuacan, Chicoloapan o La Paz rumbo a Pantitlan.'
   },
   {
     id: 'norponiente-cuatro-caminos',
@@ -52,7 +61,10 @@ export const ROUTE_CORRIDORS: RouteCorridor[] = [
     tagline: 'Acceso operativo al norponiente',
     routeTypeLabel: 'Troncal urbana',
     order: 3,
-    keywords: ['naucalpan', 'tlalnepantla', 'huixquilucan', 'cuatro caminos', 'toreo']
+    keywords: ['naucalpan', 'tlalnepantla', 'huixquilucan', 'cuatro caminos', 'toreo'],
+    primaryTemplateKey: 'corredor-norponiente-cuatro-caminos',
+    passengerHint: 'Elige esta troncal si buscas llegar al Toreo, Cuatro Caminos o enlaces laborales del norponiente.',
+    driverHint: 'Toma esta troncal si tu recorrido cruza Naucalpan, Tlalnepantla o Huixquilucan hacia Toreo/Cuatro Caminos.'
   },
   {
     id: 'suburbano-buenavista',
@@ -64,7 +76,10 @@ export const ROUTE_CORRIDORS: RouteCorridor[] = [
     tagline: 'Flujo recurrente de trabajo',
     routeTypeLabel: 'Troncal suburbana',
     order: 4,
-    keywords: ['cuautitlan', 'tultitlan', 'tlalnepantla', 'izcalli', 'buenavista', 'suburbano']
+    keywords: ['cuautitlan', 'tultitlan', 'tlalnepantla', 'izcalli', 'buenavista', 'suburbano'],
+    primaryTemplateKey: 'corredor-suburbano-buenavista',
+    passengerHint: 'Elige esta troncal si conectas con Buenavista, Tren Suburbano o nodos de transbordo al centro.',
+    driverHint: 'Toma esta troncal si tu viaje cruza Cuautitlan, Tultitlan, Tlalnepantla o Izcalli rumbo a Buenavista.'
   },
   {
     id: 'ecatepec-ciudad-azteca',
@@ -76,7 +91,10 @@ export const ROUTE_CORRIDORS: RouteCorridor[] = [
     tagline: 'Conexion directa de alto flujo',
     routeTypeLabel: 'Troncal de conexion',
     order: 5,
-    keywords: ['ecatepec', 'tecamac', 'ciudad azteca', 'linea b', 'mexibus l1']
+    keywords: ['ecatepec', 'tecamac', 'ciudad azteca', 'linea b', 'mexibus l1'],
+    primaryTemplateKey: 'corredor-ecatepec-ciudad-azteca',
+    passengerHint: 'Elige esta troncal si necesitas conectar con Ciudad Azteca, Metro Linea B o Mexibus.',
+    driverHint: 'Toma esta troncal si operas entre Ecatepec/Tecamac y puedes dejar pasajeros cerca de Ciudad Azteca.'
   },
   {
     id: 'nodos-laborales-cdmx',
@@ -88,7 +106,10 @@ export const ROUTE_CORRIDORS: RouteCorridor[] = [
     tagline: 'Destino laboral estrategico',
     routeTypeLabel: 'Corredor de nodos',
     order: 6,
-    keywords: ['centro', 'hospital', 'terminal', 'indios verdes', 'pantitlan', 'buenavista', 'cdmx']
+    keywords: ['centro', 'hospital', 'terminal', 'indios verdes', 'pantitlan', 'buenavista', 'cdmx'],
+    primaryTemplateKey: 'corredor-nodos-laborales-cdmx',
+    passengerHint: 'Elige esta troncal si tu viaje termina en Centro, hospitales, terminales o zonas laborales de CDMX.',
+    driverHint: 'Toma esta troncal si tu destino final es un nodo laboral de CDMX y quieres publicar abordajes recurrentes.'
   }
 ];
 
@@ -101,7 +122,10 @@ export const DEFAULT_ROUTE_CORRIDOR: RouteCorridor = {
   tagline: 'Ruta laboral frecuente',
   routeTypeLabel: 'Corredor base',
   order: 999,
-  keywords: []
+  keywords: [],
+  primaryTemplateKey: 'metropolitano-general',
+  passengerHint: 'Usa esta ruta si no encuentras un corredor exacto para tu viaje.',
+  driverHint: 'Crea o toma esta ruta cuando tu viaje no encaje en una troncal especifica.'
 };
 
 export const ROUTE_CORRIDOR_TEMPLATES: CorridorTemplate[] = [

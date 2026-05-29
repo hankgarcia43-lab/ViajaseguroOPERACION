@@ -1,4 +1,4 @@
-﻿import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BASE_ROUTE_TEMPLATES, BaseRouteTemplate } from './base-routes.catalog';
 
@@ -15,7 +15,8 @@ export class BaseRoutesSyncService implements OnModuleInit {
   constructor(private readonly prisma: PrismaService) {}
 
   async onModuleInit() {
-    const syncEnabled = (process.env.ROUTE_TEMPLATE_SYNC_ENABLED ?? 'false').toLowerCase() === 'true';
+    const rawSyncFlag = process.env.ROUTE_TEMPLATE_SYNC_ENABLED;
+    const syncEnabled = rawSyncFlag ? rawSyncFlag.toLowerCase() === 'true' : process.env.NODE_ENV === 'production';
     if (!syncEnabled) {
       this.logger.log('Sincronizacion automatica de rutas base desactivada (ROUTE_TEMPLATE_SYNC_ENABLED=false).');
       return;

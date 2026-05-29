@@ -64,7 +64,8 @@ export default function RoutesPage() {
     return ROUTE_CORRIDORS.map((corridor) => {
       const routesInCorridor = routes.filter((route) => inferRouteCorridor(route).id === corridor.id);
       const driverCount = routesInCorridor.reduce((acc, route) => acc + (route.activeDriversCount ?? 0), 0);
-      return { corridor, count: routesInCorridor.length, driverCount };
+      const primaryRoute = routesInCorridor.find((route) => route.templateKey === corridor.primaryTemplateKey) ?? routesInCorridor[0] ?? null;
+      return { corridor, count: routesInCorridor.length, driverCount, primaryRoute };
     });
   }, [routes]);
 
@@ -204,18 +205,32 @@ export default function RoutesPage() {
       )}
 
       <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {corridorSummary.map(({ corridor, count, driverCount }) => (
+        {corridorSummary.map(({ corridor, count, driverCount, primaryRoute }) => (
           <article key={corridor.id} className={`rounded-xl border p-4 shadow-sm ${selectedCorridorId === corridor.id ? 'border-brand-300 bg-blue-50' : 'border-slate-200 bg-white'}`}>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-700">{corridor.routeTypeLabel}</p>
             <h2 className="mt-2 text-base font-semibold text-slate-900">{corridor.name}</h2>
             <p className="mt-2 text-sm text-slate-600">{corridor.municipalities}</p>
             <p className="text-sm text-slate-700">Destino fuerte: {corridor.destinationHub}</p>
             <p className="mt-2 text-xs text-slate-500">{corridor.description}</p>
+            <p className="mt-2 rounded-lg border border-slate-200 bg-white/70 p-2 text-xs text-slate-700">{isDriver ? corridor.driverHint : corridor.passengerHint}</p>
             <p className="mt-2 text-xs font-medium text-emerald-700">Rutas publicadas: {count}</p>
             <p className="mt-1 text-xs font-medium text-cyan-700">Conductores activos: {driverCount}</p>
-            <button type="button" onClick={() => selectCorridor(corridor.id)} className="mt-3 w-full rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white">
-              Ver rutas del corredor
-            </button>
+            <div className="mt-3 grid gap-2">
+              <button type="button" onClick={() => selectCorridor(corridor.id)} className="w-full rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white">
+                Ver rutas del corredor
+              </button>
+              {primaryRoute && (
+                isDriver ? (
+                  <Link href={`/dashboard/routes/${primaryRoute.id}/take`} className="w-full rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-center text-sm font-medium text-emerald-800">
+                    Tomar ruta troncal
+                  </Link>
+                ) : (
+                  <Link href={`/dashboard/routes/${primaryRoute.id}`} className="w-full rounded-md border border-brand-300 bg-brand-50 px-3 py-2 text-center text-sm font-medium text-brand-700">
+                    Ver ruta troncal
+                  </Link>
+                )
+              )}
+            </div>
           </article>
         ))}
       </section>
@@ -227,10 +242,10 @@ export default function RoutesPage() {
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-700">Lista operativa</p>
             <h2 className="mt-1 text-lg font-semibold text-slate-900">{selectedCorridor?.name ?? 'Rutas publicadas'}</h2>
-            <p className="text-sm text-slate-600">Abre una ruta para reservar como pasajero o tomala como conductor para publicar horarios, asientos y punto de abordaje.</p>
+            <p className="text-sm text-slate-600">{isDriver ? selectedCorridor.driverHint : selectedCorridor.passengerHint}</p>
           </div>
           {visibleGroupedRoutes.length === 0 ? (
-            <p className="rounded-xl border border-slate-200 bg-white p-6 text-slate-700">No hay rutas activas por ahora.</p>
+            <p className="rounded-xl border border-slate-200 bg-white p-6 text-slate-700">No hay rutas activas por ahora. En produccion las rutas troncales se sincronizan automaticamente al arrancar el backend.</p>
           ) : (
             visibleGroupedRoutes.map((group) => (
               <section key={group.corridorName} className="space-y-3">
@@ -244,8 +259,8 @@ export default function RoutesPage() {
                     .sort((a, b) => {
                       const aCount = a.activeDriversCount ?? 0;
                       const bCount = b.activeDriversCount ?? 0;
-                      const priorityA = isPriorityIndiosVerdesRoute(a) ? 1 : 0;
-                      const priorityB = isPriorityIndiosVerdesRoute(b) ? 1 : 0;
+                      const priorityA = a.templateKey === selectedCorridor?.primaryTemplateKey ? 2 : isPriorityIndiosVerdesRoute(a) ? 1 : 0;
+                      const priorityB = b.templateKey === selectedCorridor?.primaryTemplateKey ? 2 : isPriorityIndiosVerdesRoute(b) ? 1 : 0;
                       if (priorityA !== priorityB) return priorityB - priorityA;
                       return isDriver ? aCount - bCount : bCount - aCount;
                     })
@@ -263,6 +278,7 @@ export default function RoutesPage() {
                               <p className="text-sm text-slate-600">{route.origin} {'->'} {route.destination}</p>
                             </div>
                             <div className="flex flex-wrap gap-2">
+                              {route.templateKey === corridor.primaryTemplateKey && <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">Ruta troncal recomendada</span>}
                               {isPriorityIndiosVerdesRoute(route) && <span className="rounded-full bg-brand-100 px-3 py-1 text-xs font-semibold text-brand-700">Ruta prioritaria</span>}
                               <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">{corridor.destinationHub}</span>
                             </div>

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { apiRequest, getToken } from '@/lib/api';
+import { estimateRouteDistanceKm } from '@/lib/route-distance-estimator';
 import { CDMX_DESTINATION_HUBS, EDOMEX_ORIGIN_OPTIONS, ROUTE_SERVICE_SCOPE_OPTIONS, RouteServiceScope } from '@/lib/route-location-options';
 
 type Region = 'edomex' | 'cdmx';
@@ -29,6 +30,7 @@ export default function CreateRoutePage() {
 
   const originOptions = useMemo(() => originOptionsByRegion(originRegion), [originRegion]);
   const destinationOptions = useMemo(() => destinationOptionsByRegion(destinationRegion), [destinationRegion]);
+  const estimatedDistanceKm = useMemo(() => (origin && destination ? estimateRouteDistanceKm(origin, destination) : null), [origin, destination]);
 
   useEffect(() => {
     setOrigin('');
@@ -156,6 +158,11 @@ export default function CreateRoutePage() {
               ))}
             </select>
           </label>
+          <div className="rounded-md border border-cyan-100 bg-cyan-50 p-3 text-sm text-cyan-900">
+            <p className="font-medium">Distancia estimada por sistema</p>
+            <p>{estimatedDistanceKm ? `${estimatedDistanceKm.toFixed(1)} km aprox.` : 'Selecciona origen y destino para calcularla.'}</p>
+            <p className="mt-1 text-xs">La distancia se calcula automaticamente y se usa para validar la tarifa por km.</p>
+          </div>
 
           <label className="block text-sm text-slate-700">
             Precio por asiento (MXN)
@@ -191,7 +198,7 @@ export default function CreateRoutePage() {
           <h2 className="text-lg font-semibold text-slate-900">Flujo recomendado</h2>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-slate-700">
             <li>1) Elige region de inicio y destino.</li>
-            <li>2) Selecciona punto de inicio y destino exactos.</li>
+            <li>2) Selecciona punto de inicio y destino; la app estima los km.</li>
             <li>3) En el feed, pulsa Tomar ruta para personalizar viaje.</li>
             <li>4) Publica para que pasajeros reserven.</li>
           </ul>

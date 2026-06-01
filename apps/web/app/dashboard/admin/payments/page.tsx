@@ -6,18 +6,20 @@ import { getPaymentCheckoutUrl, Payment } from '@/lib/payments';
 import { getPaymentStatusMeta } from '@/lib/status';
 
 const FILTERS = [
-  { value: 'all', label: 'Todos' },
+  { value: 'active', label: 'Activos' },
   { value: 'submitted', label: 'Pendientes revision' },
   { value: 'pending', label: 'Pendientes pago' },
   { value: 'approved', label: 'Validados' },
   { value: 'rejected', label: 'Rechazados' },
-  { value: 'refunded', label: 'Refunded' }
+  { value: 'refunded', label: 'Refunded' },
+  { value: 'archived', label: 'Archivados' },
+  { value: 'all', label: 'Todos' }
 ] as const;
 
 export default function AdminPaymentsPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [pendingReview, setPendingReview] = useState<Payment[]>([]);
-  const [statusFilter, setStatusFilter] = useState<(typeof FILTERS)[number]['value']>('all');
+  const [statusFilter, setStatusFilter] = useState<(typeof FILTERS)[number]['value']>('active');
   const [searchTerm, setSearchTerm] = useState('');
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -36,7 +38,7 @@ export default function AdminPaymentsPage() {
     try {
       const headers = { Authorization: `Bearer ${token}` };
       const [allPayments, pendingReviewData] = await Promise.all([
-        apiRequest<Payment[]>('/payments', { headers }),
+        apiRequest<Payment[]>('/payments?includeArchived=true', { headers }),
         apiRequest<Payment[]>('/admin/payments/pending-review', { headers })
       ]);
       setPayments(allPayments);
@@ -84,7 +86,11 @@ export default function AdminPaymentsPage() {
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
     return payments.filter((payment) => {
-      const matchesStatus = statusFilter === 'all' || payment.status === statusFilter;
+      const matchesStatus =
+        statusFilter === 'all' ||
+        (statusFilter === 'active' && !payment.archivedAt) ||
+        (statusFilter === 'archived' && Boolean(payment.archivedAt)) ||
+        payment.status === statusFilter;
       if (!matchesStatus) return false;
       if (!normalizedSearch) return true;
 
@@ -121,6 +127,7 @@ export default function AdminPaymentsPage() {
 
       <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <p className="text-sm font-semibold text-slate-900">Pendientes por revisar: {pendingReview.length}</p>
+        <p className="mt-1 text-sm text-slate-600">Pagos aprobados archivados: {payments.filter((payment) => payment.archivedAt).length}</p>
         <p className="mt-1 text-sm text-slate-600">
           Si el pasajero ya pago fuera de la app, puedes marcarlo manualmente como validado incluso si aun no hay comprobante cargado.
         </p>
@@ -172,7 +179,10 @@ export default function AdminPaymentsPage() {
                     <p className="text-xs text-slate-500">Viaje # {payment.reservation?.trip?.publicId ?? '-'} | Ruta # {payment.reservation?.trip?.route?.publicId ?? '-'}</p>
                     <p className="text-xs text-slate-500">UUID payment: {payment.id.slice(0, 8)}</p>
                   </div>
-                  <span className={`rounded-full px-2 py-1 text-xs font-medium ${status.className}`}>{status.label}</span>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className={`rounded-full px-2 py-1 text-xs font-medium ${status.className}`}>{status.label}</span>
+                    {payment.archivedAt && <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">Archivado</span>}
+                  </div>
                 </div>
 
                 <p className="mt-3 text-lg font-semibold text-slate-900">${payment.amount.toFixed(2)} MXN</p>

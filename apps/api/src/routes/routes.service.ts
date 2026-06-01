@@ -1,5 +1,6 @@
-﻿import { BadRequestException, ForbiddenException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { FarePolicyService } from '../fare-policy/fare-policy.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { VehiclesService } from '../vehicles/vehicles.service';
 import { AdminCreateRouteDto } from './dto/admin-create-route.dto';
@@ -8,10 +9,11 @@ import { NearbyRoutesQueryDto } from './dto/nearby-routes-query.dto';
 import { TakeViajeDto } from './dto/take-viaje.dto';
 import { UpdateRouteDto } from './dto/update-route.dto';
 import { ROUTE_SERVICE_SCOPE_LABEL } from './route-location-options';
+import { estimateRouteDistanceKm } from './route-distance-estimator';
 
 @Injectable()
 export class RoutesService {
-  constructor(private readonly prisma: PrismaService, private readonly vehiclesService: VehiclesService) {}
+  constructor(private readonly prisma: PrismaService, private readonly vehiclesService: VehiclesService, private readonly farePolicyService: FarePolicyService) {}
 
   async create(userId: string, dto: CreateRouteDto) {
     await this.ensureApprovedDriver(userId);
@@ -40,7 +42,6 @@ export class RoutesService {
         departureTime: '06:00',
         estimatedArrivalTime: '08:00',
         availableSeats: 4,
-        distanceKm: 1,
         pricePerSeat: dto.pricePerSeat,
         status: RouteStatusDto.ACTIVE
       },
@@ -66,8 +67,9 @@ export class RoutesService {
       .map((x: any) => this.mapRoute(x.r, true, null, Number(x.d.toFixed(2))));
   }
 
-  async calculateDistanceFromAddresses(_origin?: string, _destination?: string) {
-    throw new ServiceUnavailableException('Calculo por km desactivado en esta fase.');
+  async calculateDistanceFromAddresses(origin?: string, destination?: string) {
+    const distanceKm = estimateRouteDistanceKm({ origin, destination });
+    return { distanceKm, source: 'estimated_catalog' };
   }
 
   async findMyRoutes(userId: string) {
@@ -149,20 +151,27 @@ export class RoutesService {
 
   private async createRouteRecord(userId: string, dto: CreateRouteDto, includeDriver: boolean) {
     this.assertPrice(dto.pricePerSeat);
-    const data: any = { publicId: await this.nextPublicId('route'), driverUserId: userId, farePolicyId: null, title: dto.title, origin: dto.origin, destination: dto.destination, originPlaceId: dto.originPlaceId, destinationPlaceId: dto.destinationPlaceId, originLat: dto.originLat, originLng: dto.originLng, destinationLat: dto.destinationLat, destinationLng: dto.destinationLng, stopsText: dto.stopsText, weekdaysText: this.serializeWeekdays(dto.weekdays), departureTime: dto.departureTime, estimatedArrivalTime: dto.estimatedArrivalTime, availableSeats: dto.availableSeats, distanceKm: dto.distanceKm, pricePerSeat: this.round(dto.pricePerSeat), farePolicyMode: null, fareRatePerKmApplied: null, maxAllowedPrice: 500, status: this.toStorageStatus(dto.status ?? RouteStatusDto.ACTIVE) };
+    const distanceKm = this.estimateDistanceFromRouteInput(dto);
+    const pricing = await this.farePolicyService.resolveRoutePricing(distanceKm, dto.pricePerSeat);
+    const data: any = { publicId: await this.nextPublicId('route'), driverUserId: userId, farePolicyId: pricing.farePolicyId, title: dto.title, origin: dto.origin, destination: dto.destination, originPlaceId: dto.originPlaceId, destinationPlaceId: dto.destinationPlaceId, originLat: dto.originLat, originLng: dto.originLng, destinationLat: dto.destinationLat, destinationLng: dto.destinationLng, stopsText: dto.stopsText, weekdaysText: this.serializeWeekdays(dto.weekdays), departureTime: dto.departureTime, estimatedArrivalTime: dto.estimatedArrivalTime, availableSeats: dto.availableSeats, distanceKm: pricing.distanceKm, pricePerSeat: pricing.finalPricePerSeat, farePolicyMode: pricing.farePolicyMode, fareRatePerKmApplied: pricing.fareRatePerKmApplied, maxAllowedPrice: pricing.maxAllowedPrice, status: this.toStorageStatus(dto.status ?? RouteStatusDto.ACTIVE) };
     return this.execute(() => this.routeDelegate().create({ data, include: this.routeInclude(includeDriver) }));
   }
 
   private async updateRouteRecord(routeId: string, existing: any, dto: UpdateRouteDto, includeDriver: boolean) {
     const nextPrice = dto.pricePerSeat ?? existing.pricePerSeat;
     this.assertPrice(nextPrice);
-    return this.execute(() => this.routeDelegate().update({ where: { id: routeId }, data: { title: dto.title, origin: dto.origin, destination: dto.destination, originPlaceId: dto.originPlaceId, destinationPlaceId: dto.destinationPlaceId, originLat: dto.originLat, originLng: dto.originLng, destinationLat: dto.destinationLat, destinationLng: dto.destinationLng, stopsText: dto.stopsText, weekdaysText: dto.weekdays ? this.serializeWeekdays(dto.weekdays) : undefined, departureTime: dto.departureTime, estimatedArrivalTime: dto.estimatedArrivalTime, availableSeats: dto.availableSeats, status: dto.status ? this.toStorageStatus(dto.status) : undefined, distanceKm: dto.distanceKm ?? existing.distanceKm, pricePerSeat: this.round(nextPrice), farePolicyId: null, farePolicyMode: null, fareRatePerKmApplied: null, maxAllowedPrice: 500 }, include: this.routeInclude(includeDriver) }));
+    const mergedRoute = { ...existing, ...dto };
+    const distanceKm = this.estimateDistanceFromRouteInput(mergedRoute);
+    const pricing = await this.farePolicyService.resolveRoutePricing(distanceKm, nextPrice);
+    return this.execute(() => this.routeDelegate().update({ where: { id: routeId }, data: { title: dto.title, origin: dto.origin, destination: dto.destination, originPlaceId: dto.originPlaceId, destinationPlaceId: dto.destinationPlaceId, originLat: dto.originLat, originLng: dto.originLng, destinationLat: dto.destinationLat, destinationLng: dto.destinationLng, stopsText: dto.stopsText, weekdaysText: dto.weekdays ? this.serializeWeekdays(dto.weekdays) : undefined, departureTime: dto.departureTime, estimatedArrivalTime: dto.estimatedArrivalTime, availableSeats: dto.availableSeats, status: dto.status ? this.toStorageStatus(dto.status) : undefined, distanceKm: pricing.distanceKm, pricePerSeat: pricing.finalPricePerSeat, farePolicyId: pricing.farePolicyId, farePolicyMode: pricing.farePolicyMode, fareRatePerKmApplied: pricing.fareRatePerKmApplied, maxAllowedPrice: pricing.maxAllowedPrice }, include: this.routeInclude(includeDriver) }));
   }
 
   private async createInitialTripForRoute(route: any) { const tripDate = this.findNextTripDate(this.parseWeekdays(route.weekdaysText)); const existing = await this.tripDelegate().findFirst({ where: { routeId: route.id, tripDate, status: { in: ['scheduled', 'started', 'finished'] } } }); if (existing) return this.mapInitialTrip(existing); const trip = await this.tripDelegate().create({ data: { publicId: await this.nextPublicId('trip'), routeId: route.id, driverUserId: route.driverUserId, tripDate, departureTimeSnapshot: route.departureTime, estimatedArrivalTimeSnapshot: route.estimatedArrivalTime, availableSeatsSnapshot: route.availableSeats, pricePerSeatSnapshot: route.pricePerSeat, status: 'scheduled' } }); return this.mapInitialTrip(trip); }
   private findNextTripDate(weekdays: WeekdayDto[]) { const n = weekdays.length ? weekdays : [this.weekdayFromDate(new Date())]; const nums = n.map((d) => this.weekdayToNumber(d)); const now = new Date(); const base = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0)); for (let i = 0; i <= 7; i += 1) { const c = new Date(base); c.setUTCDate(base.getUTCDate() + i); if (nums.includes(c.getUTCDay())) return c; } return base; }
   private weekdayToNumber(d: WeekdayDto) { const m: Record<WeekdayDto, number> = { [WeekdayDto.SUNDAY]: 0, [WeekdayDto.MONDAY]: 1, [WeekdayDto.TUESDAY]: 2, [WeekdayDto.WEDNESDAY]: 3, [WeekdayDto.THURSDAY]: 4, [WeekdayDto.FRIDAY]: 5, [WeekdayDto.SATURDAY]: 6 }; return m[d]; }
   private weekdayFromDate(date: Date): WeekdayDto { return [WeekdayDto.SUNDAY, WeekdayDto.MONDAY, WeekdayDto.TUESDAY, WeekdayDto.WEDNESDAY, WeekdayDto.THURSDAY, WeekdayDto.FRIDAY, WeekdayDto.SATURDAY][date.getUTCDay()] as WeekdayDto; }
+
+  private estimateDistanceFromRouteInput(route: Pick<CreateRouteDto, 'origin' | 'destination' | 'originLat' | 'originLng' | 'destinationLat' | 'destinationLng'>) { return estimateRouteDistanceKm(route); }
 
   private async getRouteDeleteBlockReason(routeId: string) { const trips = await this.tripDelegate().findMany({ where: { routeId }, select: { status: true, _count: { select: { reservations: true } } } }); if (trips.some((t: any) => (t._count?.reservations ?? 0) > 0)) return 'No se puede eliminar la ruta porque tiene reservaciones relacionadas. Pausala para dejarla fuera de operacion.'; if (trips.some((t: any) => String(t.status || '').toLowerCase() !== 'scheduled')) return 'No se puede eliminar la ruta porque tiene viajes en curso o historicos. Pausala para conservar trazabilidad.'; return null; }
   private async setStatus(userId: string, routeId: string, status: 'active' | 'paused') { await this.ensureApprovedDriver(userId); await this.findOwnedRouteOrThrow(userId, routeId); const route = await this.execute(() => this.routeDelegate().update({ where: { id: routeId }, data: { status }, include: this.routeInclude(false) })); return this.mapRoute(route); }

@@ -29,6 +29,8 @@ type PaymentRecord = {
   reviewedByAdminUserId: string | null;
   reviewedAt: Date | null;
   reviewNotes: string | null;
+  archivedAt: Date | null;
+  archivedByAdminUserId: string | null;
   appCommissionAmount: number;
   driverNetAmount: number;
   createdAt: Date;
@@ -65,8 +67,9 @@ const PAYMENT_PROVIDER = {
 export class PaymentsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAllForAdmin() {
+  async findAllForAdmin(options: { includeArchived?: boolean } = {}) {
     const payments = (await this.paymentDelegate().findMany({
+      where: options.includeArchived ? undefined : { archivedAt: null },
       include: this.adminPaymentInclude(),
       orderBy: [{ createdAt: 'desc' }]
     })) as PaymentRecord[];
@@ -84,13 +87,14 @@ export class PaymentsService {
     return payments.map((payment) => this.mapPayment(payment));
   }
 
-  async myPayments(userId: string, role: string) {
+  async myPayments(userId: string, role: string, options: { includeArchived?: boolean } = {}) {
     if (role !== 'passenger') {
       throw new ForbiddenException('Solo pasajeros pueden ver su lista de pagos');
     }
 
     const payments = (await this.paymentDelegate().findMany({
       where: {
+        archivedAt: options.includeArchived ? undefined : null,
         reservation: {
           passengerUserId: userId
         }
@@ -500,6 +504,16 @@ export class PaymentsService {
       reviewNotes: providerInfo.reviewNotes
     };
 
+    if (normalizedNext === PAYMENT_STATUS.APPROVED) {
+      paymentUpdateData.archivedAt = providerInfo.reviewedAt ?? new Date();
+      paymentUpdateData.archivedByAdminUserId = providerInfo.reviewedByAdminUserId;
+    }
+
+    if (normalizedNext === PAYMENT_STATUS.REFUNDED) {
+      paymentUpdateData.archivedAt = null;
+      paymentUpdateData.archivedByAdminUserId = null;
+    }
+
     const reservationUpdateData: Record<string, unknown> | null =
       normalizedNext === PAYMENT_STATUS.APPROVED
         ? { status: RESERVATION_STATUS.PAID }
@@ -848,6 +862,8 @@ export class PaymentsService {
       reviewedByAdminUserId: payment.reviewedByAdminUserId,
       reviewedAt: payment.reviewedAt,
       reviewNotes: payment.reviewNotes,
+      archivedAt: payment.archivedAt,
+      archivedByAdminUserId: payment.archivedByAdminUserId,
       appCommissionAmount: payment.appCommissionAmount,
       driverNetAmount: payment.driverNetAmount,
       createdAt: payment.createdAt,

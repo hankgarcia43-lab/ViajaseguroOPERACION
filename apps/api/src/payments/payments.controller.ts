@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   Post,
+  Query,
   Req,
   UploadedFile,
   UseGuards,
@@ -35,14 +36,14 @@ export class PaymentsController {
 
   @Get()
   @Roles('admin')
-  findAllAdmin() {
-    return this.paymentsService.findAllForAdmin();
+  findAllAdmin(@Query('includeArchived') includeArchived?: string) {
+    return this.paymentsService.findAllForAdmin({ includeArchived: includeArchived === 'true' });
   }
 
   @Get('my-payments')
   @Roles('passenger')
-  myPayments(@CurrentUser() user: { sub: string; role: string }) {
-    return this.paymentsService.myPayments(user.sub, user.role);
+  myPayments(@CurrentUser() user: { sub: string; role: string }, @Query('includeArchived') includeArchived?: string) {
+    return this.paymentsService.myPayments(user.sub, user.role, { includeArchived: includeArchived === 'true' });
   }
 
   @Get(':id')

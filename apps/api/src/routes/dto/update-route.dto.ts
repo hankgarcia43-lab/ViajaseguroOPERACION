@@ -1,4 +1,4 @@
-﻿import { Transform, Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   ArrayMinSize,
@@ -70,12 +70,6 @@ export class UpdateRouteDto {
   @Min(1)
   @Max(20)
   availableSeats?: number;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0.1)
-  distanceKm?: number;
 
   @IsOptional()
   @Type(() => Number)

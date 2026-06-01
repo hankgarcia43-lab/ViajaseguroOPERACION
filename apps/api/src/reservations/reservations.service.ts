@@ -66,8 +66,6 @@ const TRIP_STATUS = {
   CANCELLED: 'cancelled'
 } as const;
 
-const WEEKLY_RESERVATION_MIN_DAYS = 5;
-const WEEKLY_PROMO_FACTOR = 0.9334;
 
 @Injectable()
 export class ReservationsService {
@@ -157,11 +155,11 @@ export class ReservationsService {
     );
 
     if (selectedWeekdays.length === 0) {
-      throw new BadRequestException('Selecciona al menos un dia de la semana.');
+      throw new BadRequestException('Selecciona el dia del viaje.');
     }
 
-    if (offer.serviceType === 'one_time' && selectedWeekdays.length > 1) {
-      throw new BadRequestException('Este conductor ofrece servicio unico en esta ruta. Selecciona solo un dia.');
+    if (selectedWeekdays.length > 1) {
+      throw new BadRequestException('Para evitar pagos y boletos duplicados, confirma un solo dia por reserva. Puedes elegir varios asientos en ese viaje y se cobraran en un solo pago.');
     }
 
     for (const weekday of selectedWeekdays) {
@@ -239,8 +237,7 @@ export class ReservationsService {
 
     const totalDays = mapped.length;
     const grossAmount = mapped.reduce((sum, reservation) => sum + reservation.totalAmount, 0);
-    const weeklyDiscountApplied = totalDays >= WEEKLY_RESERVATION_MIN_DAYS;
-    const finalAmount = weeklyDiscountApplied ? grossAmount * WEEKLY_PROMO_FACTOR : grossAmount;
+    const finalAmount = grossAmount;
 
     return {
       routeId: offer.routeId,
@@ -251,11 +248,10 @@ export class ReservationsService {
       grossAmount: this.roundCurrency(grossAmount),
       totalAmount: this.roundCurrency(finalAmount),
       finalAmount: this.roundCurrency(finalAmount),
-      weeklyDiscountApplied,
+      weeklyDiscountApplied: false,
       reservations: mapped,
-      message: weeklyDiscountApplied
-        ? 'Reserva semanal creada para ' + totalDays + ' dia(s). Se aplico un beneficio especial en tu total final.'
-        : 'Reserva creada para ' + totalDays + ' dia(s) de la semana.'
+      primaryReservationId: mapped[0]?.id ?? null,
+      message: 'Reserva creada con un solo boleto para ' + normalizedTotalSeats + ' asiento(s). Se genero un solo pago por el total.'
     };
   }
 

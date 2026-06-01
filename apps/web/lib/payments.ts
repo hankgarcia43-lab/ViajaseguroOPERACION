@@ -60,6 +60,8 @@ export interface Payment {
   reviewedByAdminUserId: string | null;
   reviewedAt: string | null;
   reviewNotes: string | null;
+  archivedAt: string | null;
+  archivedByAdminUserId: string | null;
   appCommissionAmount: number;
   driverNetAmount: number;
   createdAt: string;

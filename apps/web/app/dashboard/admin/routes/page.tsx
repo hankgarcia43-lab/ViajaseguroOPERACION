@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { apiRequest, getToken } from '@/lib/api';
+import { estimateRouteDistanceKm } from '@/lib/route-distance-estimator';
 import { CDMX_ALCALDIAS, CDMX_DESTINATION_HUBS, EDOMEX_MUNICIPALITIES, ROUTE_SERVICE_SCOPE_OPTIONS, RouteServiceScope } from '@/lib/route-location-options';
 
 type AdminRoute = {
@@ -61,6 +62,7 @@ export default function AdminRoutesPage() {
 
   const originOptions = useMemo(() => originOptionsByRegion(originRegion), [originRegion]);
   const destinationOptions = useMemo(() => destinationOptionsByRegion(destinationRegion), [destinationRegion]);
+  const estimatedDistanceKm = useMemo(() => (origin && destination ? estimateRouteDistanceKm(origin, destination) : null), [origin, destination]);
 
   const allVisibleSelected = routes.length > 0 && routes.every((route) => selectedRouteIds.includes(route.id));
 
@@ -393,9 +395,14 @@ export default function AdminRoutesPage() {
               ))}
             </select>
           </label>
+            <div className="rounded-md border border-cyan-100 bg-cyan-50 p-3 text-sm text-cyan-900 md:col-span-2">
+              <p className="font-medium">Distancia estimada por sistema</p>
+              <p>{estimatedDistanceKm ? `${estimatedDistanceKm.toFixed(1)} km aprox.` : 'Selecciona origen y destino para calcularla.'}</p>
+              <p className="mt-1 text-xs">La distancia ya no se captura manualmente; se usa para validar la tarifa por km.</p>
+            </div>
 
-          <label className="block text-sm text-slate-700">
-            Precio por asiento (MXN)
+            <label className="block text-sm text-slate-700">
+              Precio por asiento (MXN)
             <input
               type="number"
               min={1}

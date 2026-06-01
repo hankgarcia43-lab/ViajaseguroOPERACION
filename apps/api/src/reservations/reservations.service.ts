@@ -30,6 +30,7 @@ type ReservationRecord = {
 type TripRecord = {
   id: string;
   routeId: string;
+  routeOfferId?: string | null;
   driverUserId: string;
   tripDate: Date;
   departureTimeSnapshot: string;
@@ -122,6 +123,11 @@ export class ReservationsService {
       throw new ForbiddenException('No hay asientos suficientes para esta reserva');
     }
 
+    const selectedWeekdays = this.normalizeSelectedWeekdays(dto.selectedWeekdays);
+    if (selectedWeekdays.length > 0) {
+      return this.createReservationsFromTripWeekdays(passenger.id, trip, selectedWeekdays, dto.totalSeats, companionCount);
+    }
+
     const totalAmount = dto.totalSeats * trip.pricePerSeatSnapshot;
 
     const reservation = await this.createReservationWithTicketAndPayment({
@@ -130,12 +136,120 @@ export class ReservationsService {
       totalSeats: dto.totalSeats,
       companionCount,
       totalAmount,
-      status: RESERVATION_STATUS.CONFIRMED
+      status: RESERVATION_STATUS.CONFIRMED,
+      routeOfferId: trip.routeOfferId ?? undefined
     });
 
     return this.mapReservation(reservation, remainingSeats - dto.totalSeats);
   }
 
+
+
+  private async createReservationsFromTripWeekdays(
+    passengerUserId: string,
+    seedTrip: TripRecord,
+    selectedWeekdays: string[],
+    totalSeats: number,
+    companionCount: number
+  ) {
+    if (selectedWeekdays.length === 0) {
+      throw new BadRequestException('Selecciona al menos un dia para reservar.');
+    }
+
+    if (selectedWeekdays.length > 3) {
+      throw new BadRequestException('Puedes reservar maximo 3 dias por semana en una sola solicitud.');
+    }
+
+    const routeWeekdays = this.parseWeekdays(seedTrip.route?.weekdaysText);
+    if (routeWeekdays.length > 0) {
+      const invalid = selectedWeekdays.find((weekday) => !routeWeekdays.includes(weekday));
+      if (invalid) {
+        throw new BadRequestException(`La ruta no opera en ${this.formatWeekdayLabel(invalid)}. Elige dias disponibles.`);
+      }
+    }
+
+    const items: ReservationRecord[] = [];
+
+    for (const weekday of selectedWeekdays) {
+      const tripDate = this.nextDateForWeekday(weekday);
+      const where: Record<string, unknown> = {
+        routeId: seedTrip.routeId,
+        driverUserId: seedTrip.driverUserId,
+        tripDate,
+        status: {
+          in: [TRIP_STATUS.SCHEDULED, TRIP_STATUS.STARTED]
+        }
+      };
+
+      if (seedTrip.routeOfferId) {
+        where.routeOfferId = seedTrip.routeOfferId;
+      }
+
+      let trip = (await this.tripDelegate().findFirst({ where })) as TripRecord | null;
+
+      if (!trip) {
+        trip = (await this.tripDelegate().create({
+          data: {
+            publicId: await this.nextPublicId('trip'),
+            routeId: seedTrip.routeId,
+            routeOfferId: seedTrip.routeOfferId ?? null,
+            driverUserId: seedTrip.driverUserId,
+            tripDate,
+            departureTimeSnapshot: seedTrip.departureTimeSnapshot,
+            estimatedArrivalTimeSnapshot: seedTrip.estimatedArrivalTimeSnapshot,
+            availableSeatsSnapshot: seedTrip.availableSeatsSnapshot,
+            pricePerSeatSnapshot: seedTrip.pricePerSeatSnapshot,
+            boardingReference: seedTrip.boardingReference,
+            status: TRIP_STATUS.SCHEDULED
+          }
+        })) as TripRecord;
+      }
+
+      const reservedSeats = await this.getReservedSeats(trip.id);
+      const remainingSeats = trip.availableSeatsSnapshot - reservedSeats;
+
+      if (totalSeats > remainingSeats) {
+        throw new ForbiddenException(
+          `No hay asientos suficientes para ${this.formatWeekdayLabel(weekday)}. Disponibles: ${Math.max(remainingSeats, 0)}.`
+        );
+      }
+
+      const reservation = await this.createReservationWithTicketAndPayment({
+        tripId: trip.id,
+        passengerUserId,
+        totalSeats,
+        companionCount,
+        totalAmount: totalSeats * trip.pricePerSeatSnapshot,
+        status: RESERVATION_STATUS.CONFIRMED,
+        routeOfferId: seedTrip.routeOfferId ?? undefined
+      });
+
+      items.push(reservation);
+    }
+
+    const mapped = await Promise.all(
+      items.map(async (reservation) => {
+        const remaining = await this.getRemainingSeats(reservation.tripId);
+        return this.mapReservation(reservation, remaining);
+      })
+    );
+
+    const grossAmount = mapped.reduce((sum, reservation) => sum + reservation.totalAmount, 0);
+
+    return {
+      totalDays: mapped.length,
+      totalSeats,
+      selectedWeekdays,
+      grossAmount: this.roundCurrency(grossAmount),
+      totalAmount: this.roundCurrency(grossAmount),
+      finalAmount: this.roundCurrency(grossAmount),
+      reservations: mapped,
+      primaryReservationId: mapped[0]?.id ?? null,
+      message: mapped.length === 1
+        ? 'Reserva creada para 1 dia. Revisa pagos para continuar.'
+        : 'Reserva semanal creada para ' + mapped.length + ' dias. Revisa pagos para continuar.'
+    };
+  }
 
   async createByOffer(passengerUserId: string, dto: CreateReservationByOfferDto) {
     const passenger = await this.ensureVerifiedPassenger(passengerUserId);
@@ -1067,6 +1181,12 @@ export class ReservationsService {
     if (!approvedPaymentStatuses.includes(normalizedPaymentStatus as any)) {
       throw new ForbiddenException('El pago debe estar validado por admin para permitir abordaje');
     }
+  }
+
+  private normalizeSelectedWeekdays(values?: string[] | null) {
+    return Array.from(
+      new Set((values ?? []).map((item) => String(item).toLowerCase().trim()).filter(Boolean))
+    );
   }
   private nextDateForWeekday(weekday: string) {
     const weekdayMap: Record<string, number> = {

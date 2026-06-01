@@ -7,12 +7,35 @@ import { apiRequest, getToken } from '@/lib/api';
 import { AvailableTrip, CreateReservationPayload, Reservation } from '@/lib/reservations';
 import { getTripStatusMeta } from '@/lib/status';
 
+const WEEKDAY_LABELS: Record<string, string> = {
+  monday: 'Lunes',
+  tuesday: 'Martes',
+  wednesday: 'Miercoles',
+  thursday: 'Jueves',
+  friday: 'Viernes',
+  saturday: 'Sabado',
+  sunday: 'Domingo'
+};
+
+const WEEKDAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
+function formatWeekday(value: string) {
+  return WEEKDAY_LABELS[value] ?? value;
+}
+
+function weekdayFromDate(value: string) {
+  const date = new Date(value);
+  const day = date.getUTCDay();
+  return WEEKDAY_ORDER[day] ?? '';
+}
+
 export default function ReserveTripPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const tripId = params?.id;
 
   const [trip, setTrip] = useState<AvailableTrip | null>(null);
+  const [selectedWeekdays, setSelectedWeekdays] = useState<string[]>([]);
   const [totalSeats, setTotalSeats] = useState<number>(1);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -34,6 +57,11 @@ export default function ReserveTripPage() {
           }
         });
         setTrip(data);
+
+        const routeWeekdays = data.route?.weekdays?.length ? data.route.weekdays : [];
+        const tripWeekday = weekdayFromDate(data.tripDate);
+        const initialWeekday = routeWeekdays.includes(tripWeekday) ? tripWeekday : routeWeekdays[0] ?? tripWeekday;
+        setSelectedWeekdays(initialWeekday ? [initialWeekday] : []);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'No se pudo cargar el viaje');
       } finally {
@@ -44,10 +72,54 @@ export default function ReserveTripPage() {
     void loadTrip();
   }, [tripId]);
 
+  const availableWeekdayList = useMemo(() => {
+    if (!trip) return [];
+    const routeWeekdays = trip.route?.weekdays?.length ? trip.route.weekdays : [];
+    if (routeWeekdays.length > 0) {
+      return WEEKDAY_ORDER.filter((weekday) => routeWeekdays.includes(weekday));
+    }
+    const tripWeekday = weekdayFromDate(trip.tripDate);
+    return tripWeekday ? [tripWeekday] : [];
+  }, [trip]);
+
+  const availableWeekdays = useMemo(() => new Set(availableWeekdayList), [availableWeekdayList]);
+  const selectedDaysCount = selectedWeekdays.length || 1;
+
   const totalAmount = useMemo(() => {
     if (!trip) return 0;
-    return totalSeats * trip.pricePerSeatSnapshot;
-  }, [trip, totalSeats]);
+    return selectedDaysCount * totalSeats * trip.pricePerSeatSnapshot;
+  }, [trip, totalSeats, selectedDaysCount]);
+
+  function selectReservationDays(count: number) {
+    const nextDays = availableWeekdayList.slice(0, count);
+    if (nextDays.length < count) {
+      setError(`Esta ruta solo tiene ${nextDays.length} dia(s) disponible(s).`);
+      setSelectedWeekdays(nextDays);
+      return;
+    }
+
+    setError(null);
+    setSelectedWeekdays(nextDays);
+  }
+
+  function toggleWeekday(weekday: string) {
+    if (!availableWeekdays.has(weekday)) {
+      setError('Ese dia no esta disponible para este viaje.');
+      return;
+    }
+
+    setError(null);
+    setSelectedWeekdays((current) => {
+      if (current.includes(weekday)) {
+        return current.filter((item) => item !== weekday);
+      }
+      if (current.length >= 3) {
+        setError('Puedes seleccionar maximo 3 dias por semana.');
+        return current;
+      }
+      return [...current, weekday];
+    });
+  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -68,16 +140,33 @@ export default function ReserveTripPage() {
       return;
     }
 
+    if (selectedWeekdays.length < 1) {
+      setError('Selecciona al menos 1 dia para viajar.');
+      return;
+    }
+
+    if (selectedWeekdays.length > 3) {
+      setError('Puedes seleccionar maximo 3 dias por semana.');
+      return;
+    }
+
+    const invalidDay = selectedWeekdays.find((weekday) => !availableWeekdays.has(weekday));
+    if (invalidDay) {
+      setError(`La ruta no opera en ${formatWeekday(invalidDay)}.`);
+      return;
+    }
+
     setSaving(true);
     setError(null);
 
     const payload: CreateReservationPayload = {
       tripId: trip.id,
-      totalSeats
+      totalSeats,
+      selectedWeekdays
     };
 
     try {
-      const reservation = await apiRequest<Reservation>('/reservations', {
+      const response = await apiRequest<Reservation | { primaryReservationId?: string | null; totalDays?: number }>('/reservations', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`
@@ -85,7 +174,9 @@ export default function ReserveTripPage() {
         body: JSON.stringify(payload)
       });
 
-      router.push(`/dashboard/my-payments?reservation=${reservation.id}`);
+      const primaryReservationId = 'id' in response ? response.id : response.primaryReservationId;
+      const target = selectedWeekdays.length === 1 && primaryReservationId ? `/dashboard/my-payments?reservation=${primaryReservationId}` : '/dashboard/my-payments';
+      router.push(target);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo crear la reserva');
     } finally {
@@ -125,19 +216,15 @@ export default function ReserveTripPage() {
           </h2>
           <span className={`rounded-full px-2 py-1 text-xs font-medium ${tripStatusMeta.className}`}>{tripStatusMeta.label}</span>
         </div>
-        <p className="text-sm text-slate-700">Fecha: {new Date(trip.tripDate).toLocaleDateString()}</p>
+        <p className="text-sm text-slate-700">Fecha base: {new Date(trip.tripDate).toLocaleDateString()}</p>
         <p className="text-sm text-slate-700">Salida: {trip.departureTimeSnapshot}</p>
         <p className="text-sm text-slate-700">Precio por asiento: ${trip.pricePerSeatSnapshot.toFixed(2)} MXN</p>
         <p className="text-sm text-slate-700">Asientos disponibles: {trip.remainingSeats}</p>
       </article>
 
-      <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-4 text-sm text-cyan-900">
-        <p className="font-semibold">Tip para usuarios frecuentes</p>
-        <p className="mt-1">Si vas a trabajar toda la semana, prioriza tu reserva semanal para asegurar lugar y mantener tarifa estable.</p>
-      </div>
       <form onSubmit={onSubmit} className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <label className="block text-sm text-slate-700">
-          Total de asientos
+          Total de asientos por dia
           <input
             required
             min={1}
@@ -150,11 +237,47 @@ export default function ReserveTripPage() {
           />
         </label>
 
+        <div>
+          <p className="text-sm text-slate-700">Dias para viajar</p>
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            {[1, 2, 3].map((count) => {
+              const active = selectedWeekdays.length === count;
+              const disabled = availableWeekdayList.length === 0;
+              return (
+                <button
+                  key={count}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => selectReservationDays(count)}
+                  className={`rounded-md border px-3 py-2 text-sm font-medium ${active ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-300 text-slate-700'} disabled:cursor-not-allowed disabled:opacity-50`}
+                >
+                  {count} dia{count > 1 ? 's' : ''}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            {WEEKDAY_ORDER.map((weekday) => {
+              const available = availableWeekdays.has(weekday);
+              const checked = selectedWeekdays.includes(weekday);
+              return (
+                <label key={weekday} className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${available ? 'border-slate-300 text-slate-700' : 'border-slate-200 bg-slate-50 text-slate-400'}`}>
+                  <input type="checkbox" checked={checked} disabled={!available} onChange={() => toggleWeekday(weekday)} />
+                  {formatWeekday(weekday)}
+                </label>
+              );
+            })}
+          </div>
+          <p className="mt-2 text-xs text-slate-500">Puedes elegir de 1 a 3 dias disponibles. La app generara las reservas necesarias y te llevara a pagos.</p>
+        </div>
+
         <div className="rounded-md bg-slate-50 p-3 text-sm text-slate-700">
+          <p>Dias seleccionados: {selectedWeekdays.length ? selectedWeekdays.map((day) => formatWeekday(day)).join(', ') : 'Sin seleccionar'}</p>
           <p>Precio por asiento: ${trip.pricePerSeatSnapshot.toFixed(2)} MXN</p>
-          <p>Asientos seleccionados: {totalSeats}</p>
+          <p>Asientos por dia: {totalSeats}</p>
           <p className="mt-1 text-lg font-semibold text-emerald-700">Total a pagar: ${totalAmount.toFixed(2)} MXN</p>
-          <p className="mt-1 text-xs text-slate-500">La app generara un solo pago por el total de tus asientos.</p>
+          <p className="mt-1 text-xs text-slate-500">El total suma dias seleccionados por asientos. Pagaras desde Mercado Pago y subiras comprobante.</p>
         </div>
 
         {error && (
@@ -179,4 +302,3 @@ export default function ReserveTripPage() {
     </section>
   );
 }
-

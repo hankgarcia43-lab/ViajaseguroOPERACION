@@ -18,6 +18,7 @@ type RouteRecord = {
   destinationPlaceId?: string | null;
   departureTime: string;
   estimatedArrivalTime: string;
+  weekdaysText?: string | null;
   availableSeats: number;
   pricePerSeat: number;
   status: string;
@@ -27,6 +28,7 @@ type TripRecord = {
   id: string;
   publicId: number | null;
   routeId: string;
+  routeOfferId: string | null;
   driverUserId: string;
   tripDate: Date;
   departureTimeSnapshot: string;
@@ -593,6 +595,7 @@ export class TripsService {
       id: trip.id,
       publicId: trip.publicId,
       routeId: trip.routeId,
+      routeOfferId: trip.routeOfferId ?? null,
       driverUserId: trip.driverUserId,
       tripDate: trip.tripDate,
       departureTimeSnapshot: trip.departureTimeSnapshot,
@@ -609,6 +612,7 @@ export class TripsService {
             title: trip.route.title,
             origin: trip.route.origin,
             destination: trip.route.destination,
+            weekdays: this.parseWeekdays(trip.route.weekdaysText),
             originLat: trip.route.originLat ?? null,
             originLng: trip.route.originLng ?? null,
             destinationLat: trip.route.destinationLat ?? null,
@@ -628,6 +632,16 @@ export class TripsService {
     };
   }
 
+
+  private parseWeekdays(value?: string | null): string[] {
+    if (!value) return [];
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
   private assertWithinCoverage(lat: number, lng: number) {
     const inCdmx = lat >= 19.048 && lat <= 19.592 && lng >= -99.365 && lng <= -98.94;
     const inEdomex = lat >= 18.3 && lat <= 20.35 && lng >= -100.9 && lng <= -98.35;
@@ -658,13 +672,3 @@ export class TripsService {
     return Math.round(value * 100) / 100;
   }
 }
-
-
-
-
-
-
-
-
-
-

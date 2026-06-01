@@ -638,21 +638,18 @@ export class PaymentsService {
   }
 
   private getManualPaymentConfig() {
-    const methodLabel = process.env.MANUAL_PAYMENT_METHOD_LABEL ?? 'Transferencia bancaria empresarial';
+    const methodLabel = 'Mercado Pago';
     const beneficiary = process.env.MANUAL_PAYMENT_BENEFICIARY ?? 'VIAJA SEGURO';
-    const reference = process.env.MANUAL_PAYMENT_REFERENCE ?? 'VS-RESERVA';
-    const businessAccount = process.env.MANUAL_PAYMENT_BUSINESS_ACCOUNT ?? null;
+    const reference = process.env.MANUAL_PAYMENT_REFERENCE ?? 'VIAJA SEGURO';
+    const businessAccount = null;
     const instructions =
       process.env.MANUAL_PAYMENT_INSTRUCTIONS ??
       [
-        `Beneficiario comercial: ${beneficiary}`,
-        `Metodo o banco: ${methodLabel}`,
-        businessAccount ? `Cuenta o CLABE del negocio: ${businessAccount}` : null,
+        'Abre el link oficial de Mercado Pago desde VIAJA SEGURO.',
+        'Ingresa el monto exacto que aparece en tu reserva.',
         `Referencia: ${reference}`,
-        'Sube tu comprobante para validacion manual del admin.'
-      ]
-        .filter(Boolean)
-        .join('\n');
+        'Guarda tu comprobante y subelo para validacion manual del admin.'
+      ].join('\n');
 
     return {
       methodLabel,
@@ -852,9 +849,9 @@ export class PaymentsService {
       paymentMethodLabel: payment.paymentMethodLabel ?? config.methodLabel,
       paymentBeneficiary: config.beneficiary,
       paymentReference: config.reference,
-      paymentBusinessAccount: config.businessAccount,
+      paymentBusinessAccount: null,
       paymentProcessorLabel: config.processorLabel,
-      paymentProcessingMessage: `El pago sera procesado por ${config.processorLabel} y depositado a la cuenta operativa registrada por la empresa.`,
+      paymentProcessingMessage: `El pago se realiza desde el link oficial de Mercado Pago y sera validado manualmente por el admin.`,
       paymentInstructions: payment.paymentInstructions ?? config.instructions,
       proofFileName: payment.proofFileName,
       proofFilePath: payment.proofFilePath,
@@ -899,8 +896,3 @@ export class PaymentsService {
     };
   }
 }
-
-
-
-
-

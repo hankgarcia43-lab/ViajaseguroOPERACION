@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { ChangeEvent, useEffect, useState } from 'react';
 import { apiRequest, buildApiAssetUrl, getToken } from '@/lib/api';
-import { APP_COMPANY_NAME, formatCurrency, formatShortDate } from '@/lib/app-config';
+import { formatCurrency, formatShortDate } from '@/lib/app-config';
 import { getPaymentFlowMessage, PAYMENT_RETENTION_NOTICE } from '@/lib/payment-ui';
 import { MERCADO_PAGO_DIRECT_PAYMENT_LINK, MERCADO_PAGO_PAYMENT_REFERENCE, getMercadoPagoPaymentUrl, Payment } from '@/lib/payments';
 import { getPaymentStatusMeta, getReservationStatusMeta } from '@/lib/status';
@@ -187,17 +187,6 @@ export default function MyPaymentsPage() {
                     <p className="rounded-2xl bg-white p-3 text-xs text-slate-700">Este pago ya no requiere un pago online.</p>
                   )}
                 </div>
-
-                <div className="mt-3 space-y-1 text-sm text-slate-700">
-                  <p>Beneficiario comercial: {payment.paymentBeneficiary ?? APP_COMPANY_NAME}</p>
-                  <p>Procesador o plataforma: {payment.paymentProcessorLabel ?? APP_COMPANY_NAME}</p>
-                  <p>Metodo o banco: {payment.paymentMethodLabel ?? 'Transferencia bancaria empresarial'}</p>
-                  {payment.paymentBusinessAccount && <p>Cuenta o CLABE del negocio: {payment.paymentBusinessAccount}</p>}
-                  <p>Referencia: {payment.paymentReference ?? 'VS-RESERVA'}</p>
-                </div>
-
-                {payment.paymentProcessingMessage && <p className="mt-3 rounded-md bg-slate-100 p-3 text-sm text-slate-700">{payment.paymentProcessingMessage}</p>}
-                <p className="mt-3 whitespace-pre-line text-xs text-slate-600">{payment.paymentInstructions}</p>
                 <p className="mt-3 rounded-md bg-slate-100 p-3 text-sm text-slate-700">{getPaymentFlowMessage(payment.status)}</p>
                 <p className="mt-3 rounded-md bg-brand-50 p-3 text-xs text-brand-800">{PAYMENT_RETENTION_NOTICE}</p>
                 <p className="mt-3 text-sm text-slate-700">
@@ -218,7 +207,7 @@ export default function MyPaymentsPage() {
 
                   {canUploadProof && (
                     <label className="cursor-pointer rounded-md border border-sky-300 px-3 py-2 text-sm text-sky-700">
-                      {isBusy ? 'Enviando...' : payment.status === 'rejected' ? 'Reenviar comprobante' : 'Subir comprobante manual'}
+                      {isBusy ? 'Enviando...' : payment.status === 'rejected' ? 'Reenviar comprobante' : 'Subir comprobante'}
                       <input
                         type="file"
                         accept=".jpg,.jpeg,.png,.pdf"

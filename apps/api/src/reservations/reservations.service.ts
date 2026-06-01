@@ -158,8 +158,8 @@ export class ReservationsService {
       throw new BadRequestException('Selecciona el dia del viaje.');
     }
 
-    if (selectedWeekdays.length > 1) {
-      throw new BadRequestException('Para evitar pagos y boletos duplicados, confirma un solo dia por reserva. Puedes elegir varios asientos en ese viaje y se cobraran en un solo pago.');
+    if (selectedWeekdays.length > 3) {
+      throw new BadRequestException('Puedes reservar maximo 3 dias por semana en una sola solicitud.');
     }
 
     for (const weekday of selectedWeekdays) {
@@ -251,7 +251,9 @@ export class ReservationsService {
       weeklyDiscountApplied: false,
       reservations: mapped,
       primaryReservationId: mapped[0]?.id ?? null,
-      message: 'Reserva creada con un solo boleto para ' + normalizedTotalSeats + ' asiento(s). Se genero un solo pago por el total.'
+      message: selectedWeekdays.length === 1
+        ? 'Reserva creada con un boleto para ' + normalizedTotalSeats + ' asiento(s). Se genero el pago por el total.'
+        : 'Reserva semanal creada para ' + selectedWeekdays.length + ' dias. Revisa tus pagos para cubrir cada fecha reservada.'
     };
   }
 
@@ -920,11 +922,11 @@ export class ReservationsService {
               create: {
                 amount: this.roundCurrency(data.totalAmount),
                 status: PAYMENT_STATUS.PENDING,
-                provider: 'manual_transfer',
-                paymentMethodLabel: process.env.MANUAL_PAYMENT_METHOD_LABEL ?? 'Transferencia bancaria',
+                provider: 'mercadopago_link',
+                paymentMethodLabel: 'Mercado Pago',
                 paymentInstructions:
                   process.env.MANUAL_PAYMENT_INSTRUCTIONS ??
-                  `Beneficiario: ${process.env.MANUAL_PAYMENT_BENEFICIARY ?? 'VIAJA SEGURO'}\nMetodo: ${process.env.MANUAL_PAYMENT_METHOD_LABEL ?? 'Transferencia bancaria'}\nReferencia: ${process.env.MANUAL_PAYMENT_REFERENCE ?? 'VS-RESERVA'}\nEnvia tu comprobante para validacion manual del admin.`,
+                  'Abre el link oficial de Mercado Pago, ingresa el monto exacto de esta reserva, guarda tu comprobante y subelo en VIAJA SEGURO para validacion del admin.',
                 appCommissionAmount: this.roundCurrency(data.totalAmount * appCommissionRate),
                 driverNetAmount: this.roundCurrency(data.totalAmount * (1 - appCommissionRate))
               }
@@ -1010,21 +1012,18 @@ export class ReservationsService {
   }
 
   private getManualPaymentConfig() {
-    const methodLabel = process.env.MANUAL_PAYMENT_METHOD_LABEL ?? 'Transferencia bancaria empresarial';
+    const methodLabel = 'Mercado Pago';
     const beneficiary = process.env.MANUAL_PAYMENT_BENEFICIARY ?? 'VIAJA SEGURO';
-    const reference = process.env.MANUAL_PAYMENT_REFERENCE ?? 'VS-RESERVA';
-    const businessAccount = process.env.MANUAL_PAYMENT_BUSINESS_ACCOUNT ?? null;
+    const reference = process.env.MANUAL_PAYMENT_REFERENCE ?? 'VIAJA SEGURO';
+    const businessAccount = null;
     const instructions =
       process.env.MANUAL_PAYMENT_INSTRUCTIONS ??
       [
-        `Beneficiario comercial: ${beneficiary}`,
-        `Metodo o banco: ${methodLabel}`,
-        businessAccount ? `Cuenta o CLABE del negocio: ${businessAccount}` : null,
+        'Abre el link oficial de Mercado Pago desde VIAJA SEGURO.',
+        'Ingresa el monto exacto que aparece en tu reserva.',
         `Referencia: ${reference}`,
-        'Sube tu comprobante para validacion manual del admin.'
-      ]
-        .filter(Boolean)
-        .join('\n');
+        'Guarda tu comprobante y subelo para validacion manual del admin.'
+      ].join('\n');
 
     return {
       methodLabel,
@@ -1173,9 +1172,9 @@ export class ReservationsService {
             paymentMethodLabel: reservation.payment.paymentMethodLabel ?? paymentConfig.methodLabel,
             paymentBeneficiary: paymentConfig.beneficiary,
             paymentReference: paymentConfig.reference,
-            paymentBusinessAccount: paymentConfig.businessAccount,
+            paymentBusinessAccount: null,
             paymentProcessorLabel: paymentConfig.processorLabel,
-            paymentProcessingMessage: `El pago sera procesado por ${paymentConfig.processorLabel} y depositado a la cuenta operativa registrada por la empresa.`,
+            paymentProcessingMessage: `El pago se realiza desde el link oficial de Mercado Pago y sera validado manualmente por el admin.`,
             paymentInstructions: reservation.payment.paymentInstructions ?? paymentConfig.instructions,
             proofFileName: reservation.payment.proofFileName ?? null,
             proofFilePath: reservation.payment.proofFilePath ?? null,
@@ -1229,4 +1228,3 @@ export class ReservationsService {
     };
   }
 }
-

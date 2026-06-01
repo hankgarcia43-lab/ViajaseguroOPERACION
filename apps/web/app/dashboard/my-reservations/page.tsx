@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { ChangeEvent, useEffect, useState } from 'react';
 import { apiRequest, buildApiAssetUrl, getToken } from '@/lib/api';
-import { APP_COMPANY_NAME, formatCurrency, formatShortDate } from '@/lib/app-config';
+import { formatCurrency, formatShortDate } from '@/lib/app-config';
 import { getPaymentFlowMessage, PAYMENT_RETENTION_NOTICE } from '@/lib/payment-ui';
 import { MERCADO_PAGO_PAYMENT_REFERENCE, getMercadoPagoPaymentUrl, Payment } from '@/lib/payments';
 import { Reservation } from '@/lib/reservations';
@@ -174,19 +174,12 @@ export default function MyReservationsPage() {
 
                 {reservation.payment && (
                   <div className="mt-3 space-y-2 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-                    <p className="font-medium text-slate-900">Pago del negocio</p>
+                    <p className="font-medium text-slate-900">Pago con Mercado Pago</p>
                     <p>
                       Estado pago:{' '}
                       <span className={`rounded-full px-2 py-1 text-xs font-medium ${paymentStatusMeta.className}`}>{paymentStatusMeta.label}</span>
                     </p>
                     <p>Monto: {formatCurrency(reservation.payment.amount)}</p>
-                    <p>Beneficiario comercial: {reservation.payment.paymentBeneficiary ?? APP_COMPANY_NAME}</p>
-                    <p>Procesador o plataforma: {reservation.payment.paymentProcessorLabel ?? APP_COMPANY_NAME}</p>
-                    <p>Metodo o banco: {reservation.payment.paymentMethodLabel ?? 'Transferencia bancaria empresarial'}</p>
-                    {reservation.payment.paymentBusinessAccount && <p>Cuenta o CLABE del negocio: {reservation.payment.paymentBusinessAccount}</p>}
-                    <p>Referencia: {reservation.payment.paymentReference ?? 'VS-RESERVA'}</p>
-                    {reservation.payment.paymentProcessingMessage && <p className="rounded-md bg-slate-100 p-3 text-sm text-slate-700">{reservation.payment.paymentProcessingMessage}</p>}
-                    <p className="whitespace-pre-line text-xs text-slate-600">{reservation.payment.paymentInstructions}</p>
                     <div className="space-y-2 rounded-md border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-950">
                       <p className="font-semibold">Pago seguro en linea</p>
                       <p className="text-xs text-emerald-900">Paga directo en Mercado Pago con el monto exacto de tu reserva.</p>

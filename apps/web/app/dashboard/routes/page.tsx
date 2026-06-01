@@ -33,7 +33,8 @@ export default function RoutesPage() {
   const [myOffers, setMyOffers] = useState<RouteOffer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedCorridorId, setSelectedCorridorId] = useState<string>('norte-indios-verdes');
+  const [selectedCorridorId, setSelectedCorridorId] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const role = me?.role ?? sessionRole;
   const isDriver = role === 'driver';
@@ -70,14 +71,24 @@ export default function RoutesPage() {
   }, [routes]);
 
   const selectedCorridor = useMemo(
-    () => ROUTE_CORRIDORS.find((corridor) => corridor.id === selectedCorridorId) ?? ROUTE_CORRIDORS[0],
+    () => (selectedCorridorId === 'all' ? null : ROUTE_CORRIDORS.find((corridor) => corridor.id === selectedCorridorId) ?? null),
     [selectedCorridorId]
   );
 
   const visibleGroupedRoutes = useMemo(() => {
-    if (!selectedCorridor) return groupedRoutes;
-    return groupedRoutes.filter((group) => group.corridorName === selectedCorridor.name);
-  }, [groupedRoutes, selectedCorridor]);
+    const normalizedSearch = normalizeRouteText(searchTerm.trim());
+    return groupedRoutes
+      .filter((group) => !selectedCorridor || group.corridorName === selectedCorridor.name)
+      .map((group) => ({
+        ...group,
+        routes: normalizedSearch
+          ? group.routes.filter((route) =>
+              normalizeRouteText(`${route.title ?? ''} ${route.origin} ${route.destination} ${route.stopsText ?? ''}`).includes(normalizedSearch)
+            )
+          : group.routes
+      }))
+      .filter((group) => group.routes.length > 0);
+  }, [groupedRoutes, searchTerm, selectedCorridor]);
 
   const priorityRoutes = useMemo(() => {
     return routes
@@ -169,6 +180,29 @@ export default function RoutesPage() {
         )}
       </header>
 
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
+          <label className="block text-sm text-slate-700">
+            Buscar ruta por municipio, destino o punto clave
+            <input
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Ej. Tecamac, Pantitlan, Buenavista, Indios Verdes"
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+            />
+          </label>
+          <label className="block text-sm text-slate-700">
+            Corredor
+            <select value={selectedCorridorId} onChange={(event) => selectCorridor(event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2">
+              <option value="all">Todos los corredores</option>
+              {ROUTE_CORRIDORS.map((corridor) => (
+                <option key={corridor.id} value={corridor.id}>{corridor.name}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <p className="mt-2 text-xs text-slate-500">Tip: primero elige destino fuerte; despues compara precio, horario y conductores activos.</p>
+      </section>
       {priorityRoutes.length > 0 && (
         <section className="rounded-2xl border border-brand-200 bg-gradient-to-br from-blue-50 via-white to-cyan-50 p-4 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -241,8 +275,8 @@ export default function RoutesPage() {
         <div className="space-y-6">
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-700">Lista operativa</p>
-            <h2 className="mt-1 text-lg font-semibold text-slate-900">{selectedCorridor?.name ?? 'Rutas publicadas'}</h2>
-            <p className="text-sm text-slate-600">{isDriver ? selectedCorridor.driverHint : selectedCorridor.passengerHint}</p>
+            <h2 className="mt-1 text-lg font-semibold text-slate-900">{selectedCorridor?.name ?? 'Todas las rutas publicadas'}</h2>
+            <p className="text-sm text-slate-600">{selectedCorridor ? (isDriver ? selectedCorridor.driverHint : selectedCorridor.passengerHint) : 'Filtra por destino fuerte o busca por municipio para elegir mas rapido.'}</p>
           </div>
           {visibleGroupedRoutes.length === 0 ? (
             <p className="rounded-xl border border-slate-200 bg-white p-6 text-slate-700">No hay rutas activas por ahora. En produccion las rutas troncales se sincronizan automaticamente al arrancar el backend.</p>
@@ -259,8 +293,8 @@ export default function RoutesPage() {
                     .sort((a, b) => {
                       const aCount = a.activeDriversCount ?? 0;
                       const bCount = b.activeDriversCount ?? 0;
-                      const priorityA = a.templateKey === selectedCorridor?.primaryTemplateKey ? 2 : isPriorityIndiosVerdesRoute(a) ? 1 : 0;
-                      const priorityB = b.templateKey === selectedCorridor?.primaryTemplateKey ? 2 : isPriorityIndiosVerdesRoute(b) ? 1 : 0;
+                      const priorityA = selectedCorridor && a.templateKey === selectedCorridor.primaryTemplateKey ? 2 : isPriorityIndiosVerdesRoute(a) ? 1 : 0;
+                      const priorityB = selectedCorridor && b.templateKey === selectedCorridor.primaryTemplateKey ? 2 : isPriorityIndiosVerdesRoute(b) ? 1 : 0;
                       if (priorityA !== priorityB) return priorityB - priorityA;
                       return isDriver ? aCount - bCount : bCount - aCount;
                     })

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { apiRequest, getToken } from '@/lib/api';
@@ -27,7 +27,7 @@ export default function AdminRefundsPage() {
 
     try {
       const [paymentsData, refundsData] = await Promise.all([
-        apiRequest<Payment[]>('/payments', {
+        apiRequest<Payment[]>('/payments?includeArchived=true', {
           headers: { Authorization: `Bearer ${token}` }
         }),
         apiRequest<Refund[]>('/refunds', {

@@ -14,6 +14,8 @@ export default function MyPaymentsPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [busyReservationId, setBusyReservationId] = useState<string | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
+  const [focusReservationId, setFocusReservationId] = useState<string | null>(null);
 
   async function loadPayments() {
     const token = getToken();
@@ -24,7 +26,7 @@ export default function MyPaymentsPage() {
     }
 
     try {
-      const data = await apiRequest<Payment[]>('/payments/my-payments', {
+      const data = await apiRequest<Payment[]>('/payments/my-payments?includeArchived=true', {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -91,6 +93,11 @@ export default function MyPaymentsPage() {
     return <p className="text-slate-700">Cargando pagos...</p>;
   }
 
+  const scopedPayments = focusReservationId ? payments.filter((payment) => payment.reservationId === focusReservationId) : payments;
+  const activePayments = scopedPayments.filter((payment) => !payment.archivedAt);
+  const archivedPayments = scopedPayments.filter((payment) => payment.archivedAt);
+  const visiblePayments = showArchived ? archivedPayments : activePayments;
+
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -118,11 +125,20 @@ export default function MyPaymentsPage() {
         </a>
       </article>
 
-      {payments.length === 0 ? (
-        <p className="rounded-xl border border-slate-200 bg-white p-6 text-slate-700">Aun no tienes pagos asociados.</p>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={() => setShowArchived(false)} className={`rounded-full px-3 py-2 text-sm ${!showArchived ? 'bg-brand-500 text-white' : 'border border-slate-300 text-slate-700'}`}>
+          Pagos activos ({activePayments.length})
+        </button>
+        <button type="button" onClick={() => setShowArchived(true)} className={`rounded-full px-3 py-2 text-sm ${showArchived ? 'bg-brand-500 text-white' : 'border border-slate-300 text-slate-700'}`}>
+          Historial aprobado ({archivedPayments.length})
+        </button>
+      </div>
+
+      {visiblePayments.length === 0 ? (
+        <p className="rounded-xl border border-slate-200 bg-white p-6 text-slate-700">{showArchived ? 'Aun no tienes pagos aprobados archivados.' : 'Aun no tienes pagos activos asociados.'}</p>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          {payments.map((payment) => {
+          {visiblePayments.map((payment) => {
             const paymentStatusMeta = getPaymentStatusMeta(payment.status);
             const reservationStatusMeta = getReservationStatusMeta(payment.reservation?.status);
             const isBusy = busyReservationId === payment.reservationId;

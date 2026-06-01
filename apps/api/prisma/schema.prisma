@@ -32,6 +32,7 @@ model User {
   refundsHandled      Refund[]          @relation("RefundAdminUser")
   weeklyPayouts       WeeklyPayout[]    @relation("WeeklyPayoutDriver")
   reviewedPayments    Payment[]         @relation("PaymentReviewedByAdmin")
+  archivedPayments    Payment[]         @relation("PaymentArchivedByAdmin")
   createdFarePolicies FarePolicy[]      @relation("FarePolicyCreatedByAdmin")
   routeOffers         RouteOffer[]
   incidentsReported   IncidentReport[]  @relation("IncidentReporter")
@@ -206,6 +207,8 @@ model Payment {
   reviewedByAdminUserId String?   @map("reviewed_by_admin_user_id")
   reviewedAt            DateTime? @map("reviewed_at")
   reviewNotes           String?   @map("review_notes")
+  archivedAt            DateTime? @map("archived_at")
+  archivedByAdminUserId String?   @map("archived_by_admin_user_id")
   appCommissionAmount   Float     @map("app_commission_amount")
   driverNetAmount       Float     @map("driver_net_amount")
   createdAt             DateTime  @default(now()) @map("created_at")
@@ -214,11 +217,14 @@ model Payment {
   reservation     Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
   refund          Refund?
   reviewedByAdmin User?       @relation("PaymentReviewedByAdmin", fields: [reviewedByAdminUserId], references: [id], onDelete: SetNull)
+  archivedByAdmin User?       @relation("PaymentArchivedByAdmin", fields: [archivedByAdminUserId], references: [id], onDelete: SetNull)
 
   @@index([status])
+  @@index([archivedAt])
   @@index([reservationId])
   @@index([providerPreferenceId])
   @@index([reviewedByAdminUserId])
+  @@index([archivedByAdminUserId])
   @@map("payments")
 }
 

@@ -78,17 +78,16 @@ export default function RouteOffersDetailPage() {
     return selectedWeekdays.length * seats * selectedOffer.pricePerSeat;
   }, [selectedOffer, totalSeats, selectedWeekdays]);
 
-  const weeklyPromoApplied = selectedWeekdays.length >= 5;
-  const finalAmount = weeklyPromoApplied ? grossAmount * 0.9334 : grossAmount;
+  const finalAmount = grossAmount;
 
-  function toggleWeekday(weekday: string) {
+  function selectWeekday(weekday: string) {
     if (!availableWeekdays.has(weekday)) {
       setError('Ese dia no esta disponible para el conductor seleccionado.');
       return;
     }
 
     setError(null);
-    setSelectedWeekdays((prev) => (prev.includes(weekday) ? prev.filter((item) => item !== weekday) : [...prev, weekday]));
+    setSelectedWeekdays([weekday]);
   }
 
   async function reserveByOffer(event: FormEvent<HTMLFormElement>) {
@@ -111,13 +110,13 @@ export default function RouteOffersDetailPage() {
     }
 
     if (selectedWeekdays.length === 0) {
-      setError('Selecciona al menos un dia de la semana.');
+      setError('Selecciona el dia del viaje.');
       return;
     }
 
     const hasInvalid = selectedWeekdays.some((weekday) => !availableWeekdays.has(weekday));
     if (hasInvalid) {
-      setError('Hay dias seleccionados fuera de la disponibilidad del conductor.');
+      setError('El dia seleccionado no esta dentro de la disponibilidad del conductor.');
       return;
     }
 
@@ -132,7 +131,7 @@ export default function RouteOffersDetailPage() {
     };
 
     try {
-      const response = await apiRequest<{ totalDays: number; totalAmount: number; grossAmount: number; finalAmount: number; weeklyDiscountApplied: boolean; message: string }>('/reservations/by-offer', {
+      const response = await apiRequest<{ totalDays: number; totalAmount: number; grossAmount: number; finalAmount: number; weeklyDiscountApplied: boolean; primaryReservationId?: string | null; message: string }>('/reservations/by-offer', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload)
@@ -140,7 +139,7 @@ export default function RouteOffersDetailPage() {
       setSuccess(response.message + ` Total final: $${response.finalAmount.toFixed(2)} MXN. Te llevamos a pagos para subir tu comprobante.`);
       setSelectedWeekdays([]);
       setTimeout(() => {
-        router.push('/dashboard/my-payments');
+        router.push(response.primaryReservationId ? `/dashboard/my-payments?reservation=${response.primaryReservationId}` : '/dashboard/my-payments');
       }, 700);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo crear la reserva por dias.');
@@ -156,7 +155,7 @@ export default function RouteOffersDetailPage() {
       <header className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <h1 className="text-2xl font-semibold text-slate-900">Elige conductor y aparta tu lugar</h1>
         <p className="text-sm text-slate-600">
-          Ruta: {data?.route.title || `${data?.route.origin ?? ''} -> ${data?.route.destination ?? ''}`}. Revisa referencia de abordaje, dias disponibles, modalidad y precio antes de reservar. Si reservas varios dias, la app te muestra el total final antes de pagar.
+          Ruta: {data?.route.title || `${data?.route.origin ?? ''} -> ${data?.route.destination ?? ''}`}. Revisa referencia de abordaje, dia disponible, modalidad y precio antes de reservar. Cada reserva genera un solo pago y un solo boleto para todos los asientos.
         </p>
         {corridor && (
           <div className="mt-3 rounded-lg border border-cyan-200 bg-cyan-50 p-3 text-sm text-cyan-900">
@@ -200,8 +199,8 @@ export default function RouteOffersDetailPage() {
         </div>
 
         <form onSubmit={reserveByOffer} className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Arma tu reserva semanal o por dia</h2>
-          <p className="text-sm text-slate-600">Selecciona los dias que realmente vas a viajar. Reservar varios dias te ayuda a asegurar lugar y mantener tu traslado ordenado.</p>
+          <h2 className="text-lg font-semibold text-slate-900">Arma tu reserva</h2>
+          <p className="text-sm text-slate-600">Selecciona un dia y la cantidad de asientos. La app generara un solo pago y un solo boleto para todos los asientos de ese viaje.</p>
 
           <label className="block text-sm text-slate-700">
             Asientos
@@ -209,7 +208,7 @@ export default function RouteOffersDetailPage() {
           </label>
 
           <div>
-            <p className="text-sm text-slate-700">Elige dias de la semana</p>
+            <p className="text-sm text-slate-700">Elige el dia del viaje</p>
             <div className="mt-2 grid grid-cols-2 gap-2">
               {WEEKDAY_ORDER.map((weekday) => {
                 const available = availableWeekdays.has(weekday);
@@ -217,32 +216,30 @@ export default function RouteOffersDetailPage() {
                 return (
                   <label key={weekday} className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${available ? 'border-slate-300 text-slate-700' : 'border-slate-200 text-slate-400 bg-slate-50'}`}>
                     <input
-                      type="checkbox"
+                      type="radio"
+                      name="weekday"
                       checked={checked}
                       disabled={!available}
-                      onChange={() => toggleWeekday(weekday)}
+                      onChange={() => selectWeekday(weekday)}
                     />
                     {formatWeekdayInSpanish(weekday)}
                   </label>
                 );
               })}
             </div>
-            <p className="mt-2 text-xs text-slate-500">Solo puedes elegir dias que el conductor tenga publicados. Cambia de conductor si necesitas otro horario.</p>
+            <p className="mt-2 text-xs text-slate-500">Solo puedes elegir un dia por reserva para evitar pagos duplicados. Si necesitas otro dia, crea otra reserva despues.</p>
           </div>
 
           <div className="rounded-md bg-slate-50 p-3 text-sm text-slate-700">
-            <p>Dias seleccionados: {selectedWeekdays.length}</p>
-            {selectedWeekdays.length > 0 ? (
-              <p className="mt-1 text-xs text-slate-600">{selectedWeekdays.map((day) => formatWeekdayInSpanish(day)).join(', ')}</p>
-            ) : null}
-            <p className="mt-2 text-slate-600">Total bruto: ${grossAmount.toFixed(2)} MXN</p>
-            {weeklyPromoApplied ? <p className="mt-1 text-xs font-medium text-emerald-700">Reserva semanal detectada: se aplicara un beneficio especial al pagar.</p> : null}
+            <p>Dia seleccionado: {selectedWeekdays.length ? formatWeekdayInSpanish(selectedWeekdays[0]) : 'Sin seleccionar'}</p>
+            <p className="mt-2 text-slate-600">Precio por asiento: ${selectedOffer?.pricePerSeat.toFixed(2) ?? '0.00'} MXN</p>
+            <p className="text-slate-600">Asientos: {Number.parseInt(totalSeats, 10) || 0}</p>
             <p className="mt-2 text-lg font-semibold text-emerald-700">Total final: ${finalAmount.toFixed(2)} MXN</p>
-            <p className="mt-1 text-xs text-slate-500">Cada reserva se cobrara por el total de asientos seleccionados, no asiento por asiento.</p>
+            <p className="mt-1 text-xs text-slate-500">Se generara un solo pago y un solo boleto para validar todos los asientos reservados.</p>
           </div>
 
           <button type="submit" disabled={saving || !selectedOffer} className="w-full rounded-md bg-brand-500 px-4 py-2 font-medium text-white disabled:opacity-60">
-            {saving ? 'Reservando...' : 'Confirmar reserva y pagar'}
+            {saving ? 'Reservando...' : 'Confirmar 1 boleto y pagar'}
           </button>
 
           <Link href="/dashboard/my-reservations" className="block text-center text-sm text-brand-700 underline">Ver mis reservas</Link>

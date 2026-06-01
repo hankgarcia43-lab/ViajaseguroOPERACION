@@ -1,4 +1,4 @@
-﻿export const WEEKDAY_OPTIONS = [
+export const WEEKDAY_OPTIONS = [
   { value: 'monday', label: 'Lunes' },
   { value: 'tuesday', label: 'Martes' },
   { value: 'wednesday', label: 'Miercoles' },
@@ -70,7 +70,6 @@ export interface DriverRoute {
   departureTime: string;
   estimatedArrivalTime: string;
   availableSeats: number;
-  distanceKm: number;
   pricePerSeat: number;
   farePolicyMode: string | null;
   fareRatePerKmApplied: number | null;
@@ -117,7 +116,6 @@ export interface RoutePayload {
   departureTime: string;
   estimatedArrivalTime: string;
   availableSeats: number;
-  distanceKm: number;
   pricePerSeat: number;
 }
 

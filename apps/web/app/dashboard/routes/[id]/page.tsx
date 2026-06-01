@@ -69,7 +69,13 @@ export default function RouteOffersDetailPage() {
   }, [data]);
 
   const selectedOffer = useMemo(() => data?.offers.find((item) => item.id === selectedOfferId) ?? null, [data, selectedOfferId]);
-  const availableWeekdays = useMemo(() => new Set(selectedOffer?.weekdays ?? []), [selectedOffer]);
+
+  useEffect(() => {
+    setSelectedWeekdays([]);
+    setError(null);
+  }, [selectedOfferId]);
+  const availableWeekdayList = useMemo(() => WEEKDAY_ORDER.filter((weekday) => selectedOffer?.weekdays.includes(weekday)), [selectedOffer]);
+  const availableWeekdays = useMemo(() => new Set(availableWeekdayList), [availableWeekdayList]);
 
   const grossAmount = useMemo(() => {
     if (!selectedOffer) return 0;
@@ -97,6 +103,23 @@ export default function RouteOffersDetailPage() {
       }
       return [...current, weekday];
     });
+  }
+
+  function selectReservationDays(count: number) {
+    if (!selectedOffer) {
+      setError('Selecciona un conductor disponible.');
+      return;
+    }
+
+    const nextDays = availableWeekdayList.slice(0, count);
+    if (nextDays.length < count) {
+      setError(`Este conductor solo tiene ${nextDays.length} dia(s) disponible(s) en esta ruta. Elige otro conductor o pide que publique mas dias.`);
+      setSelectedWeekdays(nextDays);
+      return;
+    }
+
+    setError(null);
+    setSelectedWeekdays(nextDays);
   }
 
   async function reserveByOffer(event: FormEvent<HTMLFormElement>) {
@@ -219,7 +242,24 @@ export default function RouteOffersDetailPage() {
 
           <div>
             <p className="text-sm text-slate-700">Elige de 1 a 3 dias</p>
-            <div className="mt-2 grid grid-cols-2 gap-2">
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              {[1, 2, 3].map((count) => {
+                const active = selectedWeekdays.length === count;
+                const disabled = availableWeekdayList.length === 0;
+                return (
+                  <button
+                    key={count}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => selectReservationDays(count)}
+                    className={`rounded-md border px-3 py-2 text-sm font-medium ${active ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-300 text-slate-700'} disabled:cursor-not-allowed disabled:opacity-50`}
+                  >
+                    {count} dia{count > 1 ? 's' : ''}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
               {WEEKDAY_ORDER.map((weekday) => {
                 const available = availableWeekdays.has(weekday);
                 const checked = selectedWeekdays.includes(weekday);
@@ -236,7 +276,7 @@ export default function RouteOffersDetailPage() {
                 );
               })}
             </div>
-            <p className="mt-2 text-xs text-slate-500">Puedes elegir hasta 3 dias por semana. Si necesitas mas dias, crea otra solicitud despues.</p>
+            <p className="mt-2 text-xs text-slate-500">Puedes elegir hasta 3 dias disponibles del conductor. Si solo aparece 1 dia activo, ese conductor publico una disponibilidad de un solo dia.</p>
           </div>
 
           <div className="rounded-md bg-slate-50 p-3 text-sm text-slate-700">

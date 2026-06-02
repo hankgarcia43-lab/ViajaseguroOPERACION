@@ -74,7 +74,7 @@ export default function RouteOffersDetailPage() {
     setSelectedWeekdays([]);
     setError(null);
   }, [selectedOfferId]);
-  const availableWeekdayList = useMemo(() => WEEKDAY_ORDER.filter((weekday) => selectedOffer?.weekdays.includes(weekday)), [selectedOffer]);
+  const availableWeekdayList = useMemo(() => (selectedOffer ? WEEKDAY_ORDER : []), [selectedOffer]);
   const availableWeekdays = useMemo(() => new Set(availableWeekdayList), [availableWeekdayList]);
 
   const grossAmount = useMemo(() => {
@@ -113,7 +113,7 @@ export default function RouteOffersDetailPage() {
 
     const nextDays = availableWeekdayList.slice(0, count);
     if (nextDays.length < count) {
-      setError(`Este conductor solo tiene ${nextDays.length} dia(s) disponible(s) en esta ruta. Elige otro conductor o pide que publique mas dias.`);
+      setError(`Selecciona al menos 1 dia disponible.`);
       setSelectedWeekdays(nextDays);
       return;
     }
@@ -276,7 +276,7 @@ export default function RouteOffersDetailPage() {
                 );
               })}
             </div>
-            <p className="mt-2 text-xs text-slate-500">Puedes elegir hasta 3 dias disponibles del conductor. Si solo aparece 1 dia activo, ese conductor publico una disponibilidad de un solo dia.</p>
+            <p className="mt-2 text-xs text-slate-500">Puedes elegir de 1 a 3 dias de la semana. La app sumara todos los dias y generara un solo pago semanal.</p>
           </div>
 
           <div className="rounded-md bg-slate-50 p-3 text-sm text-slate-700">

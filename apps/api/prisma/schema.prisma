@@ -162,6 +162,8 @@ model Reservation {
   publicId        Int?     @unique @map("public_id")
   tripId          String   @map("trip_id")
   routeOfferId    String?  @map("route_offer_id")
+  weeklyReservationGroupId String? @map("weekly_reservation_group_id")
+  isWeeklyPaymentPrimary Boolean @default(false) @map("is_weekly_payment_primary")
   passengerUserId String   @map("passenger_user_id")
   totalSeats      Int      @map("total_seats")
   companionCount  Int      @map("companion_count")
@@ -182,6 +184,7 @@ model Reservation {
   @@index([tripId])
   @@index([passengerUserId])
   @@index([routeOfferId])
+  @@index([weeklyReservationGroupId])
   @@index([status])
   @@index([numericCode])
   @@index([qrToken])
@@ -192,6 +195,7 @@ model Reservation {
 model Payment {
   id                    String    @id @default(uuid())
   reservationId         String    @unique @map("reservation_id")
+  weeklyReservationGroupId String? @map("weekly_reservation_group_id")
   amount                Float
   status                String    @default("pending")
   provider              String    @default("manual_transfer")
@@ -222,6 +226,7 @@ model Payment {
   @@index([status])
   @@index([archivedAt])
   @@index([reservationId])
+  @@index([weeklyReservationGroupId])
   @@index([providerPreferenceId])
   @@index([reviewedByAdminUserId])
   @@index([archivedByAdminUserId])
@@ -421,4 +426,3 @@ model IncidentReport {
   @@index([reviewedById])
   @@map("incident_reports")
 }
-

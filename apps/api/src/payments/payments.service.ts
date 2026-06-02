@@ -14,6 +14,7 @@ import { SimulatePaymentDto } from './dto/simulate-payment.dto';
 type PaymentRecord = {
   id: string;
   reservationId: string;
+  weeklyReservationGroupId: string | null;
   amount: number;
   status: string;
   provider: string;
@@ -530,10 +531,18 @@ export class PaymentsService {
       });
 
       if (reservationUpdateData) {
-        await (tx as any).reservation.update({
-          where: { id: reservationId },
-          data: reservationUpdateData
-        });
+        const weeklyReservationGroupId = (await (tx as any).payment.findUnique({ where: { id: paymentId }, select: { weeklyReservationGroupId: true } }))?.weeklyReservationGroupId ?? null;
+        if (weeklyReservationGroupId) {
+          await (tx as any).reservation.updateMany({
+            where: { weeklyReservationGroupId },
+            data: reservationUpdateData
+          });
+        } else {
+          await (tx as any).reservation.update({
+            where: { id: reservationId },
+            data: reservationUpdateData
+          });
+        }
       }
     });
 
@@ -760,11 +769,30 @@ export class PaymentsService {
       }
     })) as PaymentRecord | null;
 
-    if (!payment) {
-      throw new NotFoundException('Payment no encontrado para la reservation');
+    if (payment) {
+      return payment;
     }
 
-    return payment;
+    const reservation = await this.reservationDelegate().findUnique({
+      where: { id: reservationId },
+      select: { weeklyReservationGroupId: true }
+    });
+
+    if (reservation?.weeklyReservationGroupId) {
+      const groupPayment = (await this.paymentDelegate().findFirst({
+        where: { weeklyReservationGroupId: reservation.weeklyReservationGroupId },
+        include: {
+          ...this.basePaymentInclude(),
+          refund: true
+        }
+      })) as PaymentRecord | null;
+
+      if (groupPayment) {
+        return groupPayment;
+      }
+    }
+
+    throw new NotFoundException('Payment no encontrado para la reservation');
   }
 
   private async findPaymentByReservationForCheckoutOrThrow(reservationId: string) {
@@ -824,6 +852,10 @@ export class PaymentsService {
     return (this.prisma as unknown as { payment: any }).payment;
   }
 
+  private reservationDelegate() {
+    return (this.prisma as unknown as { reservation: any }).reservation;
+  }
+
   private refundDelegate() {
     return (this.prisma as unknown as { refund: any }).refund;
   }
@@ -837,6 +869,7 @@ export class PaymentsService {
     return {
       id: payment.id,
       reservationId: payment.reservationId,
+      weeklyReservationGroupId: payment.weeklyReservationGroupId,
       amount: payment.amount,
       status: this.normalizePaymentStatus(payment.status),
       provider: payment.provider,

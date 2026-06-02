@@ -72,15 +72,7 @@ export default function ReserveTripPage() {
     void loadTrip();
   }, [tripId]);
 
-  const availableWeekdayList = useMemo(() => {
-    if (!trip) return [];
-    const routeWeekdays = trip.route?.weekdays?.length ? trip.route.weekdays : [];
-    if (routeWeekdays.length > 0) {
-      return WEEKDAY_ORDER.filter((weekday) => routeWeekdays.includes(weekday));
-    }
-    const tripWeekday = weekdayFromDate(trip.tripDate);
-    return tripWeekday ? [tripWeekday] : [];
-  }, [trip]);
+  const availableWeekdayList = useMemo(() => (trip ? WEEKDAY_ORDER : []), [trip]);
 
   const availableWeekdays = useMemo(() => new Set(availableWeekdayList), [availableWeekdayList]);
   const selectedDaysCount = selectedWeekdays.length || 1;
@@ -93,7 +85,7 @@ export default function ReserveTripPage() {
   function selectReservationDays(count: number) {
     const nextDays = availableWeekdayList.slice(0, count);
     if (nextDays.length < count) {
-      setError(`Esta ruta solo tiene ${nextDays.length} dia(s) disponible(s).`);
+      setError(`Selecciona al menos 1 dia disponible.`);
       setSelectedWeekdays(nextDays);
       return;
     }
@@ -269,7 +261,7 @@ export default function ReserveTripPage() {
               );
             })}
           </div>
-          <p className="mt-2 text-xs text-slate-500">Puedes elegir de 1 a 3 dias disponibles. La app generara las reservas necesarias y te llevara a pagos.</p>
+          <p className="mt-2 text-xs text-slate-500">Puedes elegir de 1 a 3 dias de la semana. La app sumara todos los dias y generara un solo pago semanal.</p>
         </div>
 
         <div className="rounded-md bg-slate-50 p-3 text-sm text-slate-700">

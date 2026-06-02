@@ -1,4 +1,4 @@
-﻿import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { GenerateWeeklyPayoutDto } from './dto/generate-weekly-payout.dto';
 import { MarkWeeklyPayoutPaidDto } from './dto/mark-weekly-payout-paid.dto';
@@ -319,30 +319,28 @@ export class WeeklyPayoutsService {
   }
 
   async getDriverBankDetails(driverUserId: string) {
-    const profile = await this.ensureDriverProfile(driverUserId);
+    await this.ensureDriverProfile(driverUserId);
 
     return {
-      accountNumber: profile.bankAccountNumber,
-      clabe: profile.bankClabe,
-      isComplete: Boolean(profile.bankAccountNumber && profile.bankClabe)
+      isComplete: true,
+      message: 'Las liquidaciones se coordinan de forma privada con administracion. No almacenamos datos bancarios en la app.'
     };
   }
 
   async updateDriverBankDetails(driverUserId: string, dto: UpdateDriverBankDetailsDto) {
     const profile = await this.ensureDriverProfile(driverUserId);
 
-    const updated = await this.prisma.driverProfile.update({
+    await this.prisma.driverProfile.update({
       where: { id: profile.id },
       data: {
-        bankAccountNumber: dto.accountNumber,
-        bankClabe: dto.clabe
+        bankAccountNumber: null,
+        bankClabe: null
       }
     });
 
     return {
-      accountNumber: updated.bankAccountNumber,
-      clabe: updated.bankClabe,
-      isComplete: Boolean(updated.bankAccountNumber && updated.bankClabe)
+      isComplete: true,
+      message: 'Por seguridad, VIAJA SEGURO no almacena datos bancarios en la app.'
     };
   }
 
@@ -359,11 +357,6 @@ export class WeeklyPayoutsService {
 
     if (payout.status === 'requested') {
       throw new ForbiddenException('Ya solicitaste el pago de esta liquidacion');
-    }
-
-    const profile = await this.ensureDriverProfile(driverUserId);
-    if (!profile.bankAccountNumber || !profile.bankClabe) {
-      throw new ForbiddenException('Debes registrar numero de cuenta y CLABE antes de solicitar pago');
     }
 
     const updated = (await this.weeklyPayoutDelegate().update({
@@ -641,10 +634,3 @@ export class WeeklyPayoutsService {
     };
   }
 }
-
-
-
-
-
-
-

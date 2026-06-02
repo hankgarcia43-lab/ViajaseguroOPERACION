@@ -1037,7 +1037,6 @@ export class ReservationsService {
                 provider: 'mercadopago_link',
                 paymentMethodLabel: 'Mercado Pago',
                 paymentInstructions:
-                  process.env.MANUAL_PAYMENT_INSTRUCTIONS ??
                   'Abre el link oficial de Mercado Pago, ingresa el monto exacto de esta reserva, guarda tu comprobante y subelo en VIAJA SEGURO para validacion del admin.',
                 appCommissionAmount: this.roundCurrency((data.paymentAmountOverride ?? data.totalAmount) * appCommissionRate),
                 driverNetAmount: this.roundCurrency((data.paymentAmountOverride ?? data.totalAmount) * (1 - appCommissionRate))
@@ -1125,11 +1124,10 @@ export class ReservationsService {
 
   private getManualPaymentConfig() {
     const methodLabel = 'Mercado Pago';
-    const beneficiary = process.env.MANUAL_PAYMENT_BENEFICIARY ?? 'VIAJA SEGURO';
+    const beneficiary = null;
     const reference = process.env.MANUAL_PAYMENT_REFERENCE ?? 'VIAJA SEGURO';
     const businessAccount = null;
     const instructions =
-      process.env.MANUAL_PAYMENT_INSTRUCTIONS ??
       [
         'Abre el link oficial de Mercado Pago desde VIAJA SEGURO.',
         'Ingresa el monto exacto que aparece en tu reserva.',
@@ -1143,7 +1141,7 @@ export class ReservationsService {
       reference,
       businessAccount,
       instructions,
-      processorLabel: process.env.MANUAL_PAYMENT_PROCESSOR_LABEL ?? 'VIAJA SEGURO'
+      processorLabel: process.env.MANUAL_PAYMENT_PROCESSOR_LABEL ?? 'Mercado Pago'
     };
   }
 

@@ -648,11 +648,10 @@ export class PaymentsService {
 
   private getManualPaymentConfig() {
     const methodLabel = 'Mercado Pago';
-    const beneficiary = process.env.MANUAL_PAYMENT_BENEFICIARY ?? 'VIAJA SEGURO';
+    const beneficiary = null;
     const reference = process.env.MANUAL_PAYMENT_REFERENCE ?? 'VIAJA SEGURO';
     const businessAccount = null;
     const instructions =
-      process.env.MANUAL_PAYMENT_INSTRUCTIONS ??
       [
         'Abre el link oficial de Mercado Pago desde VIAJA SEGURO.',
         'Ingresa el monto exacto que aparece en tu reserva.',
@@ -666,7 +665,7 @@ export class PaymentsService {
       reference,
       businessAccount,
       instructions,
-      processorLabel: process.env.MANUAL_PAYMENT_PROCESSOR_LABEL ?? 'VIAJA SEGURO'
+      processorLabel: process.env.MANUAL_PAYMENT_PROCESSOR_LABEL ?? 'Mercado Pago'
     };
   }
 

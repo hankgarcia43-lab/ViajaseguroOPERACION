@@ -35,18 +35,10 @@ services:
         sync: false
       - key: MERCADOPAGO_USE_SANDBOX
         value: false
-      - key: MANUAL_PAYMENT_METHOD_LABEL
-        value: Transferencia bancaria empresarial
-      - key: MANUAL_PAYMENT_BENEFICIARY
-        sync: false
-      - key: MANUAL_PAYMENT_BUSINESS_ACCOUNT
-        sync: false
       - key: MANUAL_PAYMENT_PROCESSOR_LABEL
-        value: VIAJA SEGURO
+        value: Mercado Pago
       - key: MANUAL_PAYMENT_REFERENCE
-        value: VS-RESERVA
-      - key: MANUAL_PAYMENT_INSTRUCTIONS
-        sync: false
+        value: VIAJA SEGURO
 
 databases:
   - name: viajasegurooperacion-db

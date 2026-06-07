@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { ChangeEvent, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { apiRequest, buildApiAssetUrl, getToken } from '@/lib/api';
-import { APP_COMPANY_NAME, formatCurrency, formatShortDate } from '@/lib/app-config';
+import { formatCurrency, formatShortDate } from '@/lib/app-config';
 import { getPaymentFlowMessage, PAYMENT_RETENTION_NOTICE } from '@/lib/payment-ui';
 import { MERCADO_PAGO_PAYMENT_REFERENCE, getMercadoPagoPaymentUrl } from '@/lib/payments';
 import { Reservation } from '@/lib/reservations';
@@ -173,7 +173,7 @@ export default function ReservationTicketPage() {
           )}
 
           {reservation.payment && (
-<div className="space-y-5 rounded-3xl border border-sky-200 bg-sky-50 p-5">
+            <div className="space-y-5 rounded-3xl border border-sky-200 bg-sky-50 p-5">
                 <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
                   <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">Pagar con Mercado Pago</p>
                   <p className="mt-3 text-3xl font-semibold text-slate-900">{formatCurrency(reservation.payment.amount)}</p>
@@ -195,28 +195,8 @@ export default function ReservationTicketPage() {
                   <p className="rounded-2xl bg-white p-3 text-xs text-slate-700">Este pago ya no requiere un pago online.</p>
                 )}
 
-                <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
-                  <p className="font-semibold text-slate-900">Pago del negocio</p>
-                  <p className="mt-2">Beneficiario comercial: {reservation.payment.paymentBeneficiary ?? APP_COMPANY_NAME}</p>
-                  <p>Procesador o plataforma: {reservation.payment.paymentProcessorLabel ?? APP_COMPANY_NAME}</p>
-                  <p>Metodo o banco: {reservation.payment.paymentMethodLabel ?? 'Transferencia bancaria empresarial'}</p>
-                  {reservation.payment.paymentBusinessAccount && <p>Cuenta o CLABE del negocio: {reservation.payment.paymentBusinessAccount}</p>}
-                  <p>Referencia: {reservation.payment.paymentReference ?? 'VS-RESERVA'}</p>
-                </div>
-
-                {reservation.payment.paymentProcessingMessage && (
-                  <p className="rounded-md bg-slate-100 p-3 text-sm text-slate-700">{reservation.payment.paymentProcessingMessage}</p>
-                )}
-
-              {reservation.payment.paymentInstructions && (
-                <div>
-                  <p className="font-medium text-slate-900">Instrucciones</p>
-                  <p className="whitespace-pre-line text-sm text-slate-700">{reservation.payment.paymentInstructions}</p>
-                </div>
-              )}
-
-              <p className="rounded-md bg-slate-100 p-3 text-sm text-slate-700">{getPaymentFlowMessage(reservation.payment.status)}</p>
-              <p className="rounded-md bg-brand-50 p-3 text-xs text-brand-800">{PAYMENT_RETENTION_NOTICE}</p>
+                <p className="rounded-md bg-slate-100 p-3 text-sm text-slate-700">{getPaymentFlowMessage(reservation.payment.status)}</p>
+                <p className="rounded-md bg-brand-50 p-3 text-xs text-brand-800">{PAYMENT_RETENTION_NOTICE}</p>
 
               {reservation.payment.reviewNotes && (
                 <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-800">Nota de revision admin: {reservation.payment.reviewNotes}</p>

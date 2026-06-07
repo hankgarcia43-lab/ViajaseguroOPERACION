@@ -67,12 +67,8 @@ MERCADOPAGO_PAYMENT_LINK=https://link.mercadopago.com.mx/viajaseguro2026
 MERCADOPAGO_ACCESS_TOKEN=
 MERCADOPAGO_WEBHOOK_SECRET=
 MERCADOPAGO_USE_SANDBOX=false
-MANUAL_PAYMENT_METHOD_LABEL=Transferencia bancaria empresarial
-MANUAL_PAYMENT_BENEFICIARY=<nombre comercial o razon social>
-MANUAL_PAYMENT_BUSINESS_ACCOUNT=<CLABE o cuenta del negocio>
-MANUAL_PAYMENT_PROCESSOR_LABEL=VIAJA SEGURO
-MANUAL_PAYMENT_REFERENCE=VS-RESERVA
-MANUAL_PAYMENT_INSTRUCTIONS=<instrucciones visibles para el pasajero>
+MANUAL_PAYMENT_PROCESSOR_LABEL=Mercado Pago
+MANUAL_PAYMENT_REFERENCE=VIAJA SEGURO
 ```
 
 ## Prisma y base de datos
@@ -115,7 +111,7 @@ Pruebas manuales minimas:
 - Login pasajero.
 - Login conductor.
 - Login admin.
-- Crear/ver ruta base.
+- Crear/ver ruta especifica del piloto.
 - Conductor toma ruta.
 - Pasajero reserva.
 - Pasajero ve monto exacto.

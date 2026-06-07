@@ -14,6 +14,7 @@ import { SimulatePaymentDto } from './dto/simulate-payment.dto';
 type PaymentRecord = {
   id: string;
   reservationId: string;
+  weeklyReservationGroupId: string | null;
   amount: number;
   status: string;
   provider: string;
@@ -530,10 +531,18 @@ export class PaymentsService {
       });
 
       if (reservationUpdateData) {
-        await (tx as any).reservation.update({
-          where: { id: reservationId },
-          data: reservationUpdateData
-        });
+        const weeklyReservationGroupId = (await (tx as any).payment.findUnique({ where: { id: paymentId }, select: { weeklyReservationGroupId: true } }))?.weeklyReservationGroupId ?? null;
+        if (weeklyReservationGroupId) {
+          await (tx as any).reservation.updateMany({
+            where: { weeklyReservationGroupId },
+            data: reservationUpdateData
+          });
+        } else {
+          await (tx as any).reservation.update({
+            where: { id: reservationId },
+            data: reservationUpdateData
+          });
+        }
       }
     });
 
@@ -638,21 +647,17 @@ export class PaymentsService {
   }
 
   private getManualPaymentConfig() {
-    const methodLabel = process.env.MANUAL_PAYMENT_METHOD_LABEL ?? 'Transferencia bancaria empresarial';
-    const beneficiary = process.env.MANUAL_PAYMENT_BENEFICIARY ?? 'VIAJA SEGURO';
-    const reference = process.env.MANUAL_PAYMENT_REFERENCE ?? 'VS-RESERVA';
-    const businessAccount = process.env.MANUAL_PAYMENT_BUSINESS_ACCOUNT ?? null;
+    const methodLabel = 'Mercado Pago';
+    const beneficiary = null;
+    const reference = process.env.MANUAL_PAYMENT_REFERENCE ?? 'VIAJA SEGURO';
+    const businessAccount = null;
     const instructions =
-      process.env.MANUAL_PAYMENT_INSTRUCTIONS ??
       [
-        `Beneficiario comercial: ${beneficiary}`,
-        `Metodo o banco: ${methodLabel}`,
-        businessAccount ? `Cuenta o CLABE del negocio: ${businessAccount}` : null,
+        'Abre el link oficial de Mercado Pago desde VIAJA SEGURO.',
+        'Ingresa el monto exacto que aparece en tu reserva.',
         `Referencia: ${reference}`,
-        'Sube tu comprobante para validacion manual del admin.'
-      ]
-        .filter(Boolean)
-        .join('\n');
+        'Guarda tu comprobante y subelo para validacion manual del admin.'
+      ].join('\n');
 
     return {
       methodLabel,
@@ -660,7 +665,7 @@ export class PaymentsService {
       reference,
       businessAccount,
       instructions,
-      processorLabel: process.env.MANUAL_PAYMENT_PROCESSOR_LABEL ?? 'VIAJA SEGURO'
+      processorLabel: process.env.MANUAL_PAYMENT_PROCESSOR_LABEL ?? 'Mercado Pago'
     };
   }
 
@@ -763,11 +768,30 @@ export class PaymentsService {
       }
     })) as PaymentRecord | null;
 
-    if (!payment) {
-      throw new NotFoundException('Payment no encontrado para la reservation');
+    if (payment) {
+      return payment;
     }
 
-    return payment;
+    const reservation = await this.reservationDelegate().findUnique({
+      where: { id: reservationId },
+      select: { weeklyReservationGroupId: true }
+    });
+
+    if (reservation?.weeklyReservationGroupId) {
+      const groupPayment = (await this.paymentDelegate().findFirst({
+        where: { weeklyReservationGroupId: reservation.weeklyReservationGroupId },
+        include: {
+          ...this.basePaymentInclude(),
+          refund: true
+        }
+      })) as PaymentRecord | null;
+
+      if (groupPayment) {
+        return groupPayment;
+      }
+    }
+
+    throw new NotFoundException('Payment no encontrado para la reservation');
   }
 
   private async findPaymentByReservationForCheckoutOrThrow(reservationId: string) {
@@ -827,6 +851,10 @@ export class PaymentsService {
     return (this.prisma as unknown as { payment: any }).payment;
   }
 
+  private reservationDelegate() {
+    return (this.prisma as unknown as { reservation: any }).reservation;
+  }
+
   private refundDelegate() {
     return (this.prisma as unknown as { refund: any }).refund;
   }
@@ -840,6 +868,7 @@ export class PaymentsService {
     return {
       id: payment.id,
       reservationId: payment.reservationId,
+      weeklyReservationGroupId: payment.weeklyReservationGroupId,
       amount: payment.amount,
       status: this.normalizePaymentStatus(payment.status),
       provider: payment.provider,
@@ -852,9 +881,9 @@ export class PaymentsService {
       paymentMethodLabel: payment.paymentMethodLabel ?? config.methodLabel,
       paymentBeneficiary: config.beneficiary,
       paymentReference: config.reference,
-      paymentBusinessAccount: config.businessAccount,
+      paymentBusinessAccount: null,
       paymentProcessorLabel: config.processorLabel,
-      paymentProcessingMessage: `El pago sera procesado por ${config.processorLabel} y depositado a la cuenta operativa registrada por la empresa.`,
+      paymentProcessingMessage: `El pago se realiza desde el link oficial de Mercado Pago y sera validado manualmente por el admin.`,
       paymentInstructions: payment.paymentInstructions ?? config.instructions,
       proofFileName: payment.proofFileName,
       proofFilePath: payment.proofFilePath,
@@ -899,8 +928,3 @@ export class PaymentsService {
     };
   }
 }
-
-
-
-
-

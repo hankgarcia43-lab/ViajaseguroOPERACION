@@ -188,8 +188,8 @@ export default function AdminPaymentsPage() {
                 <p className="mt-3 text-lg font-semibold text-slate-900">${payment.amount.toFixed(2)} MXN</p>
                 <p className="mt-2 text-sm text-slate-700">Pasajero: {payment.reservation?.passenger?.fullName ?? 'N/A'}</p>
                 <p className="text-sm text-slate-700">Email: {payment.reservation?.passenger?.email ?? 'N/A'}</p>
-                <p className="text-sm text-slate-700">Proveedor: {payment.provider || 'manual_transfer'}</p>
-                <p className="text-sm text-slate-700">Metodo: {payment.paymentMethodLabel ?? 'Transferencia bancaria'}</p>
+                <p className="text-sm text-slate-700">Proveedor: {payment.provider || 'mercadopago_link'}</p>
+                <p className="text-sm text-slate-700">Metodo: {payment.paymentMethodLabel ?? 'Mercado Pago'}</p>
                 <p className="text-sm text-slate-700">Referencia proveedor: {payment.providerReference ?? 'Sin referencia'}</p>
                 <p className="text-sm text-slate-700">Preferencia MP: {payment.providerPreferenceId ?? 'Sin preferencia'}</p>
                 {checkoutUrl ? (
@@ -262,10 +262,3 @@ export default function AdminPaymentsPage() {
     </section>
   );
 }
-
-
-
-
-
-
-

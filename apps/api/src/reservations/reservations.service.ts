@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { randomBytes, randomInt } from 'crypto';
+import { randomBytes, randomInt, randomUUID } from 'crypto';
 import { FarePolicyService } from '../fare-policy/fare-policy.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RouteOffersService } from '../route-offers/route-offers.service';
@@ -13,6 +13,8 @@ type ReservationRecord = {
   id: string;
   publicId: number | null;
   tripId: string;
+  weeklyReservationGroupId?: string | null;
+  isWeeklyPaymentPrimary?: boolean;
   passengerUserId: string;
   totalSeats: number;
   companionCount: number;
@@ -30,6 +32,7 @@ type ReservationRecord = {
 type TripRecord = {
   id: string;
   routeId: string;
+  routeOfferId?: string | null;
   driverUserId: string;
   tripDate: Date;
   departureTimeSnapshot: string;
@@ -122,6 +125,11 @@ export class ReservationsService {
       throw new ForbiddenException('No hay asientos suficientes para esta reserva');
     }
 
+    const selectedWeekdays = this.normalizeSelectedWeekdays(dto.selectedWeekdays);
+    if (selectedWeekdays.length > 0) {
+      return this.createReservationsFromTripWeekdays(passenger.id, trip, selectedWeekdays, dto.totalSeats, companionCount);
+    }
+
     const totalAmount = dto.totalSeats * trip.pricePerSeatSnapshot;
 
     const reservation = await this.createReservationWithTicketAndPayment({
@@ -130,12 +138,117 @@ export class ReservationsService {
       totalSeats: dto.totalSeats,
       companionCount,
       totalAmount,
-      status: RESERVATION_STATUS.CONFIRMED
+      status: RESERVATION_STATUS.CONFIRMED,
+      routeOfferId: trip.routeOfferId ?? undefined
     });
 
     return this.mapReservation(reservation, remainingSeats - dto.totalSeats);
   }
 
+
+
+  private async createReservationsFromTripWeekdays(
+    passengerUserId: string,
+    seedTrip: TripRecord,
+    selectedWeekdays: string[],
+    totalSeats: number,
+    companionCount: number
+  ) {
+    if (selectedWeekdays.length === 0) {
+      throw new BadRequestException('Selecciona al menos un dia para reservar.');
+    }
+
+    if (selectedWeekdays.length > 3) {
+      throw new BadRequestException('Puedes reservar maximo 3 dias por semana en una sola solicitud.');
+    }
+
+    const weeklyReservationGroupId = randomUUID();
+    const weeklyTotalAmount = this.roundCurrency(selectedWeekdays.length * totalSeats * seedTrip.pricePerSeatSnapshot);
+    const items: ReservationRecord[] = [];
+
+    for (const weekday of selectedWeekdays) {
+      const tripDate = this.nextDateForWeekday(weekday);
+      const where: Record<string, unknown> = {
+        routeId: seedTrip.routeId,
+        driverUserId: seedTrip.driverUserId,
+        tripDate,
+        status: {
+          in: [TRIP_STATUS.SCHEDULED, TRIP_STATUS.STARTED]
+        }
+      };
+
+      if (seedTrip.routeOfferId) {
+        where.routeOfferId = seedTrip.routeOfferId;
+      }
+
+      let trip = (await this.tripDelegate().findFirst({ where })) as TripRecord | null;
+
+      if (!trip) {
+        trip = (await this.tripDelegate().create({
+          data: {
+            publicId: await this.nextPublicId('trip'),
+            routeId: seedTrip.routeId,
+            routeOfferId: seedTrip.routeOfferId ?? null,
+            driverUserId: seedTrip.driverUserId,
+            tripDate,
+            departureTimeSnapshot: seedTrip.departureTimeSnapshot,
+            estimatedArrivalTimeSnapshot: seedTrip.estimatedArrivalTimeSnapshot,
+            availableSeatsSnapshot: seedTrip.availableSeatsSnapshot,
+            pricePerSeatSnapshot: seedTrip.pricePerSeatSnapshot,
+            boardingReference: seedTrip.boardingReference,
+            status: TRIP_STATUS.SCHEDULED
+          }
+        })) as TripRecord;
+      }
+
+      const reservedSeats = await this.getReservedSeats(trip.id);
+      const remainingSeats = trip.availableSeatsSnapshot - reservedSeats;
+
+      if (totalSeats > remainingSeats) {
+        throw new ForbiddenException(
+          `No hay asientos suficientes para ${this.formatWeekdayLabel(weekday)}. Disponibles: ${Math.max(remainingSeats, 0)}.`
+        );
+      }
+
+      const isPrimaryReservation = items.length === 0;
+      const reservation = await this.createReservationWithTicketAndPayment({
+        tripId: trip.id,
+        passengerUserId,
+        totalSeats,
+        companionCount,
+        totalAmount: totalSeats * trip.pricePerSeatSnapshot,
+        status: RESERVATION_STATUS.CONFIRMED,
+        routeOfferId: seedTrip.routeOfferId ?? undefined,
+        weeklyReservationGroupId,
+        isWeeklyPaymentPrimary: isPrimaryReservation,
+        createPayment: isPrimaryReservation,
+        paymentAmountOverride: isPrimaryReservation ? weeklyTotalAmount : undefined
+      });
+
+      items.push(reservation);
+    }
+
+    const mapped = await Promise.all(
+      items.map(async (reservation) => {
+        const remaining = await this.getRemainingSeats(reservation.tripId);
+        return this.mapReservation(reservation, remaining);
+      })
+    );
+
+    return {
+      totalDays: mapped.length,
+      totalSeats,
+      selectedWeekdays,
+      grossAmount: weeklyTotalAmount,
+      totalAmount: weeklyTotalAmount,
+      finalAmount: weeklyTotalAmount,
+      reservations: mapped,
+      primaryReservationId: mapped[0]?.id ?? null,
+      message: mapped.length === 1
+        ? 'Reserva creada para 1 dia. Se genero un pago por el total.'
+        : 'Reserva semanal creada para ' + mapped.length + ' dias. Se genero un solo pago por el total semanal.'
+    };
+  }
 
   async createByOffer(passengerUserId: string, dto: CreateReservationByOfferDto) {
     const passenger = await this.ensureVerifiedPassenger(passengerUserId);
@@ -149,29 +262,20 @@ export class ReservationsService {
       throw new ForbiddenException('La ruta base no esta disponible.');
     }
 
-    const weekdays = this.parseWeekdays(offer.weekdaysText);
-    const selectedWeekdays = Array.from(
-      new Set((dto.selectedWeekdays ?? []).map((item) => String(item).toLowerCase().trim()).filter(Boolean))
-    );
+    const selectedWeekdays = this.normalizeSelectedWeekdays(dto.selectedWeekdays);
 
     if (selectedWeekdays.length === 0) {
-      throw new BadRequestException('Selecciona el dia del viaje.');
+      throw new BadRequestException('Selecciona al menos un dia del viaje.');
     }
 
-    if (selectedWeekdays.length > 1) {
-      throw new BadRequestException('Para evitar pagos y boletos duplicados, confirma un solo dia por reserva. Puedes elegir varios asientos en ese viaje y se cobraran en un solo pago.');
-    }
-
-    for (const weekday of selectedWeekdays) {
-      if (!weekdays.includes(weekday)) {
-        throw new BadRequestException(
-          `El conductor no opera en ${this.formatWeekdayLabel(weekday)}. Elige un dia disponible.`
-        );
-      }
+    if (selectedWeekdays.length > 3) {
+      throw new BadRequestException('Puedes reservar maximo 3 dias por semana en una sola solicitud.');
     }
 
     const normalizedTotalSeats = dto.totalSeats;
     const companionCount = normalizedTotalSeats - 1;
+    const weeklyReservationGroupId = randomUUID();
+    const weeklyTotalAmount = this.roundCurrency(selectedWeekdays.length * normalizedTotalSeats * offer.pricePerSeat);
     const items: ReservationRecord[] = [];
 
     for (const weekday of selectedWeekdays) {
@@ -215,6 +319,7 @@ export class ReservationsService {
       }
 
       const totalAmount = normalizedTotalSeats * trip.pricePerSeatSnapshot;
+      const isPrimaryReservation = items.length === 0;
       const reservation = await this.createReservationWithTicketAndPayment({
         tripId: trip.id,
         passengerUserId: passenger.id,
@@ -222,7 +327,11 @@ export class ReservationsService {
         companionCount,
         totalAmount,
         status: RESERVATION_STATUS.CONFIRMED,
-        routeOfferId: offer.id
+        routeOfferId: offer.id,
+        weeklyReservationGroupId,
+        isWeeklyPaymentPrimary: isPrimaryReservation,
+        createPayment: isPrimaryReservation,
+        paymentAmountOverride: isPrimaryReservation ? weeklyTotalAmount : undefined
       });
 
       items.push(reservation);
@@ -235,23 +344,21 @@ export class ReservationsService {
       })
     );
 
-    const totalDays = mapped.length;
-    const grossAmount = mapped.reduce((sum, reservation) => sum + reservation.totalAmount, 0);
-    const finalAmount = grossAmount;
-
     return {
       routeId: offer.routeId,
       routeOfferId: offer.id,
-      totalDays,
+      totalDays: mapped.length,
       totalSeats: normalizedTotalSeats,
       selectedWeekdays,
-      grossAmount: this.roundCurrency(grossAmount),
-      totalAmount: this.roundCurrency(finalAmount),
-      finalAmount: this.roundCurrency(finalAmount),
+      grossAmount: weeklyTotalAmount,
+      totalAmount: weeklyTotalAmount,
+      finalAmount: weeklyTotalAmount,
       weeklyDiscountApplied: false,
       reservations: mapped,
       primaryReservationId: mapped[0]?.id ?? null,
-      message: 'Reserva creada con un solo boleto para ' + normalizedTotalSeats + ' asiento(s). Se genero un solo pago por el total.'
+      message: selectedWeekdays.length === 1
+        ? 'Reserva creada con un boleto para ' + normalizedTotalSeats + ' asiento(s). Se genero el pago por el total.'
+        : 'Reserva semanal creada para ' + selectedWeekdays.length + ' dias. Se genero un solo pago por el total semanal.'
     };
   }
 
@@ -899,6 +1006,10 @@ export class ReservationsService {
     totalAmount: number;
     status: string;
     routeOfferId?: string;
+    weeklyReservationGroupId?: string | null;
+    isWeeklyPaymentPrimary?: boolean;
+    createPayment?: boolean;
+    paymentAmountOverride?: number;
   }) {
     const appCommissionPercent = await this.farePolicyService.getCurrentAppCommissionPercent();
     const appCommissionRate = appCommissionPercent / 100;
@@ -914,19 +1025,21 @@ export class ReservationsService {
           data: {
             publicId: reservationPublicId,
             ...data,
+            createPayment: undefined,
+            paymentAmountOverride: undefined,
             numericCode,
             qrToken,
-            payment: {
+            payment: data.createPayment === false ? undefined : {
               create: {
-                amount: this.roundCurrency(data.totalAmount),
+                weeklyReservationGroupId: data.weeklyReservationGroupId ?? null,
+                amount: this.roundCurrency(data.paymentAmountOverride ?? data.totalAmount),
                 status: PAYMENT_STATUS.PENDING,
-                provider: 'manual_transfer',
-                paymentMethodLabel: process.env.MANUAL_PAYMENT_METHOD_LABEL ?? 'Transferencia bancaria',
+                provider: 'mercadopago_link',
+                paymentMethodLabel: 'Mercado Pago',
                 paymentInstructions:
-                  process.env.MANUAL_PAYMENT_INSTRUCTIONS ??
-                  `Beneficiario: ${process.env.MANUAL_PAYMENT_BENEFICIARY ?? 'VIAJA SEGURO'}\nMetodo: ${process.env.MANUAL_PAYMENT_METHOD_LABEL ?? 'Transferencia bancaria'}\nReferencia: ${process.env.MANUAL_PAYMENT_REFERENCE ?? 'VS-RESERVA'}\nEnvia tu comprobante para validacion manual del admin.`,
-                appCommissionAmount: this.roundCurrency(data.totalAmount * appCommissionRate),
-                driverNetAmount: this.roundCurrency(data.totalAmount * (1 - appCommissionRate))
+                  'Abre el link oficial de Mercado Pago, ingresa el monto exacto de esta reserva, guarda tu comprobante y subelo en VIAJA SEGURO para validacion del admin.',
+                appCommissionAmount: this.roundCurrency((data.paymentAmountOverride ?? data.totalAmount) * appCommissionRate),
+                driverNetAmount: this.roundCurrency((data.paymentAmountOverride ?? data.totalAmount) * (1 - appCommissionRate))
               }
             }
           },
@@ -1010,21 +1123,17 @@ export class ReservationsService {
   }
 
   private getManualPaymentConfig() {
-    const methodLabel = process.env.MANUAL_PAYMENT_METHOD_LABEL ?? 'Transferencia bancaria empresarial';
-    const beneficiary = process.env.MANUAL_PAYMENT_BENEFICIARY ?? 'VIAJA SEGURO';
-    const reference = process.env.MANUAL_PAYMENT_REFERENCE ?? 'VS-RESERVA';
-    const businessAccount = process.env.MANUAL_PAYMENT_BUSINESS_ACCOUNT ?? null;
+    const methodLabel = 'Mercado Pago';
+    const beneficiary = null;
+    const reference = process.env.MANUAL_PAYMENT_REFERENCE ?? 'VIAJA SEGURO';
+    const businessAccount = null;
     const instructions =
-      process.env.MANUAL_PAYMENT_INSTRUCTIONS ??
       [
-        `Beneficiario comercial: ${beneficiary}`,
-        `Metodo o banco: ${methodLabel}`,
-        businessAccount ? `Cuenta o CLABE del negocio: ${businessAccount}` : null,
+        'Abre el link oficial de Mercado Pago desde VIAJA SEGURO.',
+        'Ingresa el monto exacto que aparece en tu reserva.',
         `Referencia: ${reference}`,
-        'Sube tu comprobante para validacion manual del admin.'
-      ]
-        .filter(Boolean)
-        .join('\n');
+        'Guarda tu comprobante y subelo para validacion manual del admin.'
+      ].join('\n');
 
     return {
       methodLabel,
@@ -1032,7 +1141,7 @@ export class ReservationsService {
       reference,
       businessAccount,
       instructions,
-      processorLabel: process.env.MANUAL_PAYMENT_PROCESSOR_LABEL ?? 'VIAJA SEGURO'
+      processorLabel: process.env.MANUAL_PAYMENT_PROCESSOR_LABEL ?? 'Mercado Pago'
     };
   }
 
@@ -1065,9 +1174,15 @@ export class ReservationsService {
       throw new ForbiddenException('Solo reservas con pago validado pueden marcarse boarded');
     }
 
-    if (!approvedPaymentStatuses.includes(normalizedPaymentStatus as any)) {
+    if (!approvedPaymentStatuses.includes(normalizedPaymentStatus as any) && status !== RESERVATION_STATUS.PAID) {
       throw new ForbiddenException('El pago debe estar validado por admin para permitir abordaje');
     }
+  }
+
+  private normalizeSelectedWeekdays(values?: string[] | null) {
+    return Array.from(
+      new Set((values ?? []).map((item) => String(item).toLowerCase().trim()).filter(Boolean))
+    );
   }
   private nextDateForWeekday(weekday: string) {
     const weekdayMap: Record<string, number> = {
@@ -1138,7 +1253,7 @@ export class ReservationsService {
 
   private mapReservation(reservation: ReservationRecord, remainingSeats?: number) {
     const paymentConfig = this.getManualPaymentConfig();
-    const hasApprovedPayment = this.hasApprovedPayment(reservation.payment?.status);
+    const hasApprovedPayment = this.hasApprovedPayment(reservation.payment?.status) || reservation.status === RESERVATION_STATUS.PAID;
     const qrValue = hasApprovedPayment ? `VS-RES:${reservation.id}:${reservation.qrToken}` : null;
 
     return {
@@ -1173,9 +1288,9 @@ export class ReservationsService {
             paymentMethodLabel: reservation.payment.paymentMethodLabel ?? paymentConfig.methodLabel,
             paymentBeneficiary: paymentConfig.beneficiary,
             paymentReference: paymentConfig.reference,
-            paymentBusinessAccount: paymentConfig.businessAccount,
+            paymentBusinessAccount: null,
             paymentProcessorLabel: paymentConfig.processorLabel,
-            paymentProcessingMessage: `El pago sera procesado por ${paymentConfig.processorLabel} y depositado a la cuenta operativa registrada por la empresa.`,
+            paymentProcessingMessage: `El pago se realiza desde el link oficial de Mercado Pago y sera validado manualmente por el admin.`,
             paymentInstructions: reservation.payment.paymentInstructions ?? paymentConfig.instructions,
             proofFileName: reservation.payment.proofFileName ?? null,
             proofFilePath: reservation.payment.proofFilePath ?? null,
@@ -1229,4 +1344,3 @@ export class ReservationsService {
     };
   }
 }
-

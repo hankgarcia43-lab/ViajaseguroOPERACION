@@ -1,6 +1,21 @@
-﻿import { Transform, Type } from 'class-transformer';
-import { IsIn, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
-import { ROUTE_LOCATION_OPTIONS, ROUTE_SERVICE_SCOPE_OPTIONS, RouteServiceScope } from '../route-location-options';
+import { Transform, Type } from 'class-transformer';
+import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  IsArray,
+  IsEnum,
+  IsInt,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Matches,
+  Max,
+  Min
+} from 'class-validator';
+import { RouteStatusDto, WeekdayDto } from './create-route.dto';
+
+const TIME_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 export class AdminCreateRouteDto {
   @IsOptional()
@@ -10,15 +25,43 @@ export class AdminCreateRouteDto {
 
   @IsString()
   @IsNotEmpty()
-  @IsIn(ROUTE_LOCATION_OPTIONS)
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   origin!: string;
 
   @IsString()
   @IsNotEmpty()
-  @IsIn(ROUTE_LOCATION_OPTIONS)
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   destination!: string;
+
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  stopsText?: string;
+
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  description?: string;
+
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(7)
+  @IsEnum(WeekdayDto, { each: true })
+  weekdays!: WeekdayDto[];
+
+  @IsString()
+  @Matches(TIME_REGEX, { message: 'departureTime debe tener formato HH:mm' })
+  departureTime!: string;
+
+  @IsString()
+  @Matches(TIME_REGEX, { message: 'estimatedArrivalTime debe tener formato HH:mm' })
+  estimatedArrivalTime!: string;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(20)
+  availableSeats!: number;
 
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
@@ -27,12 +70,6 @@ export class AdminCreateRouteDto {
   pricePerSeat!: number;
 
   @IsOptional()
-  @IsIn(ROUTE_SERVICE_SCOPE_OPTIONS)
-  serviceScope?: RouteServiceScope;
-
-  @IsOptional()
-  @IsString()
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
-  description?: string;
+  @IsEnum(RouteStatusDto)
+  status?: RouteStatusDto;
 }
-

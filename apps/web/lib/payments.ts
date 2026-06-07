@@ -38,6 +38,7 @@ export interface PaymentReservationSummary {
 export interface Payment {
   id: string;
   reservationId: string;
+  weeklyReservationGroupId: string | null;
   amount: number;
   status: PaymentStatus;
   provider: string;

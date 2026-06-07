@@ -1,4 +1,4 @@
-﻿export interface WeeklyPayout {
+export interface WeeklyPayout {
   id: string;
   driverUserId: string;
   periodStart: string;
@@ -58,12 +58,8 @@ export interface MarkPayoutPaidPayload {
 }
 
 export interface DriverBankDetails {
-  accountNumber: string | null;
-  clabe: string | null;
   isComplete: boolean;
+  message?: string;
 }
 
-export interface UpdateDriverBankDetailsPayload {
-  accountNumber: string;
-  clabe: string;
-}
+export interface UpdateDriverBankDetailsPayload {}

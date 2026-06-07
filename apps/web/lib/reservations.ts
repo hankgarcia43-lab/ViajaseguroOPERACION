@@ -94,6 +94,7 @@ export interface Reservation {
 export interface CreateReservationPayload {
   tripId: string;
   totalSeats: number;
+  selectedWeekdays?: string[];
 }
 
 export interface ValidateBoardingPayload {
@@ -106,6 +107,7 @@ export interface AvailableTrip {
   id: string;
   publicId: number | null;
   routeId: string;
+  routeOfferId: string | null;
   driverUserId: string;
   tripDate: string;
   departureTimeSnapshot: string;
@@ -122,6 +124,7 @@ export interface AvailableTrip {
     title: string | null;
     origin: string;
     destination: string;
+    weekdays?: string[];
     originLat?: number | null;
     originLng?: number | null;
     destinationLat?: number | null;
@@ -132,6 +135,3 @@ export interface AvailableTrip {
     status: string;
   } | null;
 }
-
-
-

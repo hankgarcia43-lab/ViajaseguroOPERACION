@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { apiRequest, getToken } from '@/lib/api';
 import { estimateRouteDistanceKm } from '@/lib/route-distance-estimator';
-import { CDMX_ALCALDIAS, CDMX_DESTINATION_HUBS, EDOMEX_MUNICIPALITIES, ROUTE_SERVICE_SCOPE_OPTIONS, RouteServiceScope } from '@/lib/route-location-options';
 
 type AdminRoute = {
   id: string;
@@ -12,6 +11,7 @@ type AdminRoute = {
   title: string | null;
   origin: string;
   destination: string;
+  weekdays?: Weekday[];
   departureTime: string;
   estimatedArrivalTime: string;
   availableSeats: number;
@@ -29,17 +29,26 @@ type BulkDeleteResponse = {
   results: Array<{ routeId: string; deleted: boolean; message: string }>;
 };
 
-type Region = 'edomex' | 'cdmx';
+type Weekday = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+type RouteStatus = 'active' | 'paused';
 
-function originOptionsByRegion(region: Region) {
-  return region === 'edomex' ? EDOMEX_MUNICIPALITIES : CDMX_ALCALDIAS;
-}
-
-function destinationOptionsByRegion(region: Region) {
-  return region === 'edomex' ? EDOMEX_MUNICIPALITIES : CDMX_DESTINATION_HUBS;
-}
+const WEEKDAY_OPTIONS: Array<{ value: Weekday; label: string }> = [
+  { value: 'monday', label: 'Lun' },
+  { value: 'tuesday', label: 'Mar' },
+  { value: 'wednesday', label: 'Mie' },
+  { value: 'thursday', label: 'Jue' },
+  { value: 'friday', label: 'Vie' },
+  { value: 'saturday', label: 'Sab' },
+  { value: 'sunday', label: 'Dom' }
+];
 
 const HHMM_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+function formatWeekdays(weekdays?: Weekday[]) {
+  if (!weekdays?.length) return 'Sin dias definidos';
+  const labels = new Map(WEEKDAY_OPTIONS.map((item) => [item.value, item.label]));
+  return weekdays.map((weekday) => labels.get(weekday) ?? weekday).join(', ');
+}
 
 export default function AdminRoutesPage() {
   const [routes, setRoutes] = useState<AdminRoute[]>([]);
@@ -52,18 +61,18 @@ export default function AdminRoutesPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const [originRegion, setOriginRegion] = useState<Region>('edomex');
-  const [destinationRegion, setDestinationRegion] = useState<Region>('cdmx');
+  const [title, setTitle] = useState('');
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
+  const [stopsText, setStopsText] = useState('');
+  const [weekdays, setWeekdays] = useState<Weekday[]>(['monday', 'tuesday', 'wednesday', 'thursday', 'friday']);
+  const [departureTime, setDepartureTime] = useState('06:00');
+  const [estimatedArrivalTime, setEstimatedArrivalTime] = useState('07:00');
+  const [availableSeats, setAvailableSeats] = useState('4');
   const [pricePerSeat, setPricePerSeat] = useState('');
-  const [serviceScope, setServiceScope] = useState<RouteServiceScope>('edomex_to_cdmx');
-  const [description, setDescription] = useState('');
+  const [status, setStatus] = useState<RouteStatus>('active');
 
-  const originOptions = useMemo(() => originOptionsByRegion(originRegion), [originRegion]);
-  const destinationOptions = useMemo(() => destinationOptionsByRegion(destinationRegion), [destinationRegion]);
-  const estimatedDistanceKm = useMemo(() => (origin && destination ? estimateRouteDistanceKm(origin, destination) : null), [origin, destination]);
-
+  const estimatedDistanceKm = useMemo(() => (origin.trim() && destination.trim() ? estimateRouteDistanceKm(origin, destination) : null), [origin, destination]);
   const allVisibleSelected = routes.length > 0 && routes.every((route) => selectedRouteIds.includes(route.id));
 
   async function loadRoutes() {
@@ -91,13 +100,22 @@ export default function AdminRoutesPage() {
     void loadRoutes();
   }, []);
 
-  useEffect(() => {
-    setOrigin('');
-  }, [originRegion]);
+  function toggleWeekday(day: Weekday) {
+    setWeekdays((prev) => (prev.includes(day) ? prev.filter((item) => item !== day) : [...prev, day]));
+  }
 
-  useEffect(() => {
+  function resetForm() {
+    setTitle('');
+    setOrigin('');
     setDestination('');
-  }, [destinationRegion]);
+    setStopsText('');
+    setWeekdays(['monday', 'tuesday', 'wednesday', 'thursday', 'friday']);
+    setDepartureTime('06:00');
+    setEstimatedArrivalTime('07:00');
+    setAvailableSeats('4');
+    setPricePerSeat('');
+    setStatus('active');
+  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -108,12 +126,25 @@ export default function AdminRoutesPage() {
       return;
     }
 
+    const parsedPrice = Number(pricePerSeat);
+    const parsedSeats = Number(availableSeats);
+
     if (!origin.trim() || !destination.trim()) {
-      setError('Punto de inicio y destino son obligatorios.');
+      setError('Origen y destino son obligatorios.');
       return;
     }
-
-    const parsedPrice = Number(pricePerSeat);
+    if (weekdays.length === 0) {
+      setError('Selecciona al menos un dia de operacion.');
+      return;
+    }
+    if (!HHMM_REGEX.test(departureTime) || !HHMM_REGEX.test(estimatedArrivalTime)) {
+      setError('Los horarios deben tener formato HH:mm.');
+      return;
+    }
+    if (!Number.isInteger(parsedSeats) || parsedSeats < 1 || parsedSeats > 20) {
+      setError('Los asientos deben estar entre 1 y 20.');
+      return;
+    }
     if (!Number.isFinite(parsedPrice) || parsedPrice < 1 || parsedPrice > 500) {
       setError('El precio por asiento debe estar entre 1 y 500.');
       return;
@@ -128,20 +159,21 @@ export default function AdminRoutesPage() {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          origin,
-          destination,
+          title: title.trim() || undefined,
+          origin: origin.trim(),
+          destination: destination.trim(),
+          stopsText: stopsText.trim() || undefined,
+          weekdays,
+          departureTime,
+          estimatedArrivalTime,
+          availableSeats: parsedSeats,
           pricePerSeat: parsedPrice,
-          serviceScope,
-          description: description.trim() || undefined
+          status
         })
       });
 
-      setSuccess('Ruta principal creada correctamente. Ya puede aparecer en el feed para ser tomada por conductores.');
-      setOrigin('');
-      setDestination('');
-      setPricePerSeat('');
-      setServiceScope('edomex_to_cdmx');
-      setDescription('');
+      setSuccess('Ruta creada correctamente.');
+      resetForm();
       await loadRoutes();
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'No se pudo crear la ruta.');
@@ -159,11 +191,7 @@ export default function AdminRoutesPage() {
       setSelectedRouteIds((prev) => prev.filter((id) => !routes.some((route) => route.id === id)));
       return;
     }
-    setSelectedRouteIds((prev) => {
-      const merged = new Set(prev);
-      routes.forEach((route) => merged.add(route.id));
-      return Array.from(merged);
-    });
+    setSelectedRouteIds((prev) => Array.from(new Set([...prev, ...routes.map((route) => route.id)])));
   }
 
   async function handleDeleteRoute(routeId: string) {
@@ -173,8 +201,7 @@ export default function AdminRoutesPage() {
       return;
     }
 
-    const confirmDelete = window.confirm('Esta accion eliminara la ruta seleccionada. Deseas continuar?');
-    if (!confirmDelete) {
+    if (!window.confirm('Eliminar esta ruta? Si tiene reservas o viajes historicos, el sistema bloqueara el borrado.')) {
       return;
     }
 
@@ -206,11 +233,7 @@ export default function AdminRoutesPage() {
       setError('Selecciona al menos una ruta para eliminar.');
       return;
     }
-
-    const confirmDelete = window.confirm(
-      `Se eliminaran ${selectedRouteIds.length} rutas seleccionadas. Las rutas con dependencias activas se bloquearan automaticamente. Continuar?`
-    );
-    if (!confirmDelete) {
+    if (!window.confirm(`Eliminar ${selectedRouteIds.length} rutas seleccionadas?`)) {
       return;
     }
 
@@ -225,9 +248,7 @@ export default function AdminRoutesPage() {
         body: JSON.stringify({ routeIds: selectedRouteIds })
       });
 
-      setSuccess(
-        `Proceso completado: ${response.deletedCount} eliminadas, ${response.blockedCount} bloqueadas por seguridad de datos.`
-      );
+      setSuccess(`Proceso completado: ${response.deletedCount} eliminadas, ${response.blockedCount} bloqueadas.`);
       const blockedMessages = response.results.filter((item) => !item.deleted).map((item) => item.message);
       if (blockedMessages.length > 0) {
         setError(blockedMessages.slice(0, 2).join(' | '));
@@ -284,7 +305,7 @@ export default function AdminRoutesPage() {
           pricePerSeat: nextPrice
         })
       });
-      setSuccess('Ruta actualizada correctamente (precio y horarios).');
+      setSuccess('Ruta actualizada correctamente.');
       await loadRoutes();
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'No se pudo actualizar la ruta.');
@@ -328,10 +349,8 @@ export default function AdminRoutesPage() {
   return (
     <section className="space-y-5">
       <header className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h1 className="text-2xl font-semibold text-slate-900">Admin - Rutas principales</h1>
-        <p className="mt-2 text-sm text-slate-600">
-          Define rutas base del sistema con punto de inicio, destino y precio por asiento (maximo 500 MXN).
-        </p>
+        <h1 className="text-2xl font-semibold text-slate-900">Admin - Control de rutas</h1>
+        <p className="mt-2 text-sm text-slate-600">Crea solo rutas reales del piloto y elimina cualquier ruta que no deba operar.</p>
       </header>
 
       {error && <p className="rounded-md bg-red-50 p-3 text-red-700">{error}</p>}
@@ -339,106 +358,116 @@ export default function AdminRoutesPage() {
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
         <form onSubmit={onSubmit} className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Crear ruta principal</h2>
-
-          <div className="grid gap-3 md:grid-cols-2">
-            <label className="block text-sm text-slate-700">
-              Region de inicio
-              <select
-                value={originRegion}
-                onChange={(event) => setOriginRegion(event.target.value as Region)}
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-              >
-                <option value="edomex">Estado de Mexico</option>
-                <option value="cdmx">CDMX</option>
-              </select>
-            </label>
-            <label className="block text-sm text-slate-700">
-              Punto de inicio
-              <select value={origin} onChange={(event) => setOrigin(event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2">
-                <option value="">Selecciona punto de inicio</option>
-                {originOptions.map((item) => (
-                  <option key={`origin-${item}`} value={item}>{item}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <div className="grid gap-3 md:grid-cols-2">
-            <label className="block text-sm text-slate-700">
-              Region de destino
-              <select
-                value={destinationRegion}
-                onChange={(event) => setDestinationRegion(event.target.value as Region)}
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-              >
-                <option value="edomex">Estado de Mexico</option>
-                <option value="cdmx">CDMX</option>
-              </select>
-            </label>
-            <label className="block text-sm text-slate-700">
-              Destino (terminal, hospital o estacion principal)
-              <select value={destination} onChange={(event) => setDestination(event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2">
-                <option value="">Selecciona destino</option>
-                {destinationOptions.map((item) => (
-                  <option key={`destination-${item}`} value={item}>{item}</option>
-                ))}
-              </select>
-            </label>
-          </div>
+          <h2 className="text-lg font-semibold text-slate-900">Crear ruta especifica</h2>
 
           <label className="block text-sm text-slate-700">
-            Tipo de servicio
-            <select value={serviceScope} onChange={(event) => setServiceScope(event.target.value as RouteServiceScope)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2">
-              {ROUTE_SERVICE_SCOPE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-          </label>
-            <div className="rounded-md border border-cyan-100 bg-cyan-50 p-3 text-sm text-cyan-900 md:col-span-2">
-              <p className="font-medium">Distancia estimada por sistema</p>
-              <p>{estimatedDistanceKm ? `${estimatedDistanceKm.toFixed(1)} km aprox.` : 'Selecciona origen y destino para calcularla.'}</p>
-              <p className="mt-1 text-xs">La distancia ya no se captura manualmente; se usa para validar la tarifa por km.</p>
-            </div>
-
-            <label className="block text-sm text-slate-700">
-              Precio por asiento (MXN)
+            Nombre interno de ruta
             <input
-              type="number"
-              min={1}
-              max={500}
-              step="0.01"
-              value={pricePerSeat}
-              onChange={(event) => setPricePerSeat(event.target.value)}
+              type="text"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-              placeholder="Ej. 35"
+              placeholder="Ej. Piloto Ecatepec - Indios Verdes 6 AM"
             />
           </label>
 
+          <div className="grid gap-3 md:grid-cols-2">
+            <label className="block text-sm text-slate-700">
+              Origen exacto
+              <input
+                type="text"
+                value={origin}
+                onChange={(event) => setOrigin(event.target.value)}
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                placeholder="Ej. Ojo de Agua, Tecamac"
+                required
+              />
+            </label>
+            <label className="block text-sm text-slate-700">
+              Destino exacto
+              <input
+                type="text"
+                value={destination}
+                onChange={(event) => setDestination(event.target.value)}
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                placeholder="Ej. Indios Verdes CETRAM"
+                required
+              />
+            </label>
+          </div>
+
           <label className="block text-sm text-slate-700">
-            Descripcion (opcional)
+            Punto de abordaje y notas operativas
             <textarea
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
+              value={stopsText}
+              onChange={(event) => setStopsText(event.target.value)}
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
               rows={3}
-              placeholder="Ej. Ruta laboral con alta demanda"
+              placeholder="Ej. Punto inicial, referencias, paradas autorizadas, reglas del piloto"
             />
           </label>
 
-          <button type="submit" disabled={saving} className="rounded-md bg-brand-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">
-            {saving ? 'Creando...' : 'Crear ruta'}
-          </button>
+          <div className="rounded-md border border-cyan-100 bg-cyan-50 p-3 text-sm text-cyan-900">
+            <p className="font-medium">Distancia estimada</p>
+            <p>{estimatedDistanceKm ? `${estimatedDistanceKm.toFixed(1)} km aprox.` : 'Completa origen y destino.'}</p>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-slate-700">Dias de operacion</p>
+            <div className="flex flex-wrap gap-2">
+              {WEEKDAY_OPTIONS.map((day) => (
+                <label key={day.value} className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">
+                  <input type="checkbox" checked={weekdays.includes(day.value)} onChange={() => toggleWeekday(day.value)} />
+                  {day.label}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+            <label className="block text-sm text-slate-700">
+              Salida
+              <input type="time" value={departureTime} onChange={(event) => setDepartureTime(event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" />
+            </label>
+            <label className="block text-sm text-slate-700">
+              Llegada estimada
+              <input type="time" value={estimatedArrivalTime} onChange={(event) => setEstimatedArrivalTime(event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" />
+            </label>
+            <label className="block text-sm text-slate-700">
+              Asientos
+              <input type="number" min={1} max={20} step={1} value={availableSeats} onChange={(event) => setAvailableSeats(event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" />
+            </label>
+            <label className="block text-sm text-slate-700">
+              Precio por asiento
+              <input type="number" min={1} max={500} step="0.01" value={pricePerSeat} onChange={(event) => setPricePerSeat(event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" placeholder="40" />
+            </label>
+          </div>
+
+          <label className="block text-sm text-slate-700">
+            Estado inicial
+            <select value={status} onChange={(event) => setStatus(event.target.value as RouteStatus)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2">
+              <option value="active">Activa</option>
+              <option value="paused">Pausada</option>
+            </select>
+          </label>
+
+          <div className="flex flex-wrap gap-2">
+            <button type="submit" disabled={saving} className="rounded-md bg-brand-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">
+              {saving ? 'Creando...' : 'Crear ruta'}
+            </button>
+            <button type="button" onClick={resetForm} className="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700">
+              Limpiar
+            </button>
+          </div>
         </form>
 
         <aside className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Guia rapida</h2>
-          <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-slate-700">
-            <li>Primero elige region y despues ubicacion exacta.</li>
-            <li>Punto de inicio y destino deben ser claros y reales.</li>
-            <li>El precio por asiento no puede superar 500 MXN.</li>
-            <li>Ahora puedes editar precio y horarios desde cada tarjeta.</li>
-          </ul>
+          <h2 className="text-lg font-semibold text-slate-900">Piloto controlado</h2>
+          <div className="mt-3 space-y-2 text-sm text-slate-700">
+            <p>Rutas activas: <span className="font-semibold text-slate-900">{routes.filter((route) => String(route.status).toLowerCase() === 'active').length}</span></p>
+            <p>Rutas pausadas: <span className="font-semibold text-slate-900">{routes.filter((route) => String(route.status).toLowerCase() !== 'active').length}</span></p>
+            <p>Total publicado: <span className="font-semibold text-slate-900">{routes.length}</span></p>
+          </div>
           <Link href="/dashboard/routes" className="mt-4 inline-block rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">
             Ver feed de rutas
           </Link>
@@ -447,18 +476,13 @@ export default function AdminRoutesPage() {
 
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold text-slate-900">Rutas publicadas</h2>
+          <h2 className="text-lg font-semibold text-slate-900">Rutas creadas</h2>
           <div className="flex items-center gap-2">
             <label className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">
               <input type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAllVisible} />
               Seleccionar visibles
             </label>
-            <button
-              type="button"
-              onClick={handleBulkDelete}
-              disabled={bulkDeleting || selectedRouteIds.length === 0}
-              className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 disabled:opacity-60"
-            >
+            <button type="button" onClick={handleBulkDelete} disabled={bulkDeleting || selectedRouteIds.length === 0} className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 disabled:opacity-60">
               {bulkDeleting ? 'Eliminando...' : `Eliminar seleccionadas (${selectedRouteIds.length})`}
             </button>
           </div>
@@ -482,40 +506,26 @@ export default function AdminRoutesPage() {
                       <input type="checkbox" checked={isSelected} onChange={() => toggleRouteSelection(route.id)} />
                       Seleccionar
                     </label>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteRoute(route.id)}
-                      disabled={isDeleting}
-                      className="rounded-md border border-red-300 bg-red-50 px-2 py-1 text-xs font-medium text-red-700 disabled:opacity-60"
-                    >
+                    <button type="button" onClick={() => handleDeleteRoute(route.id)} disabled={isDeleting} className="rounded-md border border-red-300 bg-red-50 px-2 py-1 text-xs font-medium text-red-700 disabled:opacity-60">
                       {isDeleting ? 'Eliminando...' : 'Eliminar'}
                     </button>
                   </div>
                   <p className="text-xs text-slate-500">Ruta #{route.publicId ?? '-'}</p>
                   <h3 className="text-base font-semibold text-slate-900">{route.title || `${route.origin} -> ${route.destination}`}</h3>
                   <p className="text-sm text-slate-700">{route.origin} {'->'} {route.destination}</p>
+                  <p className="text-sm text-slate-700">Dias: {formatWeekdays(route.weekdays)}</p>
                   <p className="text-sm text-slate-700">Horario: {route.departureTime} - {route.estimatedArrivalTime}</p>
                   <p className="text-sm text-slate-700">Distancia: {route.distanceKm.toFixed(2)} km</p>
-                  <p className="text-sm text-slate-700">Asientos base: {route.availableSeats}</p>
+                  <p className="text-sm text-slate-700">Asientos: {route.availableSeats}</p>
                   <p className="text-sm font-medium text-slate-900">Precio por asiento: ${route.pricePerSeat.toFixed(2)} MXN</p>
-                  <p className="mt-1 text-xs text-slate-600">{route.stopsText || 'Sin descripcion.'}</p>
+                  <p className="mt-1 text-xs text-slate-600">{route.stopsText || 'Sin notas operativas.'}</p>
                   <p className="mt-1 text-xs text-slate-600">Estado: {routeIsActive ? 'Activa' : 'Pausada'}</p>
 
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => void handleQuickEdit(route)}
-                      disabled={isEditing}
-                      className="rounded-md border border-blue-300 bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 disabled:opacity-60"
-                    >
+                    <button type="button" onClick={() => void handleQuickEdit(route)} disabled={isEditing} className="rounded-md border border-blue-300 bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 disabled:opacity-60">
                       {isEditing ? 'Guardando...' : 'Editar precio/horario'}
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => void handleToggleStatus(route)}
-                      disabled={isStatusBusy}
-                      className="rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 disabled:opacity-60"
-                    >
+                    <button type="button" onClick={() => void handleToggleStatus(route)} disabled={isStatusBusy} className="rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 disabled:opacity-60">
                       {isStatusBusy ? 'Actualizando...' : routeIsActive ? 'Pausar ruta' : 'Activar ruta'}
                     </button>
                   </div>
@@ -528,4 +538,3 @@ export default function AdminRoutesPage() {
     </section>
   );
 }
-

@@ -8,7 +8,6 @@ import { CreateRouteDto, RouteStatusDto, WeekdayDto } from './dto/create-route.d
 import { NearbyRoutesQueryDto } from './dto/nearby-routes-query.dto';
 import { TakeViajeDto } from './dto/take-viaje.dto';
 import { UpdateRouteDto } from './dto/update-route.dto';
-import { ROUTE_SERVICE_SCOPE_LABEL } from './route-location-options';
 import { estimateRouteDistanceKm } from './route-distance-estimator';
 
 @Injectable()
@@ -182,7 +181,7 @@ export class RoutesService {
   private parseWeekdays(value: string): WeekdayDto[] { try { const p = JSON.parse(value); if (!Array.isArray(p)) return []; return p.filter((d): d is WeekdayDto => Object.values(WeekdayDto).includes(d as WeekdayDto)); } catch { return []; } }
   private toStorageStatus(status: RouteStatusDto): 'active' | 'paused' { return status === RouteStatusDto.PAUSED ? 'paused' : 'active'; }
   private mapStatus(status: string): RouteStatusDto { return String(status || '').toLowerCase() === 'paused' ? RouteStatusDto.PAUSED : RouteStatusDto.ACTIVE; }
-  private composeRouteDescription(dto: AdminCreateRouteDto) { const scope = dto.serviceScope ? ROUTE_SERVICE_SCOPE_LABEL[dto.serviceScope] : null; const desc = dto.description?.trim(); return scope && desc ? `${scope}. ${desc}` : scope ?? desc; }
+  private composeRouteDescription(dto: AdminCreateRouteDto) { return dto.stopsText?.trim() || dto.description?.trim() || undefined; }
   private async findOwnedRouteOrThrow(userId: string, routeId: string) { await this.ensureDriver(userId); const route = await this.routeDelegate().findUnique({ where: { id: routeId }, include: this.routeInclude(false) }); if (!route) throw new NotFoundException('Ruta no encontrada'); if (route.driverUserId !== userId) throw new ForbiddenException('No puedes gestionar rutas de otro conductor'); return route; }
   private async findRouteByIdOrThrow(routeId: string, includeDriver = false) { const route = await this.routeDelegate().findUnique({ where: { id: routeId }, include: this.routeInclude(includeDriver) }); if (!route) throw new NotFoundException('Ruta no encontrada'); return route; }
   private async ensureRoutePublisher(userId: string) { const user = await this.prisma.user.findUnique({ where: { id: userId } }); if (!user) throw new NotFoundException('Usuario no encontrado'); const role = String(user.role || '').toLowerCase(); if (role === 'admin') return user; if (role === 'driver') { await this.ensureApprovedDriver(userId); return user; } throw new ForbiddenException('Solo admin y conductor pueden crear rutas base.'); }

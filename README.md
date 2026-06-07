@@ -26,7 +26,7 @@ tests/e2e/    Pruebas Playwright
 
 ## Flujo operativo conservado
 
-1. Admin gestiona rutas base.
+1. Admin gestiona rutas especificas del piloto.
 2. Conductor toma rutas o viajes disponibles.
 3. Pasajero reserva.
 4. Pasajero paga con link fijo de Mercado Pago o flujo manual.

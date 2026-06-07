@@ -111,7 +111,7 @@ Pruebas manuales minimas:
 - Login pasajero.
 - Login conductor.
 - Login admin.
-- Crear/ver ruta base.
+- Crear/ver ruta especifica del piloto.
 - Conductor toma ruta.
 - Pasajero reserva.
 - Pasajero ve monto exacto.

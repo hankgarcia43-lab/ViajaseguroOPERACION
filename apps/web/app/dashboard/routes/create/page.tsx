@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { apiRequest, getToken } from '@/lib/api';
 import { estimateRouteDistanceKm } from '@/lib/route-distance-estimator';
-import { CDMX_DESTINATION_HUBS, EDOMEX_ORIGIN_OPTIONS, ROUTE_SERVICE_SCOPE_OPTIONS, RouteServiceScope } from '@/lib/route-location-options';
+import { CDMX_DESTINATION_HUBS, EDOMEX_ORIGIN_OPTIONS } from '@/lib/route-location-options';
 
 type Region = 'edomex' | 'cdmx';
 
@@ -22,8 +22,11 @@ export default function CreateRoutePage() {
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
   const [pricePerSeat, setPricePerSeat] = useState('');
-  const [serviceScope, setServiceScope] = useState<RouteServiceScope>('edomex_to_cdmx');
   const [description, setDescription] = useState('');
+  const [weekdays, setWeekdays] = useState<string[]>(['monday', 'tuesday', 'wednesday', 'thursday', 'friday']);
+  const [departureTime, setDepartureTime] = useState('06:00');
+  const [estimatedArrivalTime, setEstimatedArrivalTime] = useState('07:00');
+  const [availableSeats, setAvailableSeats] = useState('4');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -54,6 +57,22 @@ export default function CreateRoutePage() {
       return;
     }
 
+    if (weekdays.length === 0) {
+      setError('Selecciona al menos un dia de operacion.');
+      return;
+    }
+
+    if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(departureTime) || !/^([01]\d|2[0-3]):([0-5]\d)$/.test(estimatedArrivalTime)) {
+      setError('La hora de salida y llegada debe tener formato HH:mm.');
+      return;
+    }
+
+    const parsedSeats = Number.parseInt(availableSeats, 10);
+    if (!Number.isInteger(parsedSeats) || parsedSeats < 1 || parsedSeats > 20) {
+      setError('Los asientos disponibles deben estar entre 1 y 20.');
+      return;
+    }
+
     const parsedPrice = Number(pricePerSeat);
     if (!Number.isFinite(parsedPrice) || parsedPrice < 1 || parsedPrice > 500) {
       setError('El precio por asiento debe estar entre 1 y 500.');
@@ -69,11 +88,15 @@ export default function CreateRoutePage() {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify({
+          title: `${origin} -> ${destination} ${departureTime}`,
           origin,
           destination,
           pricePerSeat: parsedPrice,
-          serviceScope,
-          description: description.trim() || undefined
+          weekdays,
+          departureTime,
+          estimatedArrivalTime,
+          availableSeats: parsedSeats,
+          stopsText: description.trim() || undefined
         })
       });
 
@@ -81,7 +104,10 @@ export default function CreateRoutePage() {
       setOrigin('');
       setDestination('');
       setPricePerSeat('');
-      setServiceScope('edomex_to_cdmx');
+      setWeekdays(['monday', 'tuesday', 'wednesday', 'thursday', 'friday']);
+      setDepartureTime('06:00');
+      setEstimatedArrivalTime('07:00');
+      setAvailableSeats('4');
       setDescription('');
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'No se pudo crear la ruta.');
@@ -149,21 +175,51 @@ export default function CreateRoutePage() {
               </select>
             </label>
           </div>
-
-          <label className="block text-sm text-slate-700">
-            Tipo de servicio
-            <select value={serviceScope} onChange={(event) => setServiceScope(event.target.value as RouteServiceScope)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2">
-              {ROUTE_SERVICE_SCOPE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-          </label>
           <div className="rounded-md border border-cyan-100 bg-cyan-50 p-3 text-sm text-cyan-900">
             <p className="font-medium">Distancia estimada por sistema</p>
             <p>{estimatedDistanceKm ? `${estimatedDistanceKm.toFixed(1)} km aprox.` : 'Selecciona origen y destino para calcularla.'}</p>
             <p className="mt-1 text-xs">La distancia se calcula automaticamente y se usa para validar la tarifa por km.</p>
           </div>
 
+
+          <div className="grid gap-3 md:grid-cols-3">
+            <label className="block text-sm text-slate-700">
+              Hora de salida
+              <input type="time" value={departureTime} onChange={(event) => setDepartureTime(event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" />
+            </label>
+            <label className="block text-sm text-slate-700">
+              Llegada estimada
+              <input type="time" value={estimatedArrivalTime} onChange={(event) => setEstimatedArrivalTime(event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" />
+            </label>
+            <label className="block text-sm text-slate-700">
+              Asientos disponibles
+              <input type="number" min={1} max={20} step={1} value={availableSeats} onChange={(event) => setAvailableSeats(event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" />
+            </label>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-slate-700">Dias de operacion</p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                ['monday', 'Lun'],
+                ['tuesday', 'Mar'],
+                ['wednesday', 'Mie'],
+                ['thursday', 'Jue'],
+                ['friday', 'Vie'],
+                ['saturday', 'Sab'],
+                ['sunday', 'Dom']
+              ].map(([value, label]) => (
+                <label key={value} className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={weekdays.includes(value)}
+                    onChange={() => setWeekdays((current) => current.includes(value) ? current.filter((item) => item !== value) : [...current, value])}
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </div>
           <label className="block text-sm text-slate-700">
             Precio por asiento (MXN)
             <input

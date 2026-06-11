@@ -11,7 +11,7 @@ interface MeResponse {
   fullName: string;
   email: string;
   role: 'passenger' | 'driver' | 'admin';
-  verificationStatus: 'pending' | 'approved' | 'rejected';
+  verificationStatus: 'pending' | 'approved' | 'rejected' | 'suspended';
   driverProfile: { id: string; status: string } | null;
   passengerProfile: { id: string; status: string } | null;
 }

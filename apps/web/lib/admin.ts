@@ -1,4 +1,4 @@
-﻿export type AdminNavItem = {
+export type AdminNavItem = {
   href: string;
   label: string;
   description: string;
@@ -9,6 +9,11 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     href: '/dashboard/admin',
     label: 'Resumen',
     description: 'Vista central del panel admin'
+  },
+  {
+    href: '/dashboard/admin/people',
+    label: 'Personas',
+    description: 'Usuarios, conductores, documentos y estado operativo'
   },
   {
     href: '/dashboard/admin/verifications',
@@ -23,7 +28,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   {
     href: '/dashboard/admin/routes',
     label: 'Rutas',
-    description: 'Crear rutas base y precio por asiento'
+    description: 'Crear rutas especificas del piloto'
   },
   {
     href: '/dashboard/admin/fare-policy',

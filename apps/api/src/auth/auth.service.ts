@@ -74,6 +74,9 @@ export class AuthService {
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
+    if (String((user as any).operationalStatus || 'active').toLowerCase() === 'suspended') {
+      throw new UnauthorizedException('Cuenta suspendida. Contacta a administracion.');
+    }
     return this.createAuthResponse(user.id, user.email, user.role, user.fullName);
   }
 

@@ -1,4 +1,4 @@
-export type VerificationStatus = 'pending' | 'approved' | 'rejected';
+export type VerificationStatus = 'pending' | 'approved' | 'rejected' | 'suspended';
 export type UserDocumentType = 'identity_document_front' | 'identity_document_back' | 'identity_document';
 
 export const USER_DOCUMENT_TYPE_OPTIONS: Array<{ value: UserDocumentType; label: string }> = [

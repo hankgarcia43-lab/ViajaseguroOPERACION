@@ -69,6 +69,7 @@ const TRIP_STATUS = {
   CANCELLED: 'cancelled'
 } as const;
 
+const WEEKLY_RESERVATION_DISCOUNT_RATE = 0.1;
 
 @Injectable()
 export class ReservationsService {
@@ -158,12 +159,15 @@ export class ReservationsService {
       throw new BadRequestException('Selecciona al menos un dia para reservar.');
     }
 
-    if (selectedWeekdays.length > 3) {
-      throw new BadRequestException('Puedes reservar maximo 3 dias por semana en una sola solicitud.');
+    if (selectedWeekdays.length > 7) {
+      throw new BadRequestException('Puedes reservar maximo 7 dias por semana en una sola solicitud.');
     }
 
     const weeklyReservationGroupId = randomUUID();
-    const weeklyTotalAmount = this.roundCurrency(selectedWeekdays.length * totalSeats * seedTrip.pricePerSeatSnapshot);
+    const weeklyGrossAmount = this.roundCurrency(selectedWeekdays.length * totalSeats * seedTrip.pricePerSeatSnapshot);
+    const weeklyDiscountApplied = selectedWeekdays.length > 1;
+    const weeklyDiscountAmount = weeklyDiscountApplied ? this.roundCurrency(weeklyGrossAmount * WEEKLY_RESERVATION_DISCOUNT_RATE) : 0;
+    const weeklyTotalAmount = this.roundCurrency(weeklyGrossAmount - weeklyDiscountAmount);
     const items: ReservationRecord[] = [];
 
     for (const weekday of selectedWeekdays) {
@@ -239,14 +243,16 @@ export class ReservationsService {
       totalDays: mapped.length,
       totalSeats,
       selectedWeekdays,
-      grossAmount: weeklyTotalAmount,
+      grossAmount: weeklyGrossAmount,
+      discountAmount: weeklyDiscountAmount,
+      discountRate: weeklyDiscountApplied ? WEEKLY_RESERVATION_DISCOUNT_RATE : 0,
       totalAmount: weeklyTotalAmount,
       finalAmount: weeklyTotalAmount,
       reservations: mapped,
       primaryReservationId: mapped[0]?.id ?? null,
       message: mapped.length === 1
         ? 'Reserva creada para 1 dia. Se genero un pago por el total.'
-        : 'Reserva semanal creada para ' + mapped.length + ' dias. Se genero un solo pago por el total semanal.'
+        : 'Reserva semanal creada para ' + mapped.length + ' dias con 10% de descuento. Se genero un solo pago por el total semanal.'
     };
   }
 
@@ -268,14 +274,17 @@ export class ReservationsService {
       throw new BadRequestException('Selecciona al menos un dia del viaje.');
     }
 
-    if (selectedWeekdays.length > 3) {
-      throw new BadRequestException('Puedes reservar maximo 3 dias por semana en una sola solicitud.');
+    if (selectedWeekdays.length > 7) {
+      throw new BadRequestException('Puedes reservar maximo 7 dias por semana en una sola solicitud.');
     }
 
     const normalizedTotalSeats = dto.totalSeats;
     const companionCount = normalizedTotalSeats - 1;
     const weeklyReservationGroupId = randomUUID();
-    const weeklyTotalAmount = this.roundCurrency(selectedWeekdays.length * normalizedTotalSeats * offer.pricePerSeat);
+    const weeklyGrossAmount = this.roundCurrency(selectedWeekdays.length * normalizedTotalSeats * offer.pricePerSeat);
+    const weeklyDiscountApplied = selectedWeekdays.length > 1;
+    const weeklyDiscountAmount = weeklyDiscountApplied ? this.roundCurrency(weeklyGrossAmount * WEEKLY_RESERVATION_DISCOUNT_RATE) : 0;
+    const weeklyTotalAmount = this.roundCurrency(weeklyGrossAmount - weeklyDiscountAmount);
     const items: ReservationRecord[] = [];
 
     for (const weekday of selectedWeekdays) {
@@ -350,15 +359,17 @@ export class ReservationsService {
       totalDays: mapped.length,
       totalSeats: normalizedTotalSeats,
       selectedWeekdays,
-      grossAmount: weeklyTotalAmount,
+      grossAmount: weeklyGrossAmount,
+      discountAmount: weeklyDiscountAmount,
+      discountRate: weeklyDiscountApplied ? WEEKLY_RESERVATION_DISCOUNT_RATE : 0,
       totalAmount: weeklyTotalAmount,
       finalAmount: weeklyTotalAmount,
-      weeklyDiscountApplied: false,
+      weeklyDiscountApplied,
       reservations: mapped,
       primaryReservationId: mapped[0]?.id ?? null,
       message: selectedWeekdays.length === 1
         ? 'Reserva creada con un boleto para ' + normalizedTotalSeats + ' asiento(s). Se genero el pago por el total.'
-        : 'Reserva semanal creada para ' + selectedWeekdays.length + ' dias. Se genero un solo pago por el total semanal.'
+        : 'Reserva semanal creada para ' + selectedWeekdays.length + ' dias con 10% de descuento. Se genero un solo pago por el total semanal.'
     };
   }
 

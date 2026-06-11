@@ -23,7 +23,7 @@ export class CreateReservationDto {
   @IsOptional()
   @IsArray()
   @ArrayMinSize(1)
-  @ArrayMaxSize(3)
+  @ArrayMaxSize(7)
   @IsIn(WEEKDAYS, { each: true })
   selectedWeekdays?: string[];
 }

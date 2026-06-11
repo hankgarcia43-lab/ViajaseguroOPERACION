@@ -1,4 +1,4 @@
-﻿const ROAD_FACTOR = 1.28;
+const ROAD_FACTOR = 1.28;
 const DEFAULT_INTERCITY_KM = 38;
 const DEFAULT_CDMX_KM = 14;
 const DEFAULT_EDOMEX_KM = 26;
@@ -6,7 +6,21 @@ const DEFAULT_EDOMEX_KM = 26;
 type Point = { lat: number; lng: number };
 
 const POINTS: Record<string, Point> = {
-  'tepexpan - centro / plaza principal': { lat: 19.6136, lng: -98.9361 },
+  'acolman - centro': { lat: 19.6392, lng: -98.9125 },
+  'acolman - tepexpan': { lat: 19.6136, lng: -98.9361 },
+  'acolman - san marcos nepantla': { lat: 19.6364, lng: -98.8901 },
+  'ecatepec - san cristobal centro': { lat: 19.6019, lng: -99.0501 },
+  'ecatepec - las americas': { lat: 19.5867, lng: -99.0277 },
+  'ecatepec - ciudad azteca': { lat: 19.5345, lng: -99.0277 },
+  'ecatepec - via morelos': { lat: 19.5706, lng: -99.0413 },
+  'tecamac - centro': { lat: 19.7129, lng: -98.9687 },
+  'tecamac - ojo de agua': { lat: 19.6804, lng: -99.0137 },
+  'tecamac - los heroes': { lat: 19.6322, lng: -99.0359 },
+  'texcoco - centro': { lat: 19.5119, lng: -98.8829 },
+  'texcoco - terminal centro': { lat: 19.5161, lng: -98.8844 },
+  'teotihuacan - centro': { lat: 19.6885, lng: -98.8614 },
+  'teotihuacan - san juan': { lat: 19.6878, lng: -98.8612 },
+  'teotihuacan - piramides': { lat: 19.6925, lng: -98.8438 },  'tepexpan - centro / plaza principal': { lat: 19.6136, lng: -98.9361 },
   'tepexpan - carretera mexico-tepexpan / acceso principal': { lat: 19.6162, lng: -98.9412 },
   'ojo de agua - centro / plaza ojo de agua': { lat: 19.6804, lng: -99.0137 },
   'ojo de agua - real del sol / boulevard ojo de agua': { lat: 19.6578, lng: -99.0274 },

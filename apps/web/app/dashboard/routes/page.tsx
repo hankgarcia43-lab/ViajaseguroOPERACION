@@ -279,7 +279,7 @@ export default function RoutesPage() {
             <p className="text-sm text-slate-600">{selectedCorridor ? (isDriver ? selectedCorridor.driverHint : selectedCorridor.passengerHint) : 'Filtra por destino fuerte o busca por municipio para elegir mas rapido.'}</p>
           </div>
           {visibleGroupedRoutes.length === 0 ? (
-            <p className="rounded-xl border border-slate-200 bg-white p-6 text-slate-700">No hay rutas activas por ahora. En produccion las rutas troncales se sincronizan automaticamente al arrancar el backend.</p>
+            <p className="rounded-xl border border-slate-200 bg-white p-6 text-slate-700">No hay rutas activas por ahora. Admin debe publicar rutas piloto reales antes de iniciar la operacion.</p>
           ) : (
             visibleGroupedRoutes.map((group) => (
               <section key={group.corridorName} className="space-y-3">
@@ -363,7 +363,7 @@ export default function RoutesPage() {
           title="Guia de operacion"
           subtitle="Flujo simple"
           points={[
-            '1) Admin publica rutas base por corredor.',
+            '1) Admin publica rutas piloto con municipio, poblado libre, referencia y horario.',
             '2) Chofer pulsa Tomar ruta y personaliza su viaje.',
             '3) Pasajero elige conductor por referencia, horario y precio.',
             '4) Mantener puntos de abordaje claros y seguros.'

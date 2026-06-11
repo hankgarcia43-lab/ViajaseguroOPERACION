@@ -18,6 +18,7 @@ const COPY = {
     icon: 'VS',
     accent: 'from-blue-600 to-indigo-600',
     bullets: ['Rutas fijas diarias', 'Conductores verificados', 'Precio transparente'],
+    guide: ['Usa el correo y contrasena con los que te registraste.', 'Si no ves tu panel correcto, cierra sesion e inicia con la cuenta adecuada.'],
     button: 'Iniciar sesion',
     secondaryHref: '/register/passenger',
     secondaryText: 'No tienes cuenta? Registrate gratis'
@@ -28,6 +29,7 @@ const COPY = {
     icon: 'VS',
     accent: 'from-blue-600 to-indigo-600',
     bullets: ['Rutas fijas diarias', 'Conductores verificados', 'Precio transparente'],
+    guide: ['Registra tu nombre real y telefono activo.', 'Despues sube INE frente y reverso en Verificacion.', 'Al reservar, paga el total semanal y sube un solo comprobante.'],
     button: 'Crear cuenta de pasajero',
     secondaryHref: '/login',
     secondaryText: 'Ya tienes cuenta? Inicia sesion'
@@ -38,6 +40,7 @@ const COPY = {
     icon: 'VS',
     accent: 'from-indigo-600 to-violet-600',
     bullets: ['Comision operativa visible', 'Verificacion confiable', 'Define tus horarios'],
+    guide: ['Registra datos reales para que admin pueda validarte.', 'Despues sube INE, licencia y documentos del vehiculo.', 'Cuando estes aprobado, toma una ruta compatible con tu traslado.'],
     button: 'Crear cuenta de conductor',
     secondaryHref: '/login',
     secondaryText: 'Ya tienes cuenta? Inicia sesion'
@@ -119,6 +122,15 @@ export function AuthForm({ mode }: AuthFormProps) {
             </li>
           ))}
         </ul>
+
+        <div className="rounded-2xl border border-cyan-100 bg-cyan-50 p-4 text-left text-sm text-cyan-950">
+          <p className="font-semibold">Antes de continuar</p>
+          <ul className="mt-2 space-y-1">
+            {copy.guide.map((item) => (
+              <li key={item}>- {item}</li>
+            ))}
+          </ul>
+        </div>
 
         <form className="space-y-4" onSubmit={onSubmit}>
           {!isLogin && (

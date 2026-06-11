@@ -109,7 +109,16 @@ export default function AdminDashboardPage() {
         <h1 className="text-2xl font-semibold text-slate-900">Dashboard admin</h1>
         <p className="mt-2 text-sm text-slate-600">Centro operativo para revisar verificaciones, politica comercial, vehiculos, economia interna y estado del sistema.</p>
       </header>
-{error && <p className="rounded-md bg-red-50 p-3 text-red-700">{error}</p>}
+      {error && <p className="rounded-md bg-red-50 p-3 text-red-700">{error}</p>}
+
+      <section className="rounded-2xl border border-cyan-100 bg-cyan-50 p-5 text-cyan-950 shadow-sm">
+        <h2 className="text-lg font-semibold">Guia rapida de operacion piloto</h2>
+        <div className="mt-3 grid gap-3 text-sm md:grid-cols-3">
+          <p><span className="font-semibold">Rutas:</span> crea solo rutas reales con municipio, poblado libre, referencia de abordaje y horario confirmado.</p>
+          <p><span className="font-semibold">Personas:</span> revisa documentos, suspende cuentas de riesgo y destaca conductores confiables.</p>
+          <p><span className="font-semibold">Pagos:</span> valida comprobantes antes de habilitar boleto y codigo de abordaje.</p>
+        </div>
+      </section>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => (

@@ -189,7 +189,7 @@ export default function AdminRoutesPage() {
   const [success, setSuccess] = useState<string | null>(null);
 
   const [municipality, setMunicipality] = useState(PILOT_ORIGINS[0].municipality);
-  const [originTown, setOriginTown] = useState(PILOT_ORIGINS[0].towns[0].value);
+  const [originTown, setOriginTown] = useState('');
   const [destination, setDestination] = useState(PILOT_DESTINATIONS[0].options[0].value);
   const [boardingReference, setBoardingReference] = useState('');
   const [weekdays, setWeekdays] = useState<Weekday[]>(['monday', 'tuesday', 'wednesday', 'thursday', 'friday']);
@@ -199,11 +199,6 @@ export default function AdminRoutesPage() {
   const [pricePerSeat, setPricePerSeat] = useState('');
   const [status, setStatus] = useState<RouteStatus>('active');
 
-  const townOptions = useMemo(() => {
-    const towns = getTowns(municipality);
-    if (towns.some((town) => town.value === originTown)) return towns;
-    return [...towns, { label: originTown, value: originTown }];
-  }, [municipality, originTown]);
 
   const destinationOptions = useMemo(() => {
     const options = getDestinationOptions();
@@ -211,7 +206,13 @@ export default function AdminRoutesPage() {
     return [...options, { label: destination, value: destination, group: 'Ruta existente' }];
   }, [destination]);
 
-  const estimatedDistanceKm = useMemo(() => estimateRouteDistanceKm(originTown, destination), [originTown, destination]);
+  const composedOrigin = useMemo(() => {
+    const trimmedTown = originTown.trim();
+    if (!trimmedTown) return municipality;
+    return trimmedTown.toLowerCase().includes(municipality.toLowerCase()) ? trimmedTown : `${municipality} - ${trimmedTown}`;
+  }, [municipality, originTown]);
+  const townSuggestions = useMemo(() => getTowns(municipality), [municipality]);
+  const estimatedDistanceKm = useMemo(() => estimateRouteDistanceKm(composedOrigin, destination), [composedOrigin, destination]);
   const activeRatePerKm = farePolicy?.ratePerKm ?? DEFAULT_UI_RATE_PER_KM;
   const suggestedPrice = useMemo(() => roundToFive(estimatedDistanceKm * activeRatePerKm), [estimatedDistanceKm, activeRatePerKm]);
   const allVisibleSelected = routes.length > 0 && routes.every((route) => selectedRouteIds.includes(route.id));
@@ -258,7 +259,7 @@ export default function AdminRoutesPage() {
     const firstMunicipality = PILOT_ORIGINS[0].municipality;
     setEditingRouteId(null);
     setMunicipality(firstMunicipality);
-    setOriginTown(PILOT_ORIGINS[0].towns[0].value);
+    setOriginTown('');
     setDestination(PILOT_DESTINATIONS[0].options[0].value);
     setBoardingReference('');
     setWeekdays(['monday', 'tuesday', 'wednesday', 'thursday', 'friday']);
@@ -273,7 +274,7 @@ export default function AdminRoutesPage() {
 
   function handleMunicipalityChange(nextMunicipality: string) {
     setMunicipality(nextMunicipality);
-    setOriginTown(getTowns(nextMunicipality)[0]?.value ?? '');
+    setOriginTown('');
   }
 
   function applySuggestedPrice() {
@@ -284,7 +285,7 @@ export default function AdminRoutesPage() {
     const nextMunicipality = inferMunicipality(route.origin);
     setEditingRouteId(route.id);
     setMunicipality(nextMunicipality);
-    setOriginTown(route.origin);
+    setOriginTown(route.origin.includes(' - ') ? route.origin.split(' - ').slice(1).join(' - ') : route.origin);
     setDestination(route.destination);
     setBoardingReference(route.stopsText ?? '');
     setWeekdays(route.weekdays?.length ? route.weekdays : ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']);
@@ -311,7 +312,7 @@ export default function AdminRoutesPage() {
     const parsedSeats = Number(availableSeats);
 
     if (!originTown.trim() || !destination.trim()) {
-      setError('Poblado de salida y destino son obligatorios.');
+      setError('Poblado/zona de salida y destino son obligatorios.');
       return;
     }
     if (!boardingReference.trim()) {
@@ -340,8 +341,8 @@ export default function AdminRoutesPage() {
     setSuccess(null);
 
     const payload = {
-      title: `${originTown} -> ${destination} ${departureTime}`,
-      origin: originTown.trim(),
+      title: `${composedOrigin} -> ${destination} ${departureTime}`,
+      origin: composedOrigin,
       destination: destination.trim(),
       stopsText: boardingReference.trim(),
       weekdays,
@@ -496,7 +497,7 @@ export default function AdminRoutesPage() {
     <section className="space-y-5">
       <header className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <h1 className="text-2xl font-semibold text-slate-900">Admin - Rutas piloto</h1>
-        <p className="mt-2 text-sm text-slate-600">Crea y edita rutas simples para Acolman, Ecatepec, Tecamac, Texcoco y Teotihuacan hacia puntos clave de CDMX.</p>
+        <p className="mt-2 text-sm text-slate-600">Crea y edita rutas simples para Acolman, Ecatepec, Tecamac, Texcoco y Teotihuacan. El poblado es libre para capturar colonias, unidades, paraderos o zonas de alta demanda.</p>
       </header>
 
       {error && <p className="rounded-md bg-red-50 p-3 text-red-700">{error}</p>}
@@ -507,7 +508,7 @@ export default function AdminRoutesPage() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">{formModeLabel}</h2>
-              <p className="mt-1 text-sm text-slate-600">Selecciona poblado, destino, referencia de abordaje y hora. El sistema calcula km y tarifa sugerida.</p>
+              <p className="mt-1 text-sm text-slate-600">Elige municipio, escribe el poblado o colonia exacta, agrega referencia de abordaje y hora. El sistema estima km y tarifa sugerida.</p>
             </div>
             {editingRouteId && (
               <button type="button" onClick={resetForm} className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">
@@ -527,12 +528,22 @@ export default function AdminRoutesPage() {
             </label>
 
             <label className="block text-sm text-slate-700">
-              Poblado o zona de salida
-              <select value={originTown} onChange={(event) => setOriginTown(event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2">
-                {townOptions.map((town) => (
-                  <option key={town.value} value={town.value}>{town.label}</option>
+              Poblado, colonia o zona de salida
+              <input
+                type="text"
+                list="pilot-town-suggestions"
+                value={originTown}
+                onChange={(event) => setOriginTown(event.target.value)}
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                placeholder="Ej. Ojo de Agua, Las Americas, San Cristobal, Tepexpan"
+                required
+              />
+              <datalist id="pilot-town-suggestions">
+                {townSuggestions.map((town) => (
+                  <option key={town.value} value={town.label} />
                 ))}
-              </select>
+              </datalist>
+              <span className="mt-1 block text-xs text-slate-500">Puedes escribir cualquier colonia, poblado, unidad o paradero. Las sugerencias son solo referencia rapida.</span>
             </label>
           </div>
 

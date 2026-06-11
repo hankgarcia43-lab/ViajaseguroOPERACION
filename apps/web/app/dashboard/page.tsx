@@ -83,10 +83,10 @@ export default function DashboardPage() {
           subtitle: 'Sigue este orden para evitar bloqueos en el viaje.',
           points: [
             'Completa verificacion con INE frente y reverso.',
-            'Reserva viaje y sube comprobante de pago.',
-            'Espera validacion admin del pago.',
-            'Cuando el pago este aprobado se habilita tu codigo.',
-            'Llega a tiempo al punto de abordaje.'
+            'Selecciona uno o mas dias si viajas por semana.',
+            'Paga el total de tus asientos y dias en un solo movimiento.',
+            'Sube comprobante y espera validacion admin.',
+            'Cuando el pago este aprobado se habilita tu boleto.'
           ],
           nextStep: 'Ir a buscar viajes o revisar tus reservas.',
           ctaHref: '/dashboard/search-trips',
@@ -109,10 +109,10 @@ export default function DashboardPage() {
       : {
           subtitle: 'Prioriza estos puntos para mantener la operacion estable.',
           points: [
-            'Las rutas base del sistema se sincronizan automaticamente por plantilla.',
+            'Crea solo rutas piloto reales y elimina o pausa las que no se operen.',
             'Aprueba verificaciones de usuario y vehiculo.',
             'Valida pagos para habilitar abordajes.',
-            'Supervisa viajes iniciados y reservas.',
+            'Revisa personas registradas antes de promover o suspender cuentas.',
             'Cierra la semana con liquidaciones claras.'
           ],
           nextStep: 'Entrar al panel admin y revisar pendientes.',

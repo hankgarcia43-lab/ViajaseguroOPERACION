@@ -1,4 +1,4 @@
-﻿type StatusMeta = {
+type StatusMeta = {
   label: string;
   className: string;
 };
@@ -54,7 +54,8 @@ const payoutStatusMap: Record<string, StatusMeta> = {
 const verificationStatusMap: Record<string, StatusMeta> = {
   pending: { label: 'Pendiente', className: 'bg-amber-100 text-amber-700' },
   approved: { label: 'Aprobada', className: 'bg-emerald-100 text-emerald-700' },
-  rejected: { label: 'Rechazada', className: 'bg-red-100 text-red-700' }
+  rejected: { label: 'Rechazada', className: 'bg-red-100 text-red-700' },
+  suspended: { label: 'Suspendida', className: 'bg-zinc-200 text-zinc-800' }
 };
 
 export function getRouteStatusMeta(status: string | null | undefined) {

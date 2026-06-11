@@ -1,9 +1,10 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { apiRequest, getToken } from '@/lib/api';
 import { ADMIN_NAV_ITEMS } from '@/lib/admin';
+import { AdminPeopleSummary, fetchAdminPeopleSummary } from '@/lib/admin-people';
 import { FarePolicy } from '@/lib/fare-policy';
 import { Payment } from '@/lib/payments';
 import { Refund } from '@/lib/refunds';
@@ -31,6 +32,7 @@ export default function AdminDashboardPage() {
   const [trips, setTrips] = useState<DriverTrip[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [routesCount, setRoutesCount] = useState(0);
+  const [peopleSummary, setPeopleSummary] = useState<AdminPeopleSummary | null>(null);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [farePolicy, setFarePolicy] = useState<FarePolicy | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,7 +49,7 @@ export default function AdminDashboardPage() {
 
       try {
         const headers = { Authorization: `Bearer ${token}` };
-        const [verificationData, vehicleData, paymentData, refundData, payoutData, tripData, reservationData, routeData, incidentData, farePolicyData] = await Promise.all([
+        const [verificationData, vehicleData, paymentData, refundData, payoutData, tripData, reservationData, routeData, incidentData, farePolicyData, peopleSummaryData] = await Promise.all([
           apiRequest<PendingVerificationSummary[]>('/admin/verifications/pending', { headers }),
           apiRequest<PendingVehicleSummary[]>('/admin/vehicles/pending', { headers }),
           apiRequest<Payment[]>('/payments', { headers }),
@@ -57,7 +59,8 @@ export default function AdminDashboardPage() {
           apiRequest<Reservation[]>('/reservations/admin/all', { headers }),
           apiRequest<any[]>('/admin/routes', { headers }),
           apiRequest<Incident[]>('/incidents/admin/all', { headers }),
-          apiRequest<FarePolicy | null>('/admin/fare-policy/current', { headers })
+          apiRequest<FarePolicy | null>('/admin/fare-policy/current', { headers }),
+          fetchAdminPeopleSummary(token)
         ]);
 
         setPendingVerifications(verificationData);
@@ -70,6 +73,7 @@ export default function AdminDashboardPage() {
         setRoutesCount(routeData.length);
         setIncidents(incidentData);
         setFarePolicy(farePolicyData);
+        setPeopleSummary(peopleSummaryData);
       } catch (requestError) {
         setError(requestError instanceof Error ? requestError.message : 'No se pudo cargar el panel admin.');
       } finally {
@@ -81,17 +85,19 @@ export default function AdminDashboardPage() {
   }, []);
 
   const cards = useMemo<SummaryCard[]>(() => [
+    { label: 'Usuarios totales', value: peopleSummary?.total ?? 0, href: '/dashboard/admin/people', helper: `${peopleSummary?.drivers ?? 0} conductores / ${peopleSummary?.passengers ?? 0} pasajeros` },
+    { label: 'Suspendidos', value: peopleSummary?.suspended ?? 0, href: '/dashboard/admin/people', helper: 'Cuentas bloqueadas por admin' },
     { label: 'Verificaciones pendientes', value: pendingVerifications.length, href: '/dashboard/admin/verifications', helper: 'Usuarios esperando revision' },
     { label: 'Vehiculos pendientes', value: pendingVehicles.length, href: '/dashboard/admin/vehicles', helper: 'Conductores bloqueados por vehiculo' },
     { label: 'Tarifa por km activa', value: farePolicy ? `$${farePolicy.ratePerKm.toFixed(2)}` : 'Sin definir', href: '/dashboard/admin/fare-policy', helper: farePolicy ? `Modo: ${farePolicy.mode === 'fixed_per_km' ? 'fija' : 'maxima'} por km` : 'Configura politica comercial' },
     { label: 'Pagos registrados', value: payments.length, href: '/dashboard/admin/payments', helper: 'Seguimiento economico del MVP' },
     { label: 'Refunds', value: refunds.length, href: '/dashboard/admin/refunds', helper: 'Reembolsos manuales e internos' },
     { label: 'Liquidaciones', value: payouts.length, href: '/dashboard/admin/weekly-payouts', helper: 'Payouts internos generados' },
-    { label: 'Rutas base', value: routesCount, href: '/dashboard/admin/routes', helper: 'Rutas creadas por administracion' },
+    { label: 'Rutas piloto', value: routesCount, href: '/dashboard/admin/routes', helper: 'Rutas especificas creadas por administracion' },
     { label: 'Soporte abierto', value: incidents.filter((item) => item.status === 'open').length, href: '/dashboard/admin/incidents', helper: 'Comentarios, reportes y alertas' },
     { label: 'Viajes', value: trips.length, href: '/dashboard/admin/trips', helper: 'Operacion de salidas reales' },
     { label: 'Reservas', value: reservations.length, href: '/dashboard/admin/reservations', helper: 'Seguimiento de ocupacion y pagos' }
-  ] , [payments.length, payouts.length, pendingVerifications.length, pendingVehicles.length, refunds.length, reservations.length, routesCount, trips.length, incidents, farePolicy]);
+  ] , [payments.length, payouts.length, pendingVerifications.length, pendingVehicles.length, refunds.length, reservations.length, routesCount, trips.length, incidents, farePolicy, peopleSummary]);
 
   if (loading) {
     return <p className="text-slate-700">Cargando resumen admin...</p>;

@@ -11,7 +11,7 @@ interface MeResponse {
   fullName: string;
   email: string;
   role: 'driver';
-  verificationStatus: 'pending' | 'approved' | 'rejected';
+  verificationStatus: 'pending' | 'approved' | 'rejected' | 'suspended';
 }
 
 interface VehicleFormState {

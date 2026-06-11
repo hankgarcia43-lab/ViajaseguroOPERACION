@@ -40,11 +40,6 @@ type BulkDeleteResponse = {
 type Weekday = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
 type RouteStatus = 'active' | 'paused';
 
-type PilotOrigin = {
-  municipality: string;
-  towns: Array<{ label: string; value: string }>;
-};
-
 type PilotDestination = {
   delegation: string;
   options: Array<{ label: string; value: string }>;
@@ -60,48 +55,7 @@ const WEEKDAY_OPTIONS: Array<{ value: Weekday; label: string }> = [
   { value: 'sunday', label: 'Dom' }
 ];
 
-const PILOT_ORIGINS: PilotOrigin[] = [
-  {
-    municipality: 'Acolman',
-    towns: [
-      { label: 'Acolman Centro', value: 'Acolman - Centro' },
-      { label: 'Tepexpan', value: 'Acolman - Tepexpan' },
-      { label: 'San Marcos Nepantla', value: 'Acolman - San Marcos Nepantla' }
-    ]
-  },
-  {
-    municipality: 'Ecatepec',
-    towns: [
-      { label: 'San Cristobal Centro', value: 'Ecatepec - San Cristobal Centro' },
-      { label: 'Las Americas', value: 'Ecatepec - Las Americas' },
-      { label: 'Ciudad Azteca', value: 'Ecatepec - Ciudad Azteca' },
-      { label: 'Via Morelos', value: 'Ecatepec - Via Morelos' }
-    ]
-  },
-  {
-    municipality: 'Tecamac',
-    towns: [
-      { label: 'Tecamac Centro', value: 'Tecamac - Centro' },
-      { label: 'Ojo de Agua', value: 'Tecamac - Ojo de Agua' },
-      { label: 'Los Heroes Tecamac', value: 'Tecamac - Los Heroes' }
-    ]
-  },
-  {
-    municipality: 'Texcoco',
-    towns: [
-      { label: 'Texcoco Centro', value: 'Texcoco - Centro' },
-      { label: 'Terminal Texcoco Centro', value: 'Texcoco - Terminal Centro' }
-    ]
-  },
-  {
-    municipality: 'Teotihuacan',
-    towns: [
-      { label: 'San Juan Teotihuacan', value: 'Teotihuacan - San Juan' },
-      { label: 'Teotihuacan Centro', value: 'Teotihuacan - Centro' },
-      { label: 'Zona Piramides', value: 'Teotihuacan - Piramides' }
-    ]
-  }
-];
+const PILOT_ORIGINS = ['Acolman', 'Ecatepec', 'Tecamac', 'Texcoco', 'Teotihuacan'] as const;
 
 const PILOT_DESTINATIONS: PilotDestination[] = [
   {
@@ -145,17 +99,13 @@ function formatWeekdays(weekdays?: Weekday[]) {
   return weekdays.map((weekday) => labels.get(weekday) ?? weekday).join(', ');
 }
 
-function getTowns(municipality: string) {
-  return PILOT_ORIGINS.find((item) => item.municipality === municipality)?.towns ?? [];
-}
-
 function getDestinationOptions() {
   return PILOT_DESTINATIONS.flatMap((group) => group.options.map((option) => ({ ...option, group: group.delegation })));
 }
 
 function inferMunicipality(origin: string) {
   const normalized = origin.toLowerCase();
-  return PILOT_ORIGINS.find((item) => normalized.includes(item.municipality.toLowerCase()))?.municipality ?? PILOT_ORIGINS[0].municipality;
+  return PILOT_ORIGINS.find((item) => normalized.includes(item.toLowerCase())) ?? PILOT_ORIGINS[0];
 }
 
 function roundCurrency(value: number) {
@@ -188,7 +138,7 @@ export default function AdminRoutesPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const [municipality, setMunicipality] = useState(PILOT_ORIGINS[0].municipality);
+  const [municipality, setMunicipality] = useState<string>(PILOT_ORIGINS[0]);
   const [originTown, setOriginTown] = useState('');
   const [destination, setDestination] = useState(PILOT_DESTINATIONS[0].options[0].value);
   const [boardingReference, setBoardingReference] = useState('');
@@ -209,9 +159,8 @@ export default function AdminRoutesPage() {
   const composedOrigin = useMemo(() => {
     const trimmedTown = originTown.trim();
     if (!trimmedTown) return municipality;
-    return trimmedTown.toLowerCase().includes(municipality.toLowerCase()) ? trimmedTown : `${municipality} - ${trimmedTown}`;
+    return trimmedTown.toLowerCase().startsWith(municipality.toLowerCase()) ? trimmedTown : `${municipality} - ${trimmedTown}`;
   }, [municipality, originTown]);
-  const townSuggestions = useMemo(() => getTowns(municipality), [municipality]);
   const estimatedDistanceKm = useMemo(() => estimateRouteDistanceKm(composedOrigin, destination), [composedOrigin, destination]);
   const activeRatePerKm = farePolicy?.ratePerKm ?? DEFAULT_UI_RATE_PER_KM;
   const suggestedPrice = useMemo(() => roundToFive(estimatedDistanceKm * activeRatePerKm), [estimatedDistanceKm, activeRatePerKm]);
@@ -256,7 +205,7 @@ export default function AdminRoutesPage() {
   }
 
   function resetForm() {
-    const firstMunicipality = PILOT_ORIGINS[0].municipality;
+    const firstMunicipality = PILOT_ORIGINS[0];
     setEditingRouteId(null);
     setMunicipality(firstMunicipality);
     setOriginTown('');
@@ -312,7 +261,7 @@ export default function AdminRoutesPage() {
     const parsedSeats = Number(availableSeats);
 
     if (!originTown.trim() || !destination.trim()) {
-      setError('Poblado/zona de salida y destino son obligatorios.');
+      setError('Poblado o colonia de salida y destino son obligatorios.');
       return;
     }
     if (!boardingReference.trim()) {
@@ -497,7 +446,7 @@ export default function AdminRoutesPage() {
     <section className="space-y-5">
       <header className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <h1 className="text-2xl font-semibold text-slate-900">Admin - Rutas piloto</h1>
-        <p className="mt-2 text-sm text-slate-600">Crea y edita rutas simples para Acolman, Ecatepec, Tecamac, Texcoco y Teotihuacan. El poblado es libre para capturar colonias, unidades, paraderos o zonas de alta demanda.</p>
+        <p className="mt-2 text-sm text-slate-600">Crea rutas piloto solo con los municipios principales. Elige municipio, escribe el poblado manualmente y agrega una referencia clara de abordaje.</p>
       </header>
 
       {error && <p className="rounded-md bg-red-50 p-3 text-red-700">{error}</p>}
@@ -508,7 +457,7 @@ export default function AdminRoutesPage() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">{formModeLabel}</h2>
-              <p className="mt-1 text-sm text-slate-600">Elige municipio, escribe el poblado o colonia exacta, agrega referencia de abordaje y hora. El sistema estima km y tarifa sugerida.</p>
+              <p className="mt-1 text-sm text-slate-600">Paso 1: elige municipio. Paso 2: escribe poblado o colonia. Paso 3: agrega referencia de abordaje y horario.</p>
             </div>
             {editingRouteId && (
               <button type="button" onClick={resetForm} className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">
@@ -519,36 +468,46 @@ export default function AdminRoutesPage() {
 
           <div className="grid gap-3 md:grid-cols-2">
             <label className="block text-sm text-slate-700">
-              Municipio piloto
+              1. Municipio principal de salida
               <select value={municipality} onChange={(event) => handleMunicipalityChange(event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2">
                 {PILOT_ORIGINS.map((item) => (
-                  <option key={item.municipality} value={item.municipality}>{item.municipality}</option>
+                  <option key={item} value={item}>{item}</option>
                 ))}
               </select>
             </label>
 
             <label className="block text-sm text-slate-700">
-              Poblado, colonia o zona de salida
+              2. Poblado o colonia de salida
               <input
                 type="text"
-                list="pilot-town-suggestions"
                 value={originTown}
                 onChange={(event) => setOriginTown(event.target.value)}
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-                placeholder="Ej. Ojo de Agua, Las Americas, San Cristobal, Tepexpan"
+                placeholder="Ej. Tepexpan, Ojo de Agua, Las Americas, San Cristobal, Centro"
                 required
               />
-              <datalist id="pilot-town-suggestions">
-                {townSuggestions.map((town) => (
-                  <option key={town.value} value={town.label} />
-                ))}
-              </datalist>
-              <span className="mt-1 block text-xs text-slate-500">Puedes escribir cualquier colonia, poblado, unidad o paradero. Las sugerencias son solo referencia rapida.</span>
+              <span className="mt-1 block text-xs text-slate-500">Campo libre: escribe el poblado real donde habra demanda. No necesitas elegir de una lista.</span>
             </label>
           </div>
 
           <label className="block text-sm text-slate-700">
-            Zona de trabajo / terminal CDMX
+            3. Referencia exacta de abordaje
+            <textarea
+              value={boardingReference}
+              onChange={(event) => setBoardingReference(event.target.value)}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+              rows={2}
+              placeholder="Ej. Frente a la iglesia, junto al Oxxo, entrada del fraccionamiento, parada principal"
+              required
+            />
+          </label>
+
+          <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+            <span className="font-semibold text-slate-900">Punto de inicio que se publicara:</span> {composedOrigin}
+          </div>
+
+          <label className="block text-sm text-slate-700">
+            4. Zona de trabajo / terminal CDMX
             <select value={destination} onChange={(event) => setDestination(event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2">
               {PILOT_DESTINATIONS.map((group) => (
                 <optgroup key={group.delegation} label={group.delegation}>
@@ -561,18 +520,6 @@ export default function AdminRoutesPage() {
                 <option value={destination}>{destination}</option>
               )}
             </select>
-          </label>
-
-          <label className="block text-sm text-slate-700">
-            Referencia de abordaje
-            <textarea
-              value={boardingReference}
-              onChange={(event) => setBoardingReference(event.target.value)}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-              rows={2}
-              placeholder="Ej. Frente a la iglesia, junto al Oxxo, parada principal"
-              required
-            />
           </label>
 
           <div className="grid gap-3 md:grid-cols-3">

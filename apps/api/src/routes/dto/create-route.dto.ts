@@ -82,11 +82,12 @@ export class CreateRouteDto {
   @Max(20)
   availableSeats!: number;
 
+  @IsOptional()
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(1)
   @Max(500)
-  pricePerSeat!: number;
+  pricePerSeat?: number;
 
   @IsOptional()
   @Type(() => Number)

@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { FarePolicyService } from '../fare-policy/fare-policy.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -29,7 +29,6 @@ export class RoutesService {
 
   async createForAdminOrDriver(userId: string, dto: AdminCreateRouteDto) {
     const user = await this.ensureRoutePublisher(userId);
-    this.assertPrice(dto.pricePerSeat);
     const route = await this.createRouteRecord(
       user.id,
       {
@@ -41,7 +40,6 @@ export class RoutesService {
         departureTime: '06:00',
         estimatedArrivalTime: '08:00',
         availableSeats: 4,
-        pricePerSeat: dto.pricePerSeat,
         status: RouteStatusDto.ACTIVE
       },
       true
@@ -149,19 +147,16 @@ export class RoutesService {
   }
 
   private async createRouteRecord(userId: string, dto: CreateRouteDto, includeDriver: boolean) {
-    this.assertPrice(dto.pricePerSeat);
     const distanceKm = this.estimateDistanceFromRouteInput(dto);
-    const pricing = await this.farePolicyService.resolveRoutePricing(distanceKm, dto.pricePerSeat);
+    const pricing = await this.farePolicyService.resolveRoutePricing(distanceKm);
     const data: any = { publicId: await this.nextPublicId('route'), driverUserId: userId, farePolicyId: pricing.farePolicyId, title: dto.title, origin: dto.origin, destination: dto.destination, originPlaceId: dto.originPlaceId, destinationPlaceId: dto.destinationPlaceId, originLat: dto.originLat, originLng: dto.originLng, destinationLat: dto.destinationLat, destinationLng: dto.destinationLng, stopsText: dto.stopsText, weekdaysText: this.serializeWeekdays(dto.weekdays), departureTime: dto.departureTime, estimatedArrivalTime: dto.estimatedArrivalTime, availableSeats: dto.availableSeats, distanceKm: pricing.distanceKm, pricePerSeat: pricing.finalPricePerSeat, farePolicyMode: pricing.farePolicyMode, fareRatePerKmApplied: pricing.fareRatePerKmApplied, maxAllowedPrice: pricing.maxAllowedPrice, status: this.toStorageStatus(dto.status ?? RouteStatusDto.ACTIVE) };
     return this.execute(() => this.routeDelegate().create({ data, include: this.routeInclude(includeDriver) }));
   }
 
   private async updateRouteRecord(routeId: string, existing: any, dto: UpdateRouteDto, includeDriver: boolean) {
-    const nextPrice = dto.pricePerSeat ?? existing.pricePerSeat;
-    this.assertPrice(nextPrice);
     const mergedRoute = { ...existing, ...dto };
     const distanceKm = this.estimateDistanceFromRouteInput(mergedRoute);
-    const pricing = await this.farePolicyService.resolveRoutePricing(distanceKm, nextPrice);
+    const pricing = await this.farePolicyService.resolveRoutePricing(distanceKm);
     return this.execute(() => this.routeDelegate().update({ where: { id: routeId }, data: { title: dto.title, origin: dto.origin, destination: dto.destination, originPlaceId: dto.originPlaceId, destinationPlaceId: dto.destinationPlaceId, originLat: dto.originLat, originLng: dto.originLng, destinationLat: dto.destinationLat, destinationLng: dto.destinationLng, stopsText: dto.stopsText, weekdaysText: dto.weekdays ? this.serializeWeekdays(dto.weekdays) : undefined, departureTime: dto.departureTime, estimatedArrivalTime: dto.estimatedArrivalTime, availableSeats: dto.availableSeats, status: dto.status ? this.toStorageStatus(dto.status) : undefined, distanceKm: pricing.distanceKm, pricePerSeat: pricing.finalPricePerSeat, farePolicyId: pricing.farePolicyId, farePolicyMode: pricing.farePolicyMode, fareRatePerKmApplied: pricing.fareRatePerKmApplied, maxAllowedPrice: pricing.maxAllowedPrice }, include: this.routeInclude(includeDriver) }));
   }
 
@@ -188,7 +183,6 @@ export class RoutesService {
   private async ensureDriver(userId: string) { const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { driverProfile: true } }); if (!user) throw new NotFoundException('Usuario no encontrado'); if (String(user.role || '').toLowerCase() !== 'driver') throw new ForbiddenException('Solo conductores pueden gestionar rutas'); if (!user.driverProfile) throw new ForbiddenException('El usuario no tiene perfil de conductor'); return user; }
   private async ensureApprovedDriver(userId: string) { await this.vehiclesService.ensureDriverCanOperate(userId); }
   private async ensureUserCanPublishPublicRoute(userId: string) { const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true, role: true, verificationStatus: true } }); if (!user) throw new NotFoundException('Usuario no encontrado'); if (String(user.role || '').toLowerCase() === 'admin') return user; if (String(user.verificationStatus || '').toLowerCase() !== 'approved') throw new ForbiddenException('Debes tener verificacion aprobada para publicar rutas. Completa tu verificacion en /dashboard/verification.'); return user; }
-  private assertPrice(price: number) { if (price > 500) throw new BadRequestException('El precio por asiento no puede ser mayor a 500 MXN.'); if (price < 1) throw new BadRequestException('El precio por asiento debe ser mayor o igual a 1 MXN.'); }
   private round(v: number) { return Math.round(v * 100) / 100; }
   private haversine(lat1: number, lng1: number, lat2: number, lng2: number) { const r = (x: number) => (x * Math.PI) / 180; const R = 6371; const dLat = r(lat2 - lat1); const dLng = r(lng2 - lng1); const a = Math.sin(dLat / 2) ** 2 + Math.cos(r(lat1)) * Math.cos(r(lat2)) * Math.sin(dLng / 2) ** 2; return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))); }
   private async nextPublicId(entity: string) { const counter = await this.prisma.entityCounter.upsert({ where: { entity }, create: { entity, value: 1 }, update: { value: { increment: 1 } } }); return counter.value; }

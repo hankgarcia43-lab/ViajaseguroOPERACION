@@ -112,10 +112,6 @@ function roundCurrency(value: number) {
   return Math.round(value * 100) / 100;
 }
 
-function roundToFive(value: number) {
-  return Math.max(1, Math.min(500, Math.ceil(value / 5) * 5));
-}
-
 function addMinutesToTime(time: string, minutes: number) {
   if (!HHMM_REGEX.test(time)) return '07:00';
   const [hours, mins] = time.split(':').map(Number);
@@ -146,7 +142,6 @@ export default function AdminRoutesPage() {
   const [departureTime, setDepartureTime] = useState('06:00');
   const [estimatedArrivalTime, setEstimatedArrivalTime] = useState('07:00');
   const [availableSeats, setAvailableSeats] = useState('4');
-  const [pricePerSeat, setPricePerSeat] = useState('');
   const [status, setStatus] = useState<RouteStatus>('active');
 
 
@@ -163,7 +158,7 @@ export default function AdminRoutesPage() {
   }, [municipality, originTown]);
   const estimatedDistanceKm = useMemo(() => estimateRouteDistanceKm(composedOrigin, destination), [composedOrigin, destination]);
   const activeRatePerKm = farePolicy?.ratePerKm ?? DEFAULT_UI_RATE_PER_KM;
-  const suggestedPrice = useMemo(() => roundToFive(estimatedDistanceKm * activeRatePerKm), [estimatedDistanceKm, activeRatePerKm]);
+  const systemPricePerSeat = useMemo(() => roundCurrency(estimatedDistanceKm * activeRatePerKm), [estimatedDistanceKm, activeRatePerKm]);
   const allVisibleSelected = routes.length > 0 && routes.every((route) => selectedRouteIds.includes(route.id));
   const formModeLabel = editingRouteId ? 'Editar ruta' : 'Crear ruta piloto';
 
@@ -215,7 +210,6 @@ export default function AdminRoutesPage() {
     setDepartureTime('06:00');
     setEstimatedArrivalTime('07:00');
     setAvailableSeats('4');
-    setPricePerSeat('');
     setStatus('active');
     setError(null);
     setSuccess(null);
@@ -224,10 +218,6 @@ export default function AdminRoutesPage() {
   function handleMunicipalityChange(nextMunicipality: string) {
     setMunicipality(nextMunicipality);
     setOriginTown('');
-  }
-
-  function applySuggestedPrice() {
-    setPricePerSeat(suggestedPrice.toFixed(2));
   }
 
   function startEdit(route: AdminRoute) {
@@ -241,7 +231,6 @@ export default function AdminRoutesPage() {
     setDepartureTime(route.departureTime);
     setEstimatedArrivalTime(route.estimatedArrivalTime);
     setAvailableSeats(String(route.availableSeats));
-    setPricePerSeat(route.pricePerSeat.toFixed(2));
     setStatus(String(route.status).toLowerCase() === 'paused' ? 'paused' : 'active');
     setError(null);
     setSuccess(`Editando ruta #${route.publicId ?? route.id.slice(0, 8)}.`);
@@ -257,7 +246,6 @@ export default function AdminRoutesPage() {
       return;
     }
 
-    const parsedPrice = Number(pricePerSeat);
     const parsedSeats = Number(availableSeats);
 
     if (!originTown.trim() || !destination.trim()) {
@@ -280,10 +268,6 @@ export default function AdminRoutesPage() {
       setError('Los asientos deben estar entre 1 y 20.');
       return;
     }
-    if (!Number.isFinite(parsedPrice) || parsedPrice < 1 || parsedPrice > 500) {
-      setError('El precio por asiento debe estar entre 1 y 500.');
-      return;
-    }
 
     setSaving(true);
     setError(null);
@@ -298,7 +282,6 @@ export default function AdminRoutesPage() {
       departureTime,
       estimatedArrivalTime,
       availableSeats: parsedSeats,
-      pricePerSeat: roundCurrency(parsedPrice),
       status
     };
 
@@ -541,23 +524,10 @@ export default function AdminRoutesPage() {
             <div className="grid gap-2 md:grid-cols-3">
               <p><span className="font-semibold">Km calculados:</span> {estimatedDistanceKm.toFixed(1)} km</p>
               <p><span className="font-semibold">Tarifa/km:</span> ${activeRatePerKm.toFixed(2)} MXN</p>
-              <p><span className="font-semibold">Sugerencia:</span> ${suggestedPrice.toFixed(2)} MXN</p>
+              <p><span className="font-semibold">Precio sistema:</span> ${systemPricePerSeat.toFixed(2)} MXN</p>
             </div>
-            <p className="mt-1 text-xs">{farePolicy ? 'La politica activa del backend validara el precio final.' : 'No se detecto politica activa; la sugerencia visual usa una referencia temporal.'}</p>
+            <p className="mt-1 text-xs">{farePolicy ? 'El backend recalculara y guardara este precio por km al crear o editar la ruta.' : 'No se detecto politica activa; la sugerencia visual usa una referencia temporal.'}</p>
           </div>
-
-          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
-            <label className="block text-sm text-slate-700">
-              Precio por asiento
-              <input type="number" min={1} max={500} step="0.01" value={pricePerSeat} onChange={(event) => setPricePerSeat(event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" placeholder={suggestedPrice.toFixed(2)} />
-            </label>
-            <div className="flex items-end">
-              <button type="button" onClick={applySuggestedPrice} className="rounded-md border border-cyan-300 bg-cyan-50 px-3 py-2 text-sm font-medium text-cyan-800">
-                Usar sugerida
-              </button>
-            </div>
-          </div>
-
           <div className="space-y-2">
             <p className="text-sm font-medium text-slate-700">Dias de operacion</p>
             <div className="flex flex-wrap gap-2">

@@ -2,10 +2,6 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { UpsertFarePolicyDto } from './dto/upsert-fare-policy.dto';
 
-const FARE_POLICY_MODE = {
-  FIXED_PER_KM: 'fixed_per_km',
-  MAX_PER_KM: 'max_per_km'
-} as const;
 
 type FarePolicyRecord = {
   id: string;
@@ -89,27 +85,18 @@ export class FarePolicyService {
     return policy?.appCommissionPercent ?? 15;
   }
 
-  async resolveRoutePricing(distanceKm: number, requestedPricePerSeat: number) {
+  async resolveRoutePricing(distanceKm: number) {
     const policy = await this.getCurrentPolicyOrThrow();
     const roundedDistance = this.roundDistance(distanceKm);
-    const maxAllowedPrice = this.roundCurrency(roundedDistance * policy.ratePerKm);
-
-    if (policy.mode === FARE_POLICY_MODE.MAX_PER_KM && requestedPricePerSeat > maxAllowedPrice) {
-      throw new BadRequestException(
-        `El precio por asiento rebasa el limite permitido. Con ${roundedDistance} km y una tarifa maxima de $${policy.ratePerKm.toFixed(2)} por km, el maximo permitido es $${maxAllowedPrice.toFixed(2)} MXN.`
-      );
-    }
-
-    const finalPricePerSeat =
-      policy.mode === FARE_POLICY_MODE.FIXED_PER_KM ? maxAllowedPrice : this.roundCurrency(requestedPricePerSeat);
+    const systemPricePerSeat = this.roundCurrency(roundedDistance * policy.ratePerKm);
 
     return {
       farePolicyId: policy.id,
       farePolicyMode: policy.mode,
       fareRatePerKmApplied: policy.ratePerKm,
       distanceKm: roundedDistance,
-      maxAllowedPrice,
-      finalPricePerSeat,
+      maxAllowedPrice: systemPricePerSeat,
+      finalPricePerSeat: systemPricePerSeat,
       policy
     };
   }

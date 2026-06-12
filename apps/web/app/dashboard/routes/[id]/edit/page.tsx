@@ -16,7 +16,6 @@ interface RouteFormState {
   departureTime: string;
   estimatedArrivalTime: string;
   availableSeats: string;
-  pricePerSeat: string;
 }
 
 export default function EditRoutePage() {
@@ -34,9 +33,7 @@ export default function EditRoutePage() {
 
   const weekdaySet = useMemo(() => new Set(selectedDays), [selectedDays]);
   const estimatedDistanceKm = form ? estimateRouteDistanceKm(form.origin, form.destination) : null;
-  const proposedPrice = Number.parseFloat(form?.pricePerSeat ?? '');
-  const maxAllowedPrice = farePolicy && estimatedDistanceKm ? Number((estimatedDistanceKm * farePolicy.ratePerKm).toFixed(2)) : null;
-  const finalPricePreview = farePolicy?.mode === 'fixed_per_km' ? maxAllowedPrice : proposedPrice;
+  const systemPricePreview = farePolicy && estimatedDistanceKm ? Number((estimatedDistanceKm * farePolicy.ratePerKm).toFixed(2)) : null;
 
   useEffect(() => {
     async function load() {
@@ -62,8 +59,7 @@ export default function EditRoutePage() {
           stopsText: routeData.stopsText ?? '',
           departureTime: routeData.departureTime,
           estimatedArrivalTime: routeData.estimatedArrivalTime,
-          availableSeats: String(routeData.availableSeats),
-          pricePerSeat: String(routeData.pricePerSeat)
+          availableSeats: String(routeData.availableSeats)
         });
         setSelectedDays(routeData.weekdays);
       } catch (e) {
@@ -103,11 +99,6 @@ export default function EditRoutePage() {
       return;
     }
 
-    if (farePolicy?.mode === 'max_per_km' && maxAllowedPrice !== null && proposedPrice > maxAllowedPrice) {
-      setError(`El precio solicitado rebasa el maximo permitido de $${maxAllowedPrice.toFixed(2)} MXN.`);
-      return;
-    }
-
     setSaving(true);
     setError(null);
 
@@ -119,8 +110,7 @@ export default function EditRoutePage() {
       weekdays: selectedDays,
       departureTime: form.departureTime,
       estimatedArrivalTime: form.estimatedArrivalTime,
-      availableSeats: Number(form.availableSeats),
-      pricePerSeat: Number(form.pricePerSeat)
+      availableSeats: Number(form.availableSeats)
     };
 
     try {
@@ -153,7 +143,7 @@ export default function EditRoutePage() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Editar ruta</h1>
-          <p className="text-sm text-slate-600">Ajusta precio y horarios. La distancia en km la calcula el sistema segun origen y destino.</p>
+          <p className="text-sm text-slate-600">Ajusta horarios y datos operativos. El precio por asiento lo calcula el sistema segun km y tarifa activa.</p>
         </div>
         <Link href="/dashboard/routes" className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">
           Volver a mis rutas
@@ -221,22 +211,17 @@ export default function EditRoutePage() {
             <input required min={1} max={20} type="number" name="availableSeats" value={form.availableSeats} onChange={(event) => updateField('availableSeats', event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" />
           </label>
 
-                    <div className="rounded-md border border-cyan-100 bg-cyan-50 p-3 text-sm text-cyan-900">
+          <div className="rounded-md border border-cyan-100 bg-cyan-50 p-3 text-sm text-cyan-900">
             <p className="font-medium">Distancia estimada por sistema</p>
             <p>{estimatedDistanceKm ? `${estimatedDistanceKm.toFixed(1)} km aprox.` : 'Captura origen y destino para calcularla.'}</p>
             <p className="mt-1 text-xs">Este dato ya no se captura manualmente.</p>
           </div>
 
-          <label className="block text-sm text-slate-700">
-            Precio propuesto por asiento (MXN)
-            <input required min={1} step="0.01" type="number" name="pricePerSeat" value={form.pricePerSeat} onChange={(event) => updateField('pricePerSeat', event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" />
-          </label>
-
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
             <p className="font-semibold text-slate-900">Resumen de tarifa</p>
             <p className="mt-2">Distancia estimada: {estimatedDistanceKm ? `${estimatedDistanceKm.toFixed(2)} km` : '-'}</p>
-            {maxAllowedPrice !== null && <p>Maximo calculado: ${maxAllowedPrice.toFixed(2)} MXN</p>}
-            <p className="mt-2">Precio final estimado: {typeof finalPricePreview !== 'number' || Number.isNaN(finalPricePreview) ? '-' : `$${finalPricePreview.toFixed(2)} MXN`}</p>
+            <p className="mt-2">Precio por asiento calculado: {systemPricePreview === null ? '-' : `${systemPricePreview.toFixed(2)} MXN`}</p>
+            <p className="mt-1 text-xs text-slate-500">Formula: km estimados x tarifa por km activa. El conductor no puede modificar este monto.</p>
           </div>
         </div>
 

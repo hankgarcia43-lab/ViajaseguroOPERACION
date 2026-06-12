@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { apiRequest, getToken } from '@/lib/api';
 import { FarePolicy } from '@/lib/fare-policy';
@@ -8,6 +9,10 @@ import { estimateRouteDistanceKm } from '@/lib/route-distance-estimator';
 import { CDMX_DESTINATION_HUBS, EDOMEX_ORIGIN_OPTIONS } from '@/lib/route-location-options';
 
 type Region = 'edomex' | 'cdmx';
+
+interface CreatedRouteResponse {
+  id: string;
+}
 
 function originOptionsByRegion(region: Region) {
   return region === 'edomex' ? EDOMEX_ORIGIN_OPTIONS : CDMX_DESTINATION_HUBS;
@@ -18,6 +23,7 @@ function destinationOptionsByRegion(region: Region) {
 }
 
 export default function CreateRoutePage() {
+  const router = useRouter();
   const [originRegion, setOriginRegion] = useState<Region>('edomex');
   const [destinationRegion, setDestinationRegion] = useState<Region>('cdmx');
   const [origin, setOrigin] = useState('');
@@ -100,7 +106,7 @@ export default function CreateRoutePage() {
     setSuccess(null);
 
     try {
-      await apiRequest('/routes', {
+      const createdRoute = await apiRequest<CreatedRouteResponse>('/routes', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -115,14 +121,10 @@ export default function CreateRoutePage() {
         })
       });
 
-      setSuccess('Ruta principal creada. Ahora aparecera en el feed y podras tomarla para personalizar tu viaje.');
-      setOrigin('');
-      setDestination('');
-      setWeekdays(['monday', 'tuesday', 'wednesday', 'thursday', 'friday']);
-      setDepartureTime('06:00');
-      setEstimatedArrivalTime('07:00');
-      setAvailableSeats('4');
-      setDescription('');
+      setSuccess('Ruta creada. Te llevare a Mis rutas para que puedas tomarla y publicar tu disponibilidad.');
+      window.setTimeout(() => {
+        router.push('/dashboard/routes?createdRoute=' + encodeURIComponent(createdRoute.id));
+      }, 500);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'No se pudo crear la ruta.');
     } finally {

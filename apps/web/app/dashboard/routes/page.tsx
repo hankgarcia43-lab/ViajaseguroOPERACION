@@ -31,10 +31,12 @@ export default function RoutesPage() {
   const [sessionRole, setSessionRole] = useState<UserRole | null>(null);
   const [routes, setRoutes] = useState<BaseRouteSummary[]>([]);
   const [myOffers, setMyOffers] = useState<RouteOffer[]>([]);
+  const [myCreatedRoutes, setMyCreatedRoutes] = useState<BaseRouteSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedCorridorId, setSelectedCorridorId] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [highlightedCreatedRouteId, setHighlightedCreatedRouteId] = useState<string | null>(null);
 
   const role = me?.role ?? sessionRole;
   const isDriver = role === 'driver';
@@ -42,6 +44,14 @@ export default function RoutesPage() {
   const isAdmin = role === 'admin';
 
   const offerRouteIds = useMemo(() => new Set(myOffers.map((offer) => offer.routeId)), [myOffers]);
+
+  const sortedMyCreatedRoutes = useMemo(() => {
+    return [...myCreatedRoutes].sort((a, b) => {
+      if (a.id === highlightedCreatedRouteId) return -1;
+      if (b.id === highlightedCreatedRouteId) return 1;
+      return (a.title ?? a.origin).localeCompare(b.title ?? b.origin);
+    });
+  }, [highlightedCreatedRouteId, myCreatedRoutes]);
 
   const groupedRoutes = useMemo(() => {
     const bucket = new Map<string, { corridorName: string; order: number; routes: BaseRouteSummary[] }>();
@@ -125,6 +135,9 @@ export default function RoutesPage() {
     if (rawRole === 'driver' || rawRole === 'passenger' || rawRole === 'admin') {
       setSessionRole(rawRole);
     }
+
+    const params = new URLSearchParams(window.location.search);
+    setHighlightedCreatedRouteId(params.get('createdRoute'));
   }, []);
 
   async function loadData() {
@@ -144,10 +157,15 @@ export default function RoutesPage() {
       setRoutes(baseRoutes);
 
       if (profile.role === 'driver') {
-        const offers = await apiRequest<RouteOffer[]>('/route-offers/my-offers', { headers });
+        const [offers, createdRoutes] = await Promise.all([
+          apiRequest<RouteOffer[]>('/route-offers/my-offers', { headers }),
+          apiRequest<BaseRouteSummary[]>('/routes/my-routes', { headers }).catch(() => [])
+        ]);
         setMyOffers(offers);
+        setMyCreatedRoutes(createdRoutes);
       } else {
         setMyOffers([]);
+        setMyCreatedRoutes([]);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudieron cargar las rutas.');
@@ -203,6 +221,64 @@ export default function RoutesPage() {
         </div>
         <p className="mt-2 text-xs text-slate-500">Tip: primero elige destino fuerte; despues compara precio, horario y conductores activos.</p>
       </section>
+      {isDriver && (
+        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Mis rutas creadas</p>
+            <h2 className="mt-1 text-lg font-semibold text-slate-900">Rutas que puedes tomar rapido</h2>
+            <p className="text-sm text-slate-600">Aqui aparecen las rutas que tu creaste como chofer. Entra directo a publicar o actualizar tu disponibilidad.</p>
+          </div>
+          <Link href="/dashboard/routes/create" className="rounded-md bg-brand-500 px-4 py-2 text-sm font-medium text-white">
+            Crear otra ruta
+          </Link>
+        </div>
+
+        {sortedMyCreatedRoutes.length === 0 ? (
+          <div className="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-700">
+            <p className="font-medium text-slate-900">Aun no has creado rutas propias.</p>
+            <p className="mt-1">Crea una ruta con origen, destino, horario y asientos. Despues volveras aqui para tomarla y publicarla a pasajeros.</p>
+          </div>
+        ) : (
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+            {sortedMyCreatedRoutes.map((route) => {
+              const alreadyTaken = offerRouteIds.has(route.id);
+              const isNewRoute = route.id === highlightedCreatedRouteId;
+
+              return (
+                <article key={`mine-${route.id}`} className={`rounded-xl border p-4 ${isNewRoute ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-slate-50'}`}>
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <h3 className="text-base font-semibold text-slate-900">{route.title || `${route.origin} -> ${route.destination}`}</h3>
+                      <p className="text-sm text-slate-600">{route.origin} {'->'} {route.destination}</p>
+                    </div>
+                    <span className={`rounded-full px-3 py-1 text-xs font-medium ${alreadyTaken ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'}`}>
+                      {alreadyTaken ? 'Disponibilidad publicada' : 'Falta publicar disponibilidad'}
+                    </span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-700">
+                    <span className="rounded-md bg-white px-2 py-1">Salida: {route.departureTime}</span>
+                    <span className="rounded-md bg-white px-2 py-1">Llegada: {route.estimatedArrivalTime}</span>
+                    <span className="rounded-md bg-white px-2 py-1">{route.distanceKm.toFixed(1)} km</span>
+                    <span className="rounded-md bg-white px-2 py-1">${route.pricePerSeat.toFixed(2)} MXN</span>
+                  </div>
+                  {route.stopsText && <p className="mt-3 line-clamp-2 text-xs text-slate-600">{route.stopsText}</p>}
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                    <Link href={`/dashboard/routes/${route.id}/take`} className="rounded-md bg-emerald-700 px-4 py-2 text-center text-sm font-medium text-white">
+                      {alreadyTaken ? 'Actualizar disponibilidad' : 'Tomar y publicar ruta'}
+                    </Link>
+                    <Link href={`/dashboard/routes/${route.id}/take`} className="rounded-md border border-slate-300 bg-white px-4 py-2 text-center text-sm font-medium text-slate-700">
+                      Ver datos de operacion
+                    </Link>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+        </section>
+      )}
+
       {priorityRoutes.length > 0 && (
         <section className="rounded-2xl border border-brand-200 bg-gradient-to-br from-blue-50 via-white to-cyan-50 p-4 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">

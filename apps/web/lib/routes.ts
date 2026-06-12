@@ -116,7 +116,7 @@ export interface RoutePayload {
   departureTime: string;
   estimatedArrivalTime: string;
   availableSeats: number;
-  pricePerSeat: number;
+  pricePerSeat?: number;
 }
 
 export interface NearbyRoutesQuery {

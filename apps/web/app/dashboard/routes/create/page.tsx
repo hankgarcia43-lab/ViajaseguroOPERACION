@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { apiRequest, getToken } from '@/lib/api';
+import { FarePolicy } from '@/lib/fare-policy';
 import { estimateRouteDistanceKm } from '@/lib/route-distance-estimator';
 import { CDMX_DESTINATION_HUBS, EDOMEX_ORIGIN_OPTIONS } from '@/lib/route-location-options';
 
@@ -21,7 +22,6 @@ export default function CreateRoutePage() {
   const [destinationRegion, setDestinationRegion] = useState<Region>('cdmx');
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
-  const [pricePerSeat, setPricePerSeat] = useState('');
   const [description, setDescription] = useState('');
   const [weekdays, setWeekdays] = useState<string[]>(['monday', 'tuesday', 'wednesday', 'thursday', 'friday']);
   const [departureTime, setDepartureTime] = useState('06:00');
@@ -30,11 +30,33 @@ export default function CreateRoutePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [farePolicy, setFarePolicy] = useState<FarePolicy | null>(null);
 
   const originOptions = useMemo(() => originOptionsByRegion(originRegion), [originRegion]);
   const destinationOptions = useMemo(() => destinationOptionsByRegion(destinationRegion), [destinationRegion]);
   const estimatedDistanceKm = useMemo(() => (origin && destination ? estimateRouteDistanceKm(origin, destination) : null), [origin, destination]);
+  const calculatedPricePerSeat = useMemo(() => {
+    if (!estimatedDistanceKm || !farePolicy) return null;
+    return Math.round(estimatedDistanceKm * farePolicy.ratePerKm * 100) / 100;
+  }, [estimatedDistanceKm, farePolicy]);
 
+
+  useEffect(() => {
+    async function loadFarePolicy() {
+      try {
+        const token = getToken();
+        const policy = await apiRequest<FarePolicy | null>(
+          '/fare-policy/current',
+          token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
+        );
+        setFarePolicy(policy);
+      } catch {
+        setFarePolicy(null);
+      }
+    }
+
+    void loadFarePolicy();
+  }, []);
   useEffect(() => {
     setOrigin('');
   }, [originRegion]);
@@ -73,12 +95,6 @@ export default function CreateRoutePage() {
       return;
     }
 
-    const parsedPrice = Number(pricePerSeat);
-    if (!Number.isFinite(parsedPrice) || parsedPrice < 1 || parsedPrice > 500) {
-      setError('El precio por asiento debe estar entre 1 y 500.');
-      return;
-    }
-
     setSaving(true);
     setError(null);
     setSuccess(null);
@@ -91,7 +107,6 @@ export default function CreateRoutePage() {
           title: `${origin} -> ${destination} ${departureTime}`,
           origin,
           destination,
-          pricePerSeat: parsedPrice,
           weekdays,
           departureTime,
           estimatedArrivalTime,
@@ -103,7 +118,6 @@ export default function CreateRoutePage() {
       setSuccess('Ruta principal creada. Ahora aparecera en el feed y podras tomarla para personalizar tu viaje.');
       setOrigin('');
       setDestination('');
-      setPricePerSeat('');
       setWeekdays(['monday', 'tuesday', 'wednesday', 'thursday', 'friday']);
       setDepartureTime('06:00');
       setEstimatedArrivalTime('07:00');
@@ -178,7 +192,7 @@ export default function CreateRoutePage() {
           <div className="rounded-md border border-cyan-100 bg-cyan-50 p-3 text-sm text-cyan-900">
             <p className="font-medium">Distancia estimada por sistema</p>
             <p>{estimatedDistanceKm ? `${estimatedDistanceKm.toFixed(1)} km aprox.` : 'Selecciona origen y destino para calcularla.'}</p>
-            <p className="mt-1 text-xs">La distancia se calcula automaticamente y se usa para validar la tarifa por km.</p>
+            <p className="mt-1 text-xs">La distancia se calcula automaticamente y se usa para definir el precio por asiento.</p>
           </div>
 
 
@@ -220,20 +234,11 @@ export default function CreateRoutePage() {
               ))}
             </div>
           </div>
-          <label className="block text-sm text-slate-700">
-            Precio por asiento (MXN)
-            <input
-              type="number"
-              min={1}
-              max={500}
-              step="0.01"
-              value={pricePerSeat}
-              onChange={(event) => setPricePerSeat(event.target.value)}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-              placeholder="Ej. 40"
-            />
-          </label>
-
+          <div className="rounded-md border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-950">
+            <p className="font-semibold">Precio por asiento calculado por sistema</p>
+            <p className="mt-1">{calculatedPricePerSeat !== null ? `${calculatedPricePerSeat.toFixed(2)} MXN` : 'Selecciona origen/destino y configura tarifa por km.'}</p>
+            <p className="mt-1 text-xs">Formula: km estimados x tarifa por km activa. El conductor no puede modificar este monto.</p>
+          </div>
           <label className="block text-sm text-slate-700">
             Descripcion (opcional)
             <textarea

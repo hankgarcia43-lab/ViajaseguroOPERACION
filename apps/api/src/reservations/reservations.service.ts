@@ -634,11 +634,11 @@ export class ReservationsService {
     })) as ReservationRecord | null;
 
     if (!reservation) {
-      throw new NotFoundException('No existe reservation para ese codigo/token');
+      throw new NotFoundException('No encontramos una reserva pagada con ese codigo. Revisa que sean los 6 digitos del boleto correcto.');
     }
 
     if (dto.tripId && reservation.tripId !== dto.tripId) {
-      throw new ForbiddenException('La reserva no pertenece al viaje indicado');
+      throw new ForbiddenException('Ese codigo pertenece a otro viaje. Verifica que el pasajero este en la salida correcta.');
     }
 
     if (reservation.trip?.driverUserId !== driverUserId) {
@@ -648,7 +648,7 @@ export class ReservationsService {
     this.validateStatusForBoarding(reservation.status, reservation.payment?.status);
 
     if (reservation.trip?.status !== TRIP_STATUS.STARTED) {
-      throw new ForbiddenException('El viaje debe estar iniciado para validar abordaje');
+      throw new ForbiddenException('Primero inicia el viaje desde Mis viajes. Despues vuelve a Validar boletos e ingresa el codigo.');
     }
 
     return this.markBoardedAtomically(reservation.id);

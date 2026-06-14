@@ -92,7 +92,7 @@ function TripsPageContent() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h1 className="text-2xl font-semibold text-slate-900">Mis viajes</h1>
-              <p className="text-sm text-slate-600">Revisa ocupacion, estado y referencia de abordaje de cada salida.</p>
+              <p className="text-sm text-slate-600">Opera en orden: <strong>1) iniciar viaje</strong>, <strong>2) validar boletos</strong>, <strong>3) finalizar salida</strong>.</p>
             </div>
             <div className="flex gap-2">
               <Link href="/dashboard/routes" className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">Rutas asignadas</Link>
@@ -101,21 +101,29 @@ function TripsPageContent() {
           </div>
 
           {error && (
-            <div className="rounded-md bg-red-50 p-3 text-red-700">
-              <p>{error}</p>
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-800 shadow-sm">
+              <p className="font-semibold">{error}</p>
               {showVerificationLink && <Link href="/dashboard/verification" className="mt-2 inline-block underline">Completar verificacion</Link>}
               {showVehicleLink && <Link href="/dashboard/vehicle" className="mt-2 ml-3 inline-block underline">Registrar o revisar mi vehiculo</Link>}
             </div>
           )}
-          {success && <p className="rounded-md bg-emerald-50 p-3 text-emerald-700">{success}</p>}
-
-          <div className="rounded-lg border border-cyan-200 bg-cyan-50 p-3 text-sm text-cyan-900">
-            <p className="font-semibold">Reglas de salida del conductor</p>
-            <ul className="mt-1 list-disc space-y-1 pl-5 text-xs">
-              <li>Cuando estes listo para viajar, aprieta el boton Iniciar.</li>
-              <li>Al iniciar, los pasajeros veran aviso de que ya los esperas en la zona indicada.</li>
-              <li>Confirma que la referencia sea clara antes de validar abordaje.</li>
-            </ul>
+          {success && <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 font-semibold text-emerald-800 shadow-sm">{success}</p>}
+          <div className="rounded-xl border border-cyan-300 bg-cyan-50 p-4 text-sm text-cyan-950 shadow-sm">
+            <p className="text-base font-bold text-cyan-950">Reglas obligatorias para operar el viaje</p>
+            <div className="mt-3 grid gap-3 md:grid-cols-3">
+              <div className="rounded-lg bg-white p-3 shadow-sm">
+                <p className="font-bold text-slate-950">1. Iniciar viaje</p>
+                <p className="mt-1 text-xs text-slate-700">Cuando estes en el punto de abordaje, presiona <strong>Iniciar viaje</strong>.</p>
+              </div>
+              <div className="rounded-lg bg-white p-3 shadow-sm">
+                <p className="font-bold text-slate-950">2. Validar boletos</p>
+                <p className="mt-1 text-xs text-slate-700">Despues de iniciar, entra a <strong>Validar boletos</strong> y captura el codigo de 6 digitos.</p>
+              </div>
+              <div className="rounded-lg bg-white p-3 shadow-sm">
+                <p className="font-bold text-slate-950">3. Finalizar salida</p>
+                <p className="mt-1 text-xs text-slate-700">Al terminar el traslado, presiona <strong>Finalizar</strong> para cerrar la operacion.</p>
+              </div>
+            </div>
           </div>
 
           {takenRouteName && !error && (
@@ -163,28 +171,42 @@ function TripsPageContent() {
                         <p className="font-semibold">Neto estimado a recibir: ${trip.earningsSummary.driverNetAfterRefunds.toFixed(2)} MXN</p>
                       </div>
                     )}
-
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {(trip.status === 'scheduled' || trip.status === 'started') && (
-                        <Link href={`/dashboard/trips/${trip.id}/boarding`} className="rounded-md border border-emerald-300 px-3 py-2 text-sm text-emerald-700">
-                          Validar abordaje
-                        </Link>
-                      )}
+                    <div className="mt-4 space-y-3">
                       {trip.status === 'scheduled' && (
-                        <button type="button" disabled={isStartBusy} onClick={() => changeStatus(trip, 'start')} className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 disabled:opacity-50">
-                          {isStartBusy ? 'Iniciando...' : 'Iniciar'}
-                        </button>
+                        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                          <p className="font-bold">Paso pendiente: inicia el viaje antes de validar boletos.</p>
+                          <p className="mt-1">El boton de validar se habilita cuando el estado cambie a <strong>En curso</strong>.</p>
+                        </div>
                       )}
                       {trip.status === 'started' && (
-                        <button type="button" disabled={isFinishBusy} onClick={() => changeStatus(trip, 'finish')} className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 disabled:opacity-50">
-                          {isFinishBusy ? 'Finalizando...' : 'Finalizar'}
-                        </button>
+                        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
+                          <p className="font-bold">Viaje en curso: ya puedes validar boletos.</p>
+                          <p className="mt-1">Pide al pasajero el <strong>codigo numerico de 6 digitos</strong> de su boleto.</p>
+                        </div>
                       )}
-                      {(trip.status === 'scheduled' || trip.status === 'started') && (
-                        <button type="button" disabled={isCancelBusy} onClick={() => changeStatus(trip, 'cancel')} className="rounded-md border border-red-300 px-3 py-2 text-sm text-red-700 disabled:opacity-50">
-                          {isCancelBusy ? 'Cancelando...' : 'Cancelar'}
-                        </button>
-                      )}
+
+                      <div className="flex flex-wrap gap-2">
+                        {trip.status === 'scheduled' && (
+                          <button type="button" disabled={isStartBusy} onClick={() => changeStatus(trip, 'start')} className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:opacity-50">
+                            {isStartBusy ? 'Iniciando...' : '1. Iniciar viaje'}
+                          </button>
+                        )}
+                        {trip.status === 'started' && (
+                          <Link href={`/dashboard/trips/${trip.id}/boarding`} className="rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm">
+                            2. Validar boletos
+                          </Link>
+                        )}
+                        {trip.status === 'started' && (
+                          <button type="button" disabled={isFinishBusy} onClick={() => changeStatus(trip, 'finish')} className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 disabled:opacity-50">
+                            {isFinishBusy ? 'Finalizando...' : '3. Finalizar'}
+                          </button>
+                        )}
+                        {(trip.status === 'scheduled' || trip.status === 'started') && (
+                          <button type="button" disabled={isCancelBusy} onClick={() => changeStatus(trip, 'cancel')} className="rounded-md border border-red-300 px-3 py-2 text-sm text-red-700 disabled:opacity-50">
+                            {isCancelBusy ? 'Cancelando...' : 'Cancelar'}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </article>
                 );

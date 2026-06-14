@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -25,8 +25,12 @@ export class AdminRoutesController {
   }
 
   @Post()
-  create(@CurrentUser() user: { id: string }, @Body() dto: AdminCreateRouteDto) {
-    return this.routesService.createForAdminOrDriver(user.id, dto);
+  create(@CurrentUser() user: { id?: string; sub?: string }, @Body() dto: AdminCreateRouteDto) {
+    const userId = user.id ?? user.sub;
+    if (!userId) {
+      throw new ForbiddenException('No se pudo identificar al usuario autenticado.');
+    }
+    return this.routesService.createForAdminOrDriver(userId, dto);
   }
 
   @Post('bulk-delete')

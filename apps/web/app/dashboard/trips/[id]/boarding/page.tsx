@@ -230,6 +230,11 @@ export default function TripBoardingPage() {
       return;
     }
 
+    if (trip?.status !== 'started') {
+      setError('Primero inicia el viaje desde Mis viajes. Despues vuelve a Validar boletos e ingresa el codigo.');
+      return;
+    }
+
     const sanitizedNumericCode = numericCode.replace(/\D/g, '').slice(0, 6).trim();
     const sanitizedQrToken = qrToken.trim();
 
@@ -282,14 +287,15 @@ export default function TripBoardingPage() {
   const normalizedError = (error ?? '').toLowerCase();
   const showVerificationLink = normalizedError.includes('verific');
   const showVehicleLink = normalizedError.includes('vehiculo');
+  const canValidateBoarding = trip.status === 'started';
 
   return (
     <section className="mx-auto max-w-2xl space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Validar abordaje</h1>
-          <p className="text-sm text-slate-600">El flujo principal es ingresar manualmente el codigo numerico de la reserva.</p>
-          <p className="mt-1 text-xs text-slate-500">Usa puntos de abordaje publicos y visibles para proteger al pasajero y al conductor.</p>
+          <p className="text-sm text-slate-600">Primero inicia el viaje. Despues captura el codigo numerico de 6 digitos del pasajero.</p>
+          <p className="mt-1 text-xs font-semibold text-slate-700">El QR es respaldo; el codigo numerico es el flujo principal.</p>
         </div>
         <div className="flex gap-2">
           <Link href="/dashboard/trips" className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">Volver a mis viajes</Link>
@@ -307,6 +313,21 @@ export default function TripBoardingPage() {
         <p className="mt-2 rounded-md bg-amber-50 p-2 text-xs text-amber-800">Confirma que el encuentro sea en un punto publico, identificado y seguro.</p>
       </article>
 
+      {!canValidateBoarding ? (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950 shadow-sm">
+          <p className="text-base font-bold">Antes de validar boletos debes iniciar el viaje.</p>
+          <p className="mt-1 text-sm">Regresa a <strong>Mis viajes</strong>, presiona <strong>1. Iniciar viaje</strong> y despues vuelve a esta pantalla.</p>
+          <Link href="/dashboard/trips" className="mt-3 inline-block rounded-md bg-amber-700 px-4 py-2 text-sm font-semibold text-white">
+            Volver a Mis viajes
+          </Link>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-emerald-950 shadow-sm">
+          <p className="text-base font-bold">Viaje iniciado: ya puedes validar boletos.</p>
+          <p className="mt-1 text-sm">Pide al pasajero el <strong>codigo numerico de 6 digitos</strong> que aparece en su boleto aprobado.</p>
+        </div>
+      )}
+
       <form onSubmit={onSubmit} className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="rounded-lg border border-brand-200 bg-brand-50 p-4">
           <p className="text-sm font-semibold text-brand-700">Paso principal</p>
@@ -315,12 +336,12 @@ export default function TripBoardingPage() {
 
         <label className="block text-sm text-slate-700">
           Codigo numerico
-          <input type="text" inputMode="numeric" maxLength={6} value={numericCode} onChange={(event) => setNumericCode(event.target.value.replace(/\D/g, '').slice(0, 6))} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-lg tracking-[0.35em]" placeholder="123456" />
+          <input type="text" inputMode="numeric" maxLength={6} value={numericCode} onChange={(event) => setNumericCode(event.target.value.replace(/\D/g, '').slice(0, 6))} disabled={!canValidateBoarding} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-lg tracking-[0.35em] disabled:bg-slate-100 disabled:text-slate-400" placeholder="123456" />
         </label>
 
         <label className="block text-sm text-slate-700">
           QR token (opcional, via secundaria)
-          <input type="text" value={qrToken} onChange={(event) => setQrToken(event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" placeholder="Pega token si necesitas soporte" />
+          <input type="text" value={qrToken} onChange={(event) => setQrToken(event.target.value)} disabled={!canValidateBoarding} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 disabled:bg-slate-100 disabled:text-slate-400" placeholder="Pega token si necesitas soporte" />
         </label>
 
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
@@ -331,7 +352,7 @@ export default function TripBoardingPage() {
             <button
               type="button"
               onClick={() => void startScanner()}
-              disabled={scannerActive || !scannerSupported}
+              disabled={scannerActive || !scannerSupported || !canValidateBoarding}
               className="rounded-md border border-emerald-300 px-3 py-2 text-sm text-emerald-700 disabled:opacity-50"
             >
               {scannerActive ? 'Camara activa' : 'Escanear QR con camara'}
@@ -363,16 +384,16 @@ export default function TripBoardingPage() {
         </div>
 
         {error && (
-          <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
-            <p>{error}</p>
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 shadow-sm">
+            <p className="font-semibold">{error}</p>
             {showVerificationLink && <Link href="/dashboard/verification" className="mt-2 inline-block underline">Completar verificacion</Link>}
             {showVehicleLink && <Link href="/dashboard/vehicle" className="mt-2 ml-3 inline-block underline">Registrar o revisar mi vehiculo</Link>}
           </div>
         )}
-        {success && <p className="rounded-md bg-emerald-50 p-3 text-sm text-emerald-700">{success}</p>}
+        {success && <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800 shadow-sm">{success}</p>}
 
-        <button type="submit" disabled={submitting} className="w-full rounded-md bg-brand-500 px-4 py-2 font-medium text-white disabled:opacity-60">
-          {submitting ? 'Validando...' : 'Validar abordaje'}
+        <button type="submit" disabled={submitting || !canValidateBoarding} className="w-full rounded-md bg-brand-500 px-4 py-2 font-medium text-white disabled:cursor-not-allowed disabled:opacity-60">
+          {submitting ? 'Validando...' : canValidateBoarding ? 'Validar boleto' : 'Primero inicia el viaje'}
         </button>
       </form>
 

@@ -6,6 +6,7 @@ import { ContextHelpPanel } from '@/components/context-help-panel';
 import { RouteHighlightCard } from '@/components/route-highlight-card';
 import { apiRequest, getSessionRole, getToken } from '@/lib/api';
 import { inferRouteCorridor, ROUTE_CORRIDORS } from '@/lib/route-corridors';
+import { groupRoutesByCluster } from '@/lib/route-display';
 import { BaseRouteSummary, RouteOffer } from '@/lib/route-offers';
 
 type UserRole = 'passenger' | 'driver' | 'admin';
@@ -46,6 +47,8 @@ export default function RoutesPage() {
 
   const offerRouteIds = useMemo(() => new Set(myOffers.map((offer) => offer.routeId)), [myOffers]);
 
+  const displayRoutes = useMemo(() => groupRoutesByCluster(routes), [routes]);
+
   const sortedMyCreatedRoutes = useMemo(() => {
     return [...myCreatedRoutes].sort((a, b) => {
       if (a.id === highlightedCreatedRouteId) return -1;
@@ -57,7 +60,7 @@ export default function RoutesPage() {
   const groupedRoutes = useMemo(() => {
     const bucket = new Map<string, { corridorName: string; order: number; routes: BaseRouteSummary[] }>();
 
-    for (const route of routes) {
+    for (const route of displayRoutes) {
       const corridor = inferRouteCorridor(route);
       if (!bucket.has(corridor.id)) {
         bucket.set(corridor.id, {
@@ -70,16 +73,16 @@ export default function RoutesPage() {
     }
 
     return Array.from(bucket.values()).sort((a, b) => a.order - b.order);
-  }, [routes]);
+  }, [displayRoutes]);
 
   const corridorSummary = useMemo(() => {
     return ROUTE_CORRIDORS.map((corridor) => {
-      const routesInCorridor = routes.filter((route) => inferRouteCorridor(route).id === corridor.id);
+      const routesInCorridor = displayRoutes.filter((route) => inferRouteCorridor(route).id === corridor.id);
       const driverCount = routesInCorridor.reduce((acc, route) => acc + (route.activeDriversCount ?? 0), 0);
       const primaryRoute = routesInCorridor.find((route) => route.templateKey === corridor.primaryTemplateKey) ?? routesInCorridor[0] ?? null;
       return { corridor, count: routesInCorridor.length, driverCount, primaryRoute };
     });
-  }, [routes]);
+  }, [displayRoutes]);
 
   const selectedCorridor = useMemo(
     () => (selectedCorridorId === 'all' ? null : ROUTE_CORRIDORS.find((corridor) => corridor.id === selectedCorridorId) ?? null),
@@ -102,10 +105,10 @@ export default function RoutesPage() {
   }, [groupedRoutes, searchTerm, selectedCorridor]);
 
   const priorityRoutes = useMemo(() => {
-    return routes
+    return displayRoutes
       .filter(isPriorityIndiosVerdesRoute)
       .sort((a, b) => (a.title ?? a.origin).localeCompare(b.title ?? b.origin));
-  }, [routes]);
+  }, [displayRoutes]);
 
   function selectCorridor(corridorId: string) {
     setSelectedCorridorId(corridorId);
@@ -241,7 +244,7 @@ export default function RoutesPage() {
             <p className="mt-1">Crea una ruta con origen, destino, horario y asientos. Despues volveras aqui para tomarla y publicarla a pasajeros.</p>
           </div>
         ) : (
-          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+          <div className="mt-4 grid gap-3 2xl:grid-cols-2">
             {sortedMyCreatedRoutes.map((route) => {
               const alreadyTaken = offerRouteIds.has(route.id);
               const isNewRoute = route.id === highlightedCreatedRouteId;
@@ -258,6 +261,8 @@ export default function RoutesPage() {
                     pricePerSeat={route.pricePerSeat}
                     distanceKm={route.distanceKm}
                     stopsText={route.stopsText}
+                    showTown={false}
+                    showBoardingReference={false}
                     badge={alreadyTaken ? 'Disponibilidad publicada' : 'Falta publicar disponibilidad'}
                     tone="owned"
                   />
@@ -290,7 +295,7 @@ export default function RoutesPage() {
             </button>
           </div>
 
-          <div className="mt-4 grid gap-3 lg:grid-cols-3">
+          <div className="mt-4 grid gap-3 2xl:grid-cols-2">
             {priorityRoutes.slice(0, 6).map((route) => {
               const alreadyTaken = offerRouteIds.has(route.id);
               return (
@@ -305,6 +310,8 @@ export default function RoutesPage() {
                     pricePerSeat={route.pricePerSeat}
                     distanceKm={route.distanceKm}
                     stopsText={route.stopsText}
+                    showTown={false}
+                    showBoardingReference={false}
                     activeDriversCount={route.activeDriversCount}
                     badge="Ruta prioritaria"
                     tone="priority"
@@ -394,6 +401,8 @@ export default function RoutesPage() {
                             pricePerSeat={route.pricePerSeat}
                             distanceKm={route.distanceKm}
                             stopsText={route.stopsText}
+                    showTown={false}
+                    showBoardingReference={false}
                             activeDriversCount={activeDrivers}
                             badge={route.templateKey === corridor.primaryTemplateKey ? 'Ruta troncal recomendada' : isPriorityIndiosVerdesRoute(route) ? 'Ruta prioritaria' : corridor.tagline}
                             tone={isPriorityIndiosVerdesRoute(route) ? 'priority' : 'default'}

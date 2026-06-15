@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { RouteHighlightCard } from '@/components/route-highlight-card';
 import { apiRequest, getSessionRole, getToken } from '@/lib/api';
 import { inferRouteCorridor } from '@/lib/route-corridors';
+import { groupRoutesByCluster } from '@/lib/route-display';
 import { BaseRouteSummary, RouteOffer } from '@/lib/route-offers';
 
 type UserRole = 'passenger' | 'driver' | 'admin';
@@ -45,6 +46,7 @@ export default function SearchTripsPage() {
   const isPassenger = role === 'passenger';
   const isAdmin = role === 'admin';
   const offerRouteIds = useMemo(() => new Set(myOffers.map((offer) => offer.routeId)), [myOffers]);
+  const displayRoutes = useMemo(() => groupRoutesByCluster(routes), [routes]);
 
   useEffect(() => {
     const rawRole = getSessionRole();
@@ -117,7 +119,7 @@ export default function SearchTripsPage() {
         </div>
 
         <div className="mt-4 grid gap-2 sm:grid-cols-3">
-          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">Rutas publicadas: <span className="font-semibold text-slate-900">{routes.length}</span></div>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">Rutas publicadas: <span className="font-semibold text-slate-900">{displayRoutes.length}</span></div>
           <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">Mi rol actual: <span className="font-semibold text-slate-900">{role ?? 'No disponible'}</span></div>
           <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">Modo: <span className="font-semibold text-slate-900">Rutas preestablecidas</span></div>
         </div>
@@ -138,7 +140,7 @@ export default function SearchTripsPage() {
 
       {error && (<div className="space-y-2 rounded-md border border-red-200 bg-red-50 p-3 text-red-700"><p>{error}</p><p className="text-sm">Si estas en local y no levantaste API en el puerto 4000, la app intentara usar el respaldo remoto automaticamente.</p></div>)}
 
-      {routes.length === 0 ? (!error ? (
+      {displayRoutes.length === 0 ? (!error ? (
         <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
           <p className="text-base font-semibold">No hay rutas cercanas o publicadas para tu zona.</p>
           <p className="text-sm">Aun no hay rutas publicadas para esta zona. Revisa de nuevo en unos minutos o consulta otro corredor disponible.</p>
@@ -149,8 +151,8 @@ export default function SearchTripsPage() {
           )}
         </div>
       ) : null) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {[...routes]
+        <div className="grid gap-4 2xl:grid-cols-2">
+          {[...displayRoutes]
             .sort((a, b) => {
               const aCount = a.activeDriversCount ?? 0;
               const bCount = b.activeDriversCount ?? 0;
@@ -173,6 +175,8 @@ export default function SearchTripsPage() {
                     pricePerSeat={route.pricePerSeat}
                     distanceKm={route.distanceKm}
                     stopsText={route.stopsText}
+                    showTown={false}
+                    showBoardingReference={false}
                     activeDriversCount={activeDrivers}
                     badge={corridor.routeTypeLabel}
                     tone={alreadyTaken ? 'owned' : 'default'}

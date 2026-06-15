@@ -142,10 +142,6 @@ export default function CreateRoutePage() {
       return;
     }
 
-    if (!boardingReference.trim()) {
-      setError('Agrega una referencia clara de abordaje para que el pasajero te encuentre.');
-      return;
-    }
 
     if (weekdays.length === 0) {
       setError('Selecciona al menos un dia de operacion.');
@@ -179,7 +175,7 @@ export default function CreateRoutePage() {
           departureTime,
           estimatedArrivalTime,
           availableSeats: parsedSeats,
-          stopsText: boardingReference.trim()
+          stopsText: undefined
         })
       });
 
@@ -199,7 +195,7 @@ export default function CreateRoutePage() {
       <header className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <h1 className="text-2xl font-semibold text-slate-900">Crear ruta para trabajar</h1>
         <p className="mt-2 text-sm text-slate-600">
-          Crea una ruta especifica para la prueba piloto: elige punto de partida, escribe el poblado real, agrega referencia de abordaje y confirma horario.
+          Crea una ruta especifica para la prueba piloto: elige punto de partida, escribe el poblado real, confirma horario y despues publica tu referencia exacta.
         </p>
       </header>
 
@@ -210,7 +206,7 @@ export default function CreateRoutePage() {
         <form onSubmit={onSubmit} className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Datos de la ruta</h2>
-            <p className="mt-1 text-sm text-slate-600">Paso 1: punto de partida. Paso 2: poblado libre. Paso 3: referencia exacta para abordar.</p>
+            <p className="mt-1 text-sm text-slate-600">Paso 1: punto de partida. Paso 2: poblado libre. Paso 3: horario y dias de operacion.</p>
           </div>
 
           <div className="grid gap-3 md:grid-cols-2">
@@ -237,24 +233,12 @@ export default function CreateRoutePage() {
             </label>
           </div>
 
-          <label className="block text-sm text-slate-700">
-            3. Referencia exacta de abordaje
-            <textarea
-              value={boardingReference}
-              onChange={(event) => setBoardingReference(event.target.value)}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-              rows={2}
-              placeholder="Ej. Frente a la iglesia, junto al Oxxo, entrada del fraccionamiento, parada principal"
-              required
-            />
-          </label>
-
           <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
             <span className="font-semibold text-slate-900">Punto que se publicara:</span> {composedOrigin}
           </div>
 
           <label className="block text-sm text-slate-700">
-            4. Zona de trabajo / terminal CDMX
+            3. Zona de trabajo / terminal CDMX
             <select value={destination} onChange={(event) => setDestination(event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2">
               {PILOT_DESTINATIONS.map((group) => (
                 <optgroup key={group.delegation} label={group.delegation}>
@@ -312,8 +296,8 @@ export default function CreateRoutePage() {
           <div className="mt-3 space-y-2 text-sm text-slate-700">
             <p>1. Elige uno de los puntos piloto: Acolman, Ecatepec, Tecamac, Texcoco o Teotihuacan.</p>
             <p>2. Escribe el poblado o colonia exacta donde puedes recoger pasajeros.</p>
-            <p>3. Publica la ruta y luego tomala desde Mis rutas para abrir disponibilidad.</p>
-            <p>4. Los pasajeros veran precio, horario, dias y referencia de abordaje.</p>
+            <p>3. Publica la ruta y luego tomala para agregar referencia exacta de abordaje.</p>
+            <p>4. Los pasajeros primero veran municipio y destino; despues elegiran poblado y conductor.</p>
           </div>
           <Link href="/dashboard/routes" className="mt-4 inline-block rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">
             Ir a Mis rutas

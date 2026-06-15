@@ -181,6 +181,41 @@ export class PaymentsService {
     return this.findById(adminUserId, 'admin', payment.id);
   }
 
+
+  async archivePayments(adminUserId: string, paymentIds: string[]) {
+    const ids = this.normalizeIds(paymentIds);
+    if (ids.length === 0) {
+      throw new BadRequestException('Selecciona al menos un pago para archivar');
+    }
+
+    const result = await this.paymentDelegate().updateMany({
+      where: { id: { in: ids } },
+      data: {
+        archivedAt: new Date(),
+        archivedByAdminUserId: adminUserId
+      }
+    });
+
+    return { requestedCount: ids.length, updatedCount: result.count };
+  }
+
+  async restorePayments(paymentIds: string[]) {
+    const ids = this.normalizeIds(paymentIds);
+    if (ids.length === 0) {
+      throw new BadRequestException('Selecciona al menos un pago para restaurar');
+    }
+
+    const result = await this.paymentDelegate().updateMany({
+      where: { id: { in: ids } },
+      data: {
+        archivedAt: null,
+        archivedByAdminUserId: null
+      }
+    });
+
+    return { requestedCount: ids.length, updatedCount: result.count };
+  }
+
   async rejectManualPayment(adminUserId: string, paymentId: string, dto: ReviewPaymentDto) {
     const payment = await this.findPaymentByIdOrThrow(paymentId);
     const normalizedStatus = this.normalizePaymentStatus(payment.status);
@@ -845,6 +880,11 @@ export class PaymentsService {
         }
       }
     };
+  }
+
+
+  private normalizeIds(ids: string[] | undefined) {
+    return Array.from(new Set((ids ?? []).map((id) => String(id).trim()).filter(Boolean)));
   }
 
   private paymentDelegate() {

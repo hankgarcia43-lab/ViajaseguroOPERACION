@@ -1,4 +1,4 @@
-﻿import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -15,6 +15,17 @@ export class AdminPaymentsController {
   @Get('pending-review')
   findPendingReview() {
     return this.paymentsService.findPendingReviewForAdmin();
+  }
+
+
+  @Patch('bulk-archive')
+  archiveMany(@CurrentUser() user: { sub: string }, @Body() dto: { paymentIds?: string[] }) {
+    return this.paymentsService.archivePayments(user.sub, dto.paymentIds ?? []);
+  }
+
+  @Patch('bulk-restore')
+  restoreMany(@Body() dto: { paymentIds?: string[] }) {
+    return this.paymentsService.restorePayments(dto.paymentIds ?? []);
   }
 
   @Patch(':paymentId/approve')

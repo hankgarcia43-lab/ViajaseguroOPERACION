@@ -22,8 +22,10 @@ export default function AdminPaymentsPage() {
   const [statusFilter, setStatusFilter] = useState<(typeof FILTERS)[number]['value']>('active');
   const [searchTerm, setSearchTerm] = useState('');
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
+  const [selectedPaymentIds, setSelectedPaymentIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyPaymentId, setBusyPaymentId] = useState<string | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -43,6 +45,7 @@ export default function AdminPaymentsPage() {
       ]);
       setPayments(allPayments);
       setPendingReview(pendingReviewData);
+      setSelectedPaymentIds((current) => current.filter((id) => allPayments.some((payment) => payment.id === id)));
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'No se pudieron cargar los pagos');
     } finally {
@@ -82,6 +85,43 @@ export default function AdminPaymentsPage() {
     }
   }
 
+
+  async function bulkArchivePayments(paymentIds: string[], restore = false) {
+    const token = getToken();
+    if (!token) {
+      setError('No hay sesion activa.');
+      return;
+    }
+
+    const ids = Array.from(new Set(paymentIds.filter(Boolean)));
+    if (ids.length === 0) {
+      setError('Selecciona al menos un pago.');
+      return;
+    }
+
+    setBulkBusy(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await apiRequest<{ requestedCount: number; updatedCount: number }>(`/admin/payments/${restore ? 'bulk-restore' : 'bulk-archive'}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ paymentIds: ids })
+      });
+      setSelectedPaymentIds([]);
+      setSuccess(restore ? `Pagos restaurados: ${response.updatedCount}.` : `Pagos archivados: ${response.updatedCount}.`);
+      await load();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'No se pudo actualizar el archivado de pagos');
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
+  function togglePaymentSelection(paymentId: string) {
+    setSelectedPaymentIds((current) => (current.includes(paymentId) ? current.filter((id) => id !== paymentId) : [...current, paymentId]));
+  }
   const filteredPayments = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
@@ -110,6 +150,20 @@ export default function AdminPaymentsPage() {
     });
   }, [payments, statusFilter, searchTerm]);
 
+
+  const allVisibleSelected = filteredPayments.length > 0 && filteredPayments.every((payment) => selectedPaymentIds.includes(payment.id));
+  const selectedPayments = payments.filter((payment) => selectedPaymentIds.includes(payment.id));
+  const selectedArchivedCount = selectedPayments.filter((payment) => payment.archivedAt).length;
+  const selectedActiveCount = selectedPayments.length - selectedArchivedCount;
+
+  function toggleSelectAllVisible() {
+    if (allVisibleSelected) {
+      setSelectedPaymentIds((current) => current.filter((id) => !filteredPayments.some((payment) => payment.id === id)));
+      return;
+    }
+
+    setSelectedPaymentIds((current) => Array.from(new Set([...current, ...filteredPayments.map((payment) => payment.id)])));
+  }
   if (loading) {
     return <p className="text-slate-700">Cargando pagos...</p>;
   }
@@ -159,6 +213,40 @@ export default function AdminPaymentsPage() {
         ))}
       </div>
 
+
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
+            <input type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAllVisible} />
+            Seleccionar todo visible ({filteredPayments.length})
+          </label>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-slate-600">Seleccionados: {selectedPaymentIds.length}</span>
+            <button
+              type="button"
+              disabled={bulkBusy || selectedActiveCount === 0}
+              onClick={() => bulkArchivePayments(selectedPayments.filter((payment) => !payment.archivedAt).map((payment) => payment.id))}
+              className="rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 disabled:opacity-50"
+            >
+              {bulkBusy ? 'Procesando...' : `Archivar activos (${selectedActiveCount})`}
+            </button>
+            <button
+              type="button"
+              disabled={bulkBusy || selectedArchivedCount === 0}
+              onClick={() => bulkArchivePayments(selectedPayments.filter((payment) => payment.archivedAt).map((payment) => payment.id), true)}
+              className="rounded-md border border-brand-300 bg-brand-50 px-3 py-2 text-sm font-medium text-brand-700 disabled:opacity-50"
+            >
+              {bulkBusy ? 'Procesando...' : `Restaurar archivados (${selectedArchivedCount})`}
+            </button>
+            {selectedPaymentIds.length > 0 && (
+              <button type="button" onClick={() => setSelectedPaymentIds([])} className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">
+                Limpiar seleccion
+              </button>
+            )}
+          </div>
+        </div>
+        <p className="mt-2 text-xs text-slate-500">Archivar no borra comprobantes, pagos ni reservas; solo limpia la operacion diaria.</p>
+      </div>
       {filteredPayments.length === 0 ? (
         <p className="rounded-xl border border-slate-200 bg-white p-6 text-slate-700">No hay pagos para este filtro.</p>
       ) : (
@@ -172,12 +260,18 @@ export default function AdminPaymentsPage() {
             const canReject = ['pending', 'submitted'].includes(payment.status);
 
             return (
-              <article key={payment.id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+              <article key={payment.id} className={`rounded-xl border p-5 shadow-sm ${selectedPaymentIds.includes(payment.id) ? 'border-brand-400 bg-brand-50' : 'border-slate-200 bg-white'}`}>
                 <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">Reserva # {payment.reservation?.publicId ?? '-'}</p>
-                    <p className="text-xs text-slate-500">Viaje # {payment.reservation?.trip?.publicId ?? '-'} | Ruta # {payment.reservation?.trip?.route?.publicId ?? '-'}</p>
-                    <p className="text-xs text-slate-500">UUID payment: {payment.id.slice(0, 8)}</p>
+                  <div className="flex items-start gap-3">
+                    <label className="mt-1 inline-flex items-center gap-2 text-xs font-medium text-slate-600">
+                      <input type="checkbox" checked={selectedPaymentIds.includes(payment.id)} onChange={() => togglePaymentSelection(payment.id)} />
+                      Seleccionar
+                    </label>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">Reserva # {payment.reservation?.publicId ?? '-'}</p>
+                      <p className="text-xs text-slate-500">Viaje # {payment.reservation?.trip?.publicId ?? '-'} | Ruta # {payment.reservation?.trip?.route?.publicId ?? '-'}</p>
+                      <p className="text-xs text-slate-500">UUID payment: {payment.id.slice(0, 8)}</p>
+                    </div>
                   </div>
                   <div className="flex flex-col items-end gap-1">
                     <span className={`rounded-full px-2 py-1 text-xs font-medium ${status.className}`}>{status.label}</span>
@@ -218,6 +312,28 @@ export default function AdminPaymentsPage() {
                 {payment.reviewNotes && <p className="mt-2 text-sm text-slate-700">Revision: {payment.reviewNotes}</p>}
                 {payment.reviewedByAdmin && <p className="text-xs text-slate-500">Revisado por: {payment.reviewedByAdmin.fullName}</p>}
 
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {!payment.archivedAt ? (
+                    <button
+                      type="button"
+                      disabled={bulkBusy}
+                      onClick={() => bulkArchivePayments([payment.id])}
+                      className="rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 disabled:opacity-50"
+                    >
+                      Archivar comprobante
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={bulkBusy}
+                      onClick={() => bulkArchivePayments([payment.id], true)}
+                      className="rounded-md border border-brand-300 bg-brand-50 px-3 py-2 text-sm font-medium text-brand-700 disabled:opacity-50"
+                    >
+                      Restaurar pago
+                    </button>
+                  )}
+                </div>
                 {(canApprove || canReject) && (
                   <div className="mt-4 space-y-3">
                     <textarea

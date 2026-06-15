@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { ContextHelpPanel } from '@/components/context-help-panel';
+import { RouteHighlightCard } from '@/components/route-highlight-card';
 import { apiRequest, getSessionRole, getToken } from '@/lib/api';
 import { inferRouteCorridor, ROUTE_CORRIDORS } from '@/lib/route-corridors';
 import { BaseRouteSummary, RouteOffer } from '@/lib/route-offers';
@@ -246,23 +247,20 @@ export default function RoutesPage() {
               const isNewRoute = route.id === highlightedCreatedRouteId;
 
               return (
-                <article key={`mine-${route.id}`} className={`rounded-xl border p-4 ${isNewRoute ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-slate-50'}`}>
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div>
-                      <h3 className="text-base font-semibold text-slate-900">{route.title || `${route.origin} -> ${route.destination}`}</h3>
-                      <p className="text-sm text-slate-600">{route.origin} {'->'} {route.destination}</p>
-                    </div>
-                    <span className={`rounded-full px-3 py-1 text-xs font-medium ${alreadyTaken ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'}`}>
-                      {alreadyTaken ? 'Disponibilidad publicada' : 'Falta publicar disponibilidad'}
-                    </span>
-                  </div>
-                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-700">
-                    <span className="rounded-md bg-white px-2 py-1">Salida: {route.departureTime}</span>
-                    <span className="rounded-md bg-white px-2 py-1">Llegada: {route.estimatedArrivalTime}</span>
-                    <span className="rounded-md bg-white px-2 py-1">{route.distanceKm.toFixed(1)} km</span>
-                    <span className="rounded-md bg-white px-2 py-1">${route.pricePerSeat.toFixed(2)} MXN</span>
-                  </div>
-                  {route.stopsText && <p className="mt-3 line-clamp-2 text-xs text-slate-600">{route.stopsText}</p>}
+                <article key={`mine-${route.id}`} className={`rounded-xl border p-3 shadow-sm ${isNewRoute ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-white'}`}>
+                  <RouteHighlightCard
+                    title={route.title}
+                    origin={route.origin}
+                    destination={route.destination}
+                    weekdays={route.weekdays}
+                    departureTime={route.departureTime}
+                    estimatedArrivalTime={route.estimatedArrivalTime}
+                    pricePerSeat={route.pricePerSeat}
+                    distanceKm={route.distanceKm}
+                    stopsText={route.stopsText}
+                    badge={alreadyTaken ? 'Disponibilidad publicada' : 'Falta publicar disponibilidad'}
+                    tone="owned"
+                  />
                   <div className="mt-4 grid gap-2 sm:grid-cols-2">
                     <Link href={`/dashboard/routes/${route.id}/take`} className="rounded-md bg-emerald-700 px-4 py-2 text-center text-sm font-medium text-white">
                       {alreadyTaken ? 'Actualizar disponibilidad' : 'Tomar y publicar ruta'}
@@ -296,16 +294,21 @@ export default function RoutesPage() {
             {priorityRoutes.slice(0, 6).map((route) => {
               const alreadyTaken = offerRouteIds.has(route.id);
               return (
-                <article key={`priority-${route.id}`} className="rounded-xl border border-white bg-white/90 p-4 shadow-sm">
-                  <h3 className="text-base font-semibold text-slate-900">{route.title || `${route.origin} -> ${route.destination}`}</h3>
-                  <p className="mt-1 text-xs text-slate-600">{route.origin} {'->'} {route.destination}</p>
-                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-700">
-                    <span className="rounded-md bg-slate-50 px-2 py-1">Salida: {route.departureTime}</span>
-                    <span className="rounded-md bg-slate-50 px-2 py-1">Llegada: {route.estimatedArrivalTime}</span>
-                    <span className="rounded-md bg-slate-50 px-2 py-1">{route.distanceKm.toFixed(1)} km</span>
-                    <span className="rounded-md bg-slate-50 px-2 py-1">${route.pricePerSeat.toFixed(2)} MXN</span>
-                  </div>
-                  {route.stopsText && <p className="mt-3 line-clamp-3 text-xs text-slate-600">{route.stopsText}</p>}
+                <article key={`priority-${route.id}`} className="rounded-xl border border-white bg-white/90 p-3 shadow-sm">
+                  <RouteHighlightCard
+                    title={route.title}
+                    origin={route.origin}
+                    destination={route.destination}
+                    weekdays={route.weekdays}
+                    departureTime={route.departureTime}
+                    estimatedArrivalTime={route.estimatedArrivalTime}
+                    pricePerSeat={route.pricePerSeat}
+                    distanceKm={route.distanceKm}
+                    stopsText={route.stopsText}
+                    activeDriversCount={route.activeDriversCount}
+                    badge="Ruta prioritaria"
+                    tone="priority"
+                  />
                   {renderRouteActions(route, alreadyTaken)}
                 </article>
               );
@@ -380,30 +383,21 @@ export default function RoutesPage() {
                       const activeDrivers = route.activeDriversCount ?? 0;
 
                       return (
-                        <article key={route.id} className={`rounded-xl border p-5 shadow-sm ${isPriorityIndiosVerdesRoute(route) ? 'border-brand-300 bg-gradient-to-br from-white to-blue-50' : 'border-slate-200 bg-white'}`}>
-                          <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div>
-                              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-700">{corridor.tagline}</p>
-                              <h3 className="mt-1 text-lg font-semibold text-slate-900">{route.title || `${route.origin} -> ${route.destination}`}</h3>
-                              <p className="text-sm text-slate-600">{route.origin} {'->'} {route.destination}</p>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              {route.templateKey === corridor.primaryTemplateKey && <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">Ruta troncal recomendada</span>}
-                              {isPriorityIndiosVerdesRoute(route) && <span className="rounded-full bg-brand-100 px-3 py-1 text-xs font-semibold text-brand-700">Ruta prioritaria</span>}
-                              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">{corridor.destinationHub}</span>
-                            </div>
-                          </div>
-
-                          <p className="mt-2 text-sm text-slate-700">Horario base: {route.departureTime} - {route.estimatedArrivalTime}</p>
-                          <p className="text-sm text-slate-700">Distancia aprox: {route.distanceKm.toFixed(2)} km</p>
-                          <p className="text-sm font-medium text-slate-900">Precio por asiento: ${route.pricePerSeat.toFixed(2)} MXN</p>
-                          <p className="text-sm text-slate-700">Conductores activos en esta ruta: <span className="font-semibold text-slate-900">{activeDrivers}</span></p>
-                          {route.stopsText && (
-                            <div className="mt-3 rounded-lg border border-cyan-100 bg-cyan-50 p-3 text-xs text-cyan-950">
-                              <p className="font-semibold">Puntos especificos para operar esta ruta</p>
-                              <p className="mt-1">{route.stopsText}</p>
-                            </div>
-                          )}
+                        <article key={route.id} className={`rounded-xl border p-3 shadow-sm ${isPriorityIndiosVerdesRoute(route) ? 'border-brand-300 bg-gradient-to-br from-white to-blue-50' : 'border-slate-200 bg-white'}`}>
+                          <RouteHighlightCard
+                            title={route.title}
+                            origin={route.origin}
+                            destination={route.destination}
+                            weekdays={route.weekdays}
+                            departureTime={route.departureTime}
+                            estimatedArrivalTime={route.estimatedArrivalTime}
+                            pricePerSeat={route.pricePerSeat}
+                            distanceKm={route.distanceKm}
+                            stopsText={route.stopsText}
+                            activeDriversCount={activeDrivers}
+                            badge={route.templateKey === corridor.primaryTemplateKey ? 'Ruta troncal recomendada' : isPriorityIndiosVerdesRoute(route) ? 'Ruta prioritaria' : corridor.tagline}
+                            tone={isPriorityIndiosVerdesRoute(route) ? 'priority' : 'default'}
+                          />
 
                           {renderRouteActions(route, alreadyTaken)}
 

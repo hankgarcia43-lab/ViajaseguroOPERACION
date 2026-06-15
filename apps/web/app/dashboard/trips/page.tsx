@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { ContextHelpPanel } from '@/components/context-help-panel';
 import { apiRequest, getToken } from '@/lib/api';
@@ -21,6 +21,7 @@ function TripsPageContent() {
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyAction, setBusyAction] = useState<string | null>(null);
+  const router = useRouter();
   const searchParams = useSearchParams();
   const takenRouteName = searchParams.get('takenRoute');
 
@@ -107,6 +108,42 @@ function TripsPageContent() {
     }
   }
 
+
+  async function startAndValidate(trip: DriverTrip) {
+    const token = getToken();
+    if (!token) {
+      setError('No hay sesion activa.');
+      return;
+    }
+
+    if (trip.status === 'started') {
+      router.push(`/dashboard/trips/${trip.id}/boarding`);
+      return;
+    }
+
+    if (trip.status !== 'scheduled') {
+      setError('Solo puedes validar boletos en viajes programados o en curso.');
+      return;
+    }
+
+    setBusyAction(`${trip.id}:start-boarding`);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      await apiRequest(`/trips/${trip.id}/start`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      router.push(`/dashboard/trips/${trip.id}/boarding`);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'No se pudo iniciar el viaje para validar boletos');
+    } finally {
+      setBusyAction(null);
+    }
+  }
   function archiveTrip(trip: DriverTrip) {
     if (!ARCHIVABLE_STATUSES.has(trip.status)) {
       setError('Solo puedes archivar viajes finalizados o cancelados.');
@@ -130,6 +167,7 @@ function TripsPageContent() {
     const isStartBusy = busyAction === `${trip.id}:start`;
     const isFinishBusy = busyAction === `${trip.id}:finish`;
     const isCancelBusy = busyAction === `${trip.id}:cancel`;
+    const isStartBoardingBusy = busyAction === `${trip.id}:start-boarding`;
     const canArchive = ARCHIVABLE_STATUSES.has(trip.status);
 
     return (
@@ -184,13 +222,18 @@ function TripsPageContent() {
 
           <div className="flex flex-wrap gap-2">
             {!isArchived && trip.status === 'scheduled' && (
-              <button type="button" disabled={isStartBusy} onClick={() => changeStatus(trip, 'start')} className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:opacity-50">
-                {isStartBusy ? 'Iniciando...' : '1. Iniciar viaje'}
-              </button>
+              <>
+                <button type="button" disabled={isStartBoardingBusy} onClick={() => startAndValidate(trip)} className="rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:opacity-50">
+                  {isStartBoardingBusy ? 'Abriendo validacion...' : 'Iniciar y validar boletos'}
+                </button>
+                <button type="button" disabled={isStartBusy || isStartBoardingBusy} onClick={() => changeStatus(trip, 'start')} className="rounded-md border border-emerald-300 px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm disabled:opacity-50">
+                  {isStartBusy ? 'Iniciando...' : 'Solo iniciar viaje'}
+                </button>
+              </>
             )}
             {!isArchived && trip.status === 'started' && (
               <Link href={`/dashboard/trips/${trip.id}/boarding`} className="rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm">
-                2. Validar boletos
+                Validar boletos
               </Link>
             )}
             {!isArchived && trip.status === 'started' && (

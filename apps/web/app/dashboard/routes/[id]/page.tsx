@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { RouteHighlightCard } from '@/components/route-highlight-card';
 import { apiRequest, buildApiAssetUrl, getToken } from '@/lib/api';
 import { inferRouteCorridor } from '@/lib/route-corridors';
 import { CreateReservationByOfferPayload, RouteOffer, RouteOffersByRouteResponse } from '@/lib/route-offers';
@@ -207,18 +208,28 @@ export default function RouteOffersDetailPage() {
 
   return (
     <section className="space-y-5">
-      <header className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h1 className="text-2xl font-semibold text-slate-900">Elige conductor y aparta tu lugar</h1>
-        <p className="text-sm text-slate-600">
-          Ruta: {data?.route.title || `${data?.route.origin ?? ''} -> ${data?.route.destination ?? ''}`}. Revisa referencia de abordaje, dia disponible, modalidad y precio antes de reservar. Cada reserva genera un solo pago y un solo boleto para todos los asientos.
-        </p>
-        {corridor && (
-          <div className="mt-3 rounded-lg border border-cyan-200 bg-cyan-50 p-3 text-sm text-cyan-900">
-            <p className="font-semibold">{corridor.name}</p>
-            <p>{corridor.municipalities} {'->'} {corridor.destinationHub}</p>
-            <p className="text-xs">{corridor.description}</p>
-          </div>
+      <header className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Elige conductor y aparta tu lugar</h1>
+          <p className="text-sm text-slate-600">Revisa referencia de abordaje, dias disponibles, horario y precio antes de reservar. Cada reserva genera un solo pago y un solo boleto para todos los asientos.</p>
+        </div>
+        {data?.route && (
+          <RouteHighlightCard
+            title={data.route.title}
+            origin={data.route.origin}
+            destination={data.route.destination}
+            weekdays={data.route.weekdays}
+            departureTime={data.route.departureTime}
+            estimatedArrivalTime={data.route.estimatedArrivalTime}
+            pricePerSeat={data.route.pricePerSeat}
+            distanceKm={data.route.distanceKm}
+            stopsText={data.route.stopsText}
+            activeDriversCount={data.offers.length}
+            badge={corridor?.name ?? 'Ruta publicada'}
+            tone="priority"
+          />
         )}
+        {corridor && <p className="rounded-lg border border-cyan-200 bg-cyan-50 p-3 text-xs text-cyan-900">{corridor.description}</p>}
       </header>
 
       {error && <p className="rounded-md bg-red-50 p-3 text-red-700">{error}</p>}
@@ -233,17 +244,35 @@ export default function RouteOffersDetailPage() {
               const vehiclePhoto = buildApiAssetUrl(offer.vehiclePhotoUrl);
               const isSelected = selectedOfferId === offer.id;
               return (
-                <article key={offer.id} className={`rounded-xl border p-5 shadow-sm ${isSelected ? 'border-brand-400 bg-brand-50' : 'border-slate-200 bg-white'}`}>
+                <article key={offer.id} className={`rounded-xl border p-4 shadow-sm ${isSelected ? 'border-brand-400 bg-brand-50' : 'border-slate-200 bg-white'}`}>
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <p className="font-semibold text-slate-900">{offer.driver?.fullName ?? 'Conductor'}</p>
-                      <p className="text-sm text-slate-700">Precio por asiento: ${offer.pricePerSeat.toFixed(2)} MXN</p>
-                      <p className="text-sm text-slate-700">Referencia de abordaje: {offer.boardingReference}</p>
-                      <p className="text-sm text-slate-700">Dias: {offer.weekdays.map((day) => formatWeekdayInSpanish(day)).join(', ')}</p>
-                      <p className="text-sm text-slate-700">Modalidad: {offer.serviceType === 'weekly' ? 'Semanal recurrente' : offer.serviceType === 'round_trip' ? 'Ida y vuelta' : 'Servicio unico'}</p>
+                      <p className="text-xs font-bold uppercase text-brand-700">Conductor disponible</p>
+                      <p className="text-lg font-bold text-slate-950">{offer.driver?.fullName ?? 'Conductor'}</p>
                     </div>
                     {vehiclePhoto ? <img src={vehiclePhoto} alt="Auto del conductor" className="h-20 w-28 rounded-md border border-slate-200 object-cover" /> : null}
                   </div>
+
+                  <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_150px]">
+                    <div className="rounded-lg border border-cyan-100 bg-cyan-50 p-3">
+                      <p className="text-xs font-bold uppercase text-cyan-900">Dias disponibles</p>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {offer.weekdays.map((day) => (
+                          <span key={day} className="rounded-md bg-white px-2 py-1 text-xs font-bold text-cyan-900 shadow-sm">{formatWeekdayInSpanish(day)}</span>
+                        ))}
+                      </div>
+                      <p className="mt-3 text-xs font-bold uppercase text-slate-500">Referencia</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-900">{offer.boardingReference}</p>
+                      <p className="mt-2 text-xs text-slate-600">Modalidad: {offer.serviceType === 'weekly' ? 'Semanal recurrente' : offer.serviceType === 'round_trip' ? 'Ida y vuelta' : 'Servicio unico'}</p>
+                    </div>
+
+                    <div className="rounded-lg bg-slate-950 p-4 text-center text-white">
+                      <p className="text-xs font-bold uppercase opacity-80">Por asiento</p>
+                      <p className="mt-2 text-3xl font-black">${offer.pricePerSeat.toFixed(2)}</p>
+                      <p className="text-xs font-semibold opacity-90">MXN</p>
+                    </div>
+                  </div>
+
                   <button type="button" onClick={() => setSelectedOfferId(offer.id)} className="mt-3 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">
                     {isSelected ? 'Conductor seleccionado' : 'Elegir conductor'}
                   </button>

@@ -10,6 +10,8 @@ interface RouteHighlightCardProps {
   stopsText?: string | null;
   activeDriversCount?: number | null;
   badge?: string;
+  showTown?: boolean;
+  showBoardingReference?: boolean;
   tone?: 'default' | 'priority' | 'owned';
 }
 
@@ -74,6 +76,8 @@ export function RouteHighlightCard({
   stopsText,
   activeDriversCount,
   badge,
+  showTown = true,
+  showBoardingReference = true,
   tone = 'default'
 }: RouteHighlightCardProps) {
   const { municipality, town } = splitOrigin(origin);
@@ -95,8 +99,12 @@ export function RouteHighlightCard({
             <div className="min-w-0 rounded-lg bg-white p-3 shadow-sm">
               <p className="text-xs font-bold uppercase text-slate-500">Punto de partida</p>
               <p className="mt-1 break-words text-xl font-bold leading-snug text-slate-950">{municipality}</p>
-              <p className="mt-2 text-xs font-bold uppercase text-slate-500">Poblado / zona</p>
-              <p className="mt-1 break-words text-base font-semibold leading-snug text-cyan-900">{town}</p>
+              {showTown && (
+                <>
+                  <p className="mt-2 text-xs font-bold uppercase text-slate-500">Poblado / zona</p>
+                  <p className="mt-1 break-words text-base font-semibold leading-snug text-cyan-900">{town}</p>
+                </>
+              )}
             </div>
 
             <div className="min-w-0 rounded-lg bg-white p-3 shadow-sm">
@@ -124,7 +132,7 @@ export function RouteHighlightCard({
             </div>
           </div>
 
-          {stopsText && (
+          {showBoardingReference && stopsText && (
             <div className="mt-3 rounded-lg border border-cyan-100 bg-white/80 p-3 text-xs text-slate-700">
               <p className="font-bold text-slate-950">Referencia de abordaje</p>
               <p className="mt-1 line-clamp-3 break-words leading-relaxed">{stopsText}</p>

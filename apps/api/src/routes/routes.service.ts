@@ -36,11 +36,11 @@ export class RoutesService {
         origin: dto.origin,
         destination: dto.destination,
         stopsText: this.composeRouteDescription(dto),
-        weekdays: [WeekdayDto.MONDAY, WeekdayDto.TUESDAY, WeekdayDto.WEDNESDAY, WeekdayDto.THURSDAY, WeekdayDto.FRIDAY, WeekdayDto.SATURDAY, WeekdayDto.SUNDAY],
-        departureTime: '06:00',
-        estimatedArrivalTime: '08:00',
-        availableSeats: 4,
-        status: RouteStatusDto.ACTIVE
+        weekdays: dto.weekdays,
+        departureTime: dto.departureTime,
+        estimatedArrivalTime: dto.estimatedArrivalTime,
+        availableSeats: dto.availableSeats,
+        status: dto.status ?? RouteStatusDto.ACTIVE
       },
       true
     );

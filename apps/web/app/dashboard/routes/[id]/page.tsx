@@ -253,7 +253,7 @@ export default function RouteOffersDetailPage() {
                     {vehiclePhoto ? <img src={vehiclePhoto} alt="Auto del conductor" className="h-20 w-28 rounded-md border border-slate-200 object-cover" /> : null}
                   </div>
 
-                  <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_150px]">
+                  <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_190px]">
                     <div className="rounded-lg border border-cyan-100 bg-cyan-50 p-3">
                       <p className="text-xs font-bold uppercase text-cyan-900">Dias disponibles</p>
                       <div className="mt-2 flex flex-wrap gap-1.5">
@@ -262,13 +262,13 @@ export default function RouteOffersDetailPage() {
                         ))}
                       </div>
                       <p className="mt-3 text-xs font-bold uppercase text-slate-500">Referencia</p>
-                      <p className="mt-1 text-sm font-semibold text-slate-900">{offer.boardingReference}</p>
+                      <p className="mt-1 break-words text-sm font-semibold leading-relaxed text-slate-900">{offer.boardingReference}</p>
                       <p className="mt-2 text-xs text-slate-600">Modalidad: {offer.serviceType === 'weekly' ? 'Semanal recurrente' : offer.serviceType === 'round_trip' ? 'Ida y vuelta' : 'Servicio unico'}</p>
                     </div>
 
                     <div className="rounded-lg bg-slate-950 p-4 text-center text-white">
                       <p className="text-xs font-bold uppercase opacity-80">Por asiento</p>
-                      <p className="mt-2 text-3xl font-black">${offer.pricePerSeat.toFixed(2)}</p>
+                      <p className="mt-2 whitespace-nowrap text-2xl font-black xl:text-3xl">${offer.pricePerSeat.toFixed(2)}</p>
                       <p className="text-xs font-semibold opacity-90">MXN</p>
                     </div>
                   </div>

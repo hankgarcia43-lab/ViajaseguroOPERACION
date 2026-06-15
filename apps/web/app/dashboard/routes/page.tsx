@@ -241,7 +241,7 @@ export default function RoutesPage() {
             <p className="mt-1">Crea una ruta con origen, destino, horario y asientos. Despues volveras aqui para tomarla y publicarla a pasajeros.</p>
           </div>
         ) : (
-          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+          <div className="mt-4 grid gap-3 2xl:grid-cols-2">
             {sortedMyCreatedRoutes.map((route) => {
               const alreadyTaken = offerRouteIds.has(route.id);
               const isNewRoute = route.id === highlightedCreatedRouteId;
@@ -290,7 +290,7 @@ export default function RoutesPage() {
             </button>
           </div>
 
-          <div className="mt-4 grid gap-3 lg:grid-cols-3">
+          <div className="mt-4 grid gap-3 2xl:grid-cols-2">
             {priorityRoutes.slice(0, 6).map((route) => {
               const alreadyTaken = offerRouteIds.has(route.id);
               return (

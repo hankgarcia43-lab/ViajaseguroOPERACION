@@ -149,7 +149,7 @@ export default function SearchTripsPage() {
           )}
         </div>
       ) : null) : (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 2xl:grid-cols-2">
           {[...routes]
             .sort((a, b) => {
               const aCount = a.activeDriversCount ?? 0;

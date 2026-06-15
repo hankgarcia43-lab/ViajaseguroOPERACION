@@ -93,7 +93,7 @@ export function RouteHighlightCard({
 
           <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)]">
             <div className="rounded-lg bg-white p-3 shadow-sm">
-              <p className="text-xs font-bold uppercase text-slate-500">Municipio</p>
+              <p className="text-xs font-bold uppercase text-slate-500">Punto de partida</p>
               <p className="mt-1 text-xl font-bold text-slate-950">{municipality}</p>
               <p className="mt-2 text-xs font-bold uppercase text-slate-500">Poblado / zona</p>
               <p className="mt-1 text-base font-semibold text-cyan-900">{town}</p>

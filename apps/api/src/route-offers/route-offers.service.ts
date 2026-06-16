@@ -14,39 +14,63 @@ export class RouteOffersService {
   constructor(private readonly prisma: PrismaService, private readonly vehiclesService: VehiclesService) {}
 
   async listBaseRoutes() {
-    const routes = await this.routeDelegate().findMany({ where: { status: 'active' }, orderBy: [{ createdAt: 'desc' }] });
+    const routes = await this.routeDelegate().findMany({ where: { status: 'active' }, orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }] });
     const routeIds = routes.map((route: any) => route.id);
 
     const offers = routeIds.length
       ? await this.routeOfferDelegate().findMany({
           where: { routeId: { in: routeIds }, status: OFFER_STATUS.ACTIVE },
-          select: { routeId: true }
+          select: { routeId: true, createdAt: true, updatedAt: true }
         })
       : [];
 
     const activeDriversByRoute = new Map<string, number>();
+    const latestOfferActivityByRoute = new Map<string, Date>();
+
     for (const offer of offers) {
       activeDriversByRoute.set(offer.routeId, (activeDriversByRoute.get(offer.routeId) ?? 0) + 1);
+
+      const offerActivityAt = offer.updatedAt ?? offer.createdAt;
+      const currentLatest = latestOfferActivityByRoute.get(offer.routeId);
+      if (!currentLatest || offerActivityAt.getTime() > currentLatest.getTime()) {
+        latestOfferActivityByRoute.set(offer.routeId, offerActivityAt);
+      }
     }
 
-    return routes.map((route: any) => ({
-      id: route.id,
-      publicId: route.publicId ?? null,
-      templateKey: route.templateKey ?? null,
-      title: route.title,
-      origin: route.origin,
-      destination: route.destination,
-      weekdays: this.parseWeekdays(route.weekdaysText),
-      departureTime: route.departureTime,
-      estimatedArrivalTime: route.estimatedArrivalTime,
-      distanceKm: route.distanceKm,
-      pricePerSeat: route.pricePerSeat,
-      status: route.status,
-      stopsText: route.stopsText ?? null,
-      activeDriversCount: activeDriversByRoute.get(route.id) ?? 0
-    }));
-  }
+    return routes
+      .map((route: any) => {
+        const latestOfferActivityAt = latestOfferActivityByRoute.get(route.id) ?? null;
+        const latestActivityAt = this.latestDate(route.updatedAt, route.createdAt, latestOfferActivityAt);
 
+        return {
+          route,
+          latestOfferActivityAt,
+          latestActivityAt,
+          activeDriversCount: activeDriversByRoute.get(route.id) ?? 0
+        };
+      })
+      .sort((a: any, b: any) => b.latestActivityAt.getTime() - a.latestActivityAt.getTime() || b.route.createdAt.getTime() - a.route.createdAt.getTime())
+      .map(({ route, latestOfferActivityAt, latestActivityAt, activeDriversCount }: any) => ({
+        id: route.id,
+        publicId: route.publicId ?? null,
+        templateKey: route.templateKey ?? null,
+        title: route.title,
+        origin: route.origin,
+        destination: route.destination,
+        weekdays: this.parseWeekdays(route.weekdaysText),
+        departureTime: route.departureTime,
+        estimatedArrivalTime: route.estimatedArrivalTime,
+        distanceKm: route.distanceKm,
+        pricePerSeat: route.pricePerSeat,
+        status: route.status,
+        stopsText: route.stopsText ?? null,
+        activeDriversCount,
+        createdAt: route.createdAt,
+        updatedAt: route.updatedAt,
+        latestOfferUpdatedAt: latestOfferActivityAt,
+        latestActivityAt
+      }));
+  }
   async create(driverUserId: string, dto: CreateRouteOfferDto) {
     await this.vehiclesService.ensureDriverCanOperate(driverUserId);
 
@@ -230,6 +254,11 @@ export class RouteOffersService {
     };
   }
 
+  private latestDate(...values: Array<Date | null | undefined>) {
+    const dates = values.filter((value): value is Date => value instanceof Date && !Number.isNaN(value.getTime()));
+    if (dates.length === 0) return new Date(0);
+    return dates.reduce((latest, value) => (value.getTime() > latest.getTime() ? value : latest), dates[0]);
+  }
   private parseWeekdays(value: string): string[] {
     try {
       const parsed = JSON.parse(value);
@@ -256,8 +285,3 @@ export class RouteOffersService {
     return (this.prisma as any).route;
   }
 }
-
-
-
-
-

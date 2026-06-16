@@ -44,7 +44,7 @@ function toneClasses(tone: RouteHighlightCardProps['tone']) {
   if (tone === 'priority') {
     return {
       shell: 'border-brand-200 bg-gradient-to-br from-white via-blue-50 to-cyan-50',
-      price: 'bg-brand-600 text-white',
+      price: 'bg-brand-700 text-white',
       accent: 'bg-brand-100 text-brand-800'
     };
   }

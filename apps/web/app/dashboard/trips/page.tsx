@@ -223,7 +223,7 @@ function TripsPageContent() {
           <div className="flex flex-wrap gap-2">
             {!isArchived && trip.status === 'scheduled' && (
               <>
-                <button type="button" disabled={isStartBoardingBusy} onClick={() => startAndValidate(trip)} className="rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:opacity-50">
+                <button type="button" disabled={isStartBoardingBusy} onClick={() => startAndValidate(trip)} className="rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-wait disabled:bg-slate-300 disabled:text-slate-700">
                   {isStartBoardingBusy ? 'Abriendo validacion...' : 'Iniciar y validar boletos'}
                 </button>
                 <button type="button" disabled={isStartBusy || isStartBoardingBusy} onClick={() => changeStatus(trip, 'start')} className="rounded-md border border-emerald-300 px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm disabled:opacity-50">
@@ -232,7 +232,7 @@ function TripsPageContent() {
               </>
             )}
             {!isArchived && trip.status === 'started' && (
-              <Link href={`/dashboard/trips/${trip.id}/boarding`} className="rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm">
+              <Link href={`/dashboard/trips/${trip.id}/boarding`} className="rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">
                 Validar boletos
               </Link>
             )}

@@ -392,7 +392,7 @@ export default function TripBoardingPage() {
         )}
         {success && <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800 shadow-sm">{success}</p>}
 
-        <button type="submit" disabled={submitting || !canValidateBoarding} className="w-full rounded-md bg-brand-500 px-4 py-2 font-medium text-white disabled:cursor-not-allowed disabled:opacity-60">
+        <button type="submit" disabled={submitting || !canValidateBoarding} className="w-full rounded-md bg-slate-950 px-4 py-2 font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-700">
           {submitting ? 'Validando...' : canValidateBoarding ? 'Validar boleto' : 'Primero inicia el viaje'}
         </button>
       </form>

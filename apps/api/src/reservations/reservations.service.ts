@@ -638,7 +638,7 @@ export class ReservationsService {
     }
 
     if (dto.tripId && reservation.tripId !== dto.tripId) {
-      throw new ForbiddenException('Ese codigo pertenece a otro viaje. Verifica que el pasajero este en la salida correcta.');
+      throw new ForbiddenException('Este boleto no corresponde al viaje de hoy. Revisa la fecha del boleto antes de permitir el abordaje.');
     }
 
     if (reservation.trip?.driverUserId !== driverUserId) {
@@ -648,7 +648,7 @@ export class ReservationsService {
     this.validateStatusForBoarding(reservation.status, reservation.payment?.status);
 
     if (reservation.trip?.status !== TRIP_STATUS.STARTED) {
-      throw new ForbiddenException('Primero inicia el viaje desde Mis viajes. Despues vuelve a Validar boletos e ingresa el codigo.');
+      throw new ForbiddenException('Este viaje aun no esta listo para validacion. Primero inicia el viaje desde Mis viajes.');
     }
 
     return this.markBoardedAtomically(reservation.id);
@@ -1272,6 +1272,8 @@ export class ReservationsService {
       publicId: reservation.publicId,
       tripId: reservation.tripId,
       passengerUserId: reservation.passengerUserId,
+      weeklyReservationGroupId: reservation.weeklyReservationGroupId ?? null,
+      isWeeklyPaymentPrimary: Boolean(reservation.isWeeklyPaymentPrimary),
       totalSeats: reservation.totalSeats,
       companionCount: reservation.companionCount,
       totalAmount: reservation.totalAmount,

@@ -133,8 +133,9 @@ export default function SearchTripsPage() {
       )}
       {isPassenger && (
         <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-4 text-sm text-cyan-900">
-          <p className="font-semibold">Reserva semanal recomendada</p>
-          <p className="mt-1">Si viajas al trabajo cada semana, reserva varios dias para asegurar tu lugar y mantener un traslado mas estable.</p>
+          <p className="font-semibold">Elige una ruta con calma</p>
+          <p className="mt-1">Revisa municipio, destino, conductor disponible, referencia de abordaje y horario antes de reservar.</p>
+          <p className="mt-1">Si viajas varios dias, usa reserva semanal para pagar el total en un solo movimiento y recibir boletos separados por fecha.</p>
         </div>
       )}
 

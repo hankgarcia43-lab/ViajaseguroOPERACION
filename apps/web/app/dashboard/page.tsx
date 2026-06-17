@@ -3,9 +3,14 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ContextHelpPanel } from '@/components/context-help-panel';
-import { apiRequest, getToken } from '@/lib/api';
-import { APP_COMPANY_NAME } from '@/lib/app-config';
+import { SafetyActionsPanel } from '@/components/safety-actions-panel';
+import { apiRequest, buildApiAssetUrl, getToken } from '@/lib/api';
+import { APP_COMPANY_NAME, formatCurrency } from '@/lib/app-config';
 import { getVerificationStatusMeta } from '@/lib/status';
+import { Incident } from '@/lib/incidents';
+import { Payment } from '@/lib/payments';
+import { Reservation } from '@/lib/reservations';
+import { DriverTrip } from '@/lib/trips';
 
 interface MeResponse {
   fullName: string;
@@ -16,10 +21,79 @@ interface MeResponse {
   passengerProfile: { id: string; status: string } | null;
 }
 
+const PASSENGER_HISTORY_STATUSES = new Set(['cancelled', 'no_show', 'refunded', 'completed']);
+const TRIP_HISTORY_STATUSES = new Set(['finished', 'cancelled']);
+
+function isReservationHistory(reservation: Reservation) {
+  return PASSENGER_HISTORY_STATUSES.has(reservation.status) || TRIP_HISTORY_STATUSES.has(String(reservation.trip?.status ?? '').toLowerCase());
+}
+
+function isReservationInCourse(reservation: Reservation) {
+  return reservation.trip?.status === 'started' && !isReservationHistory(reservation);
+}
+
+function isReservationPaid(reservation: Reservation) {
+  return reservation.status === 'paid' || reservation.payment?.status === 'approved' || reservation.boardingCodeEnabled;
+}
+
+function capitalize(value: string) {
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function formatFullTripDate(value?: string | null) {
+  if (!value) return 'Fecha pendiente';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Fecha pendiente';
+  return capitalize(new Intl.DateTimeFormat('es-MX', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC'
+  }).format(date));
+}
+
+function formatTimeLabel(value?: string | null) {
+  if (!value) return 'Horario pendiente';
+  const [hourRaw, minuteRaw] = value.split(':');
+  const hour = Number.parseInt(hourRaw ?? '', 10);
+  const minute = Number.parseInt(minuteRaw ?? '', 10);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return value;
+  const date = new Date(Date.UTC(2026, 0, 1, hour, minute, 0));
+  return new Intl.DateTimeFormat('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'UTC' })
+    .format(date)
+    .replace(' a.m.', ' AM')
+    .replace(' p.m.', ' PM');
+}
+
+function StatCard({ label, value, helper, tone = 'slate' }: { label: string; value: string | number; helper?: string; tone?: 'slate' | 'sky' | 'emerald' | 'amber' | 'rose' }) {
+  const toneClass = {
+    slate: 'border-slate-200 bg-white text-slate-950',
+    sky: 'border-sky-200 bg-sky-50 text-sky-950',
+    emerald: 'border-emerald-200 bg-emerald-50 text-emerald-950',
+    amber: 'border-amber-200 bg-amber-50 text-amber-950',
+    rose: 'border-rose-200 bg-rose-50 text-rose-950'
+  }[tone];
+
+  return (
+    <article className={`rounded-xl border p-4 shadow-sm ${toneClass}`}>
+      <p className="text-xs font-bold uppercase tracking-[0.18em] opacity-70">{label}</p>
+      <p className="mt-2 text-3xl font-black">{value}</p>
+      {helper && <p className="mt-1 text-xs font-medium opacity-80">{helper}</p>}
+    </article>
+  );
+}
+
 export default function DashboardPage() {
   const [me, setMe] = useState<MeResponse | null>(null);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [driverTrips, setDriverTrips] = useState<DriverTrip[]>([]);
+  const [incidents, setIncidents] = useState<Incident[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [statsError, setStatsError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [finishBusy, setFinishBusy] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -31,12 +105,38 @@ export default function DashboardPage() {
       }
 
       try {
-        const data = await apiRequest<MeResponse>('/auth/me', {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
+        const headers = { Authorization: `Bearer ${token}` };
+        const data = await apiRequest<MeResponse>('/auth/me', { headers });
         setMe(data);
+        setStatsError(null);
+        setReservations([]);
+        setPayments([]);
+        setDriverTrips([]);
+        setIncidents([]);
+
+        try {
+          if (data.role === 'passenger') {
+            const [reservationData, paymentData, incidentData] = await Promise.all([
+              apiRequest<Reservation[]>('/reservations/my-reservations', { headers }),
+              apiRequest<Payment[]>('/payments/my-payments?includeArchived=true', { headers }),
+              apiRequest<Incident[]>('/incidents/my', { headers })
+            ]);
+            setReservations(reservationData);
+            setPayments(paymentData);
+            setIncidents(incidentData);
+          }
+
+          if (data.role === 'driver') {
+            const [tripData, incidentData] = await Promise.all([
+              apiRequest<DriverTrip[]>('/trips/my-trips', { headers }),
+              apiRequest<Incident[]>('/incidents/my', { headers })
+            ]);
+            setDriverTrips(tripData);
+            setIncidents(incidentData);
+          }
+        } catch (statsRequestError) {
+          setStatsError(statsRequestError instanceof Error ? statsRequestError.message : 'No se pudieron cargar algunas estadisticas.');
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : 'No se pudo cargar el perfil');
       } finally {
@@ -120,6 +220,49 @@ export default function DashboardPage() {
           ctaLabel: 'Ir a panel admin'
         };
 
+  const passengerUpcoming = reservations.filter((reservation) => !isReservationHistory(reservation) && reservation.trip?.status === 'scheduled').length;
+  const passengerInCourse = reservations.filter(isReservationInCourse).length;
+  const passengerFinished = reservations.filter(isReservationHistory).length;
+  const passengerPaid = reservations.filter(isReservationPaid).length;
+  const passengerInReview = payments.filter((payment) => payment.status === 'submitted').length;
+  const passengerUsedTickets = reservations.filter((reservation) => reservation.status === 'boarded' || reservation.status === 'completed').length;
+  const driverUpcoming = driverTrips.filter((trip) => trip.status === 'scheduled').length;
+  const driverInCourse = driverTrips.filter((trip) => trip.status === 'started').length;
+  const driverFinished = driverTrips.filter((trip) => TRIP_HISTORY_STATUSES.has(trip.status)).length;
+  const driverPassengersTransported = driverTrips
+    .filter((trip) => trip.status === 'finished')
+    .reduce((total, trip) => total + (trip.reservationSummary?.reservedSeats ?? 0), 0);
+  const driverTicketsOperated = driverTrips
+    .filter((trip) => trip.status === 'finished')
+    .reduce((total, trip) => total + (trip.reservationSummary?.reservationsCount ?? 0), 0);
+  const driverEstimatedIncome = driverTrips.reduce((total, trip) => total + (trip.earningsSummary?.driverNetAfterRefunds ?? 0), 0);
+  const currentPassengerReservation = reservations.find(isReservationInCourse) ?? null;
+  const currentDriverTrip = driverTrips.find((trip) => trip.status === 'started') ?? null;
+  const currentPassengerVehiclePhotoUrl = buildApiAssetUrl(currentPassengerReservation?.trip?.vehiclePhotoUrl);
+
+  async function finishCurrentTrip(tripId: string) {
+    const token = getToken();
+    if (!token) {
+      setStatsError('No hay sesion activa.');
+      return;
+    }
+
+    setFinishBusy(true);
+    setStatsError(null);
+
+    try {
+      await apiRequest(`/trips/${tripId}/finish`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setDriverTrips((current) => current.map((trip) => (trip.id === tripId ? { ...trip, status: 'finished' } : trip)));
+    } catch (requestError) {
+      setStatsError(requestError instanceof Error ? requestError.message : 'No se pudo finalizar el viaje.');
+    } finally {
+      setFinishBusy(false);
+    }
+  }
+
   return (
     <section className="space-y-6">
       <header className="relative overflow-hidden rounded-[32px] bg-slate-950 p-8 text-white shadow-[0_30px_90px_-45px_rgba(7,17,31,0.85)] md:p-10">
@@ -142,6 +285,151 @@ export default function DashboardPage() {
           </div>
         </div>
       </header>
+
+      {statsError && me.role !== 'admin' && (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900">No se pudieron cargar algunas estadisticas: {statsError}</p>
+      )}
+
+      {me.role === 'passenger' && currentPassengerReservation && (
+        <section className="space-y-4 rounded-2xl border border-emerald-300 bg-emerald-50 p-5 text-emerald-950 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">Viaje en curso</p>
+              <h2 className="mt-1 text-2xl font-black text-slate-950">
+                {currentPassengerReservation.trip?.route?.title || `${currentPassengerReservation.trip?.route?.origin || 'Ruta'} -> ${currentPassengerReservation.trip?.route?.destination || ''}`}
+              </h2>
+              <p className="mt-2 text-sm font-semibold text-emerald-900">
+                Tu viaje esta en curso. Mantente atento al punto de descenso y reporta cualquier situacion sospechosa.
+              </p>
+            </div>
+            <Link href={`/dashboard/my-reservations/${currentPassengerReservation.id}/ticket`} className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-emerald-800">
+              Ver boleto de hoy
+            </Link>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-xl bg-white p-4 shadow-sm">
+              <p className="text-xs font-bold uppercase text-slate-500">Fecha y horario</p>
+              <p className="mt-1 font-black text-slate-950">{formatFullTripDate(currentPassengerReservation.trip?.tripDate)}</p>
+              <p className="text-sm text-slate-700">{formatTimeLabel(currentPassengerReservation.trip?.departureTimeSnapshot)}</p>
+            </div>
+            <div className="rounded-xl bg-white p-4 shadow-sm">
+              <p className="text-xs font-bold uppercase text-slate-500">Conductor</p>
+              <p className="mt-1 font-black text-slate-950">{currentPassengerReservation.trip?.driver?.fullName ?? 'Por confirmar'}</p>
+              <p className="text-sm text-slate-700">Vehiculo asignado si aparece foto aprobada.</p>
+            </div>
+            <div className="rounded-xl bg-white p-4 shadow-sm">
+              <p className="text-xs font-bold uppercase text-slate-500">Punto de abordaje</p>
+              <p className="mt-1 font-black text-slate-950">{currentPassengerReservation.trip?.boardingReference ?? 'Pendiente de referencia'}</p>
+            </div>
+            <div className="rounded-xl bg-white p-4 shadow-sm">
+              <p className="text-xs font-bold uppercase text-slate-500">Destino</p>
+              <p className="mt-1 font-black text-slate-950">{currentPassengerReservation.trip?.route?.destination ?? 'Destino pendiente'}</p>
+              <p className="text-sm text-slate-700">Aborda solo en puntos publicos y visibles.</p>
+            </div>
+          </div>
+          {currentPassengerVehiclePhotoUrl && (
+            <img src={currentPassengerVehiclePhotoUrl} alt="Foto del vehiculo asignado" className="h-44 w-full rounded-xl border border-emerald-200 object-cover md:h-56" />
+          )}
+          <SafetyActionsPanel
+            role="passenger"
+            tripId={currentPassengerReservation.tripId}
+            reservationId={currentPassengerReservation.id}
+            routeId={currentPassengerReservation.trip?.route?.id}
+            contextLabel={currentPassengerReservation.trip?.route?.title ?? 'Viaje en curso del pasajero'}
+          />
+        </section>
+      )}
+
+      {me.role === 'driver' && currentDriverTrip && (
+        <section className="space-y-4 rounded-2xl border border-emerald-300 bg-emerald-50 p-5 text-emerald-950 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">Viaje en curso</p>
+              <h2 className="mt-1 text-2xl font-black text-slate-950">
+                {currentDriverTrip.route?.title || `${currentDriverTrip.route?.origin || 'Ruta'} -> ${currentDriverTrip.route?.destination || ''}`}
+              </h2>
+              <p className="mt-2 text-sm font-semibold text-emerald-900">
+                Viaje en curso. Manten la validacion de pasajeros actualizada y reporta cualquier incidente.
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={finishBusy}
+              onClick={() => void finishCurrentTrip(currentDriverTrip.id)}
+              className="rounded-md bg-slate-950 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-slate-800 disabled:cursor-wait disabled:bg-slate-300 disabled:text-slate-700"
+            >
+              {finishBusy ? 'Finalizando...' : 'Finalizar viaje'}
+            </button>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <StatCard label="Pasajeros esperados" value={currentDriverTrip.reservationSummary?.reservedSeats ?? 0} tone="sky" />
+            <StatCard label="Pasajeros abordados" value={currentDriverTrip.reservationSummary?.boardedSeats ?? 0} tone="emerald" />
+            <StatCard label="Pasajeros pendientes" value={currentDriverTrip.reservationSummary?.pendingSeats ?? 0} tone="amber" />
+            <StatCard label="Boletos pendientes" value={currentDriverTrip.reservationSummary?.pendingReservationsCount ?? 0} tone="amber" />
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="rounded-xl bg-white p-4 shadow-sm">
+              <p className="text-xs font-bold uppercase text-slate-500">Fecha y horario</p>
+              <p className="mt-1 font-black text-slate-950">{formatFullTripDate(currentDriverTrip.tripDate)}</p>
+              <p className="text-sm text-slate-700">{formatTimeLabel(currentDriverTrip.departureTimeSnapshot)}</p>
+            </div>
+            <div className="rounded-xl bg-white p-4 shadow-sm">
+              <p className="text-xs font-bold uppercase text-slate-500">Punto de abordaje</p>
+              <p className="mt-1 font-black text-slate-950">{currentDriverTrip.boardingReference ?? 'Sin definir'}</p>
+            </div>
+            <div className="rounded-xl bg-white p-4 shadow-sm">
+              <p className="text-xs font-bold uppercase text-slate-500">Validacion</p>
+              <Link href={`/dashboard/trips/${currentDriverTrip.id}/boarding`} className="mt-1 inline-flex rounded-md bg-emerald-700 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-800">
+                Validar boletos
+              </Link>
+            </div>
+          </div>
+          <SafetyActionsPanel
+            role="driver"
+            tripId={currentDriverTrip.id}
+            routeId={currentDriverTrip.routeId}
+            contextLabel={currentDriverTrip.route?.title ?? 'Viaje en curso del conductor'}
+          />
+        </section>
+      )}
+
+      {me.role === 'passenger' && (
+        <section className="space-y-3">
+          <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-950 shadow-sm">
+            <p className="font-bold">Tus datos terminados quedan en historial para no saturar el panel principal.</p>
+            <p className="mt-1">Muestra al conductor el codigo correspondiente a la fecha del viaje y revisa la fecha antes de compartirlo.</p>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <StatCard label="Viajes proximos" value={passengerUpcoming} tone="sky" />
+            <StatCard label="Viajes en curso" value={passengerInCourse} tone="emerald" />
+            <StatCard label="Viajes terminados" value={passengerFinished} tone="slate" />
+            <StatCard label="Reservas pagadas" value={passengerPaid} tone="emerald" />
+            <StatCard label="Reservas en revision" value={passengerInReview} tone="amber" />
+            <StatCard label="Boletos usados" value={passengerUsedTickets} tone="slate" />
+            <StatCard label="Historial de viajes" value={passengerFinished} helper="Terminados o archivados" tone="slate" />
+            <StatCard label="Alertas/reportes" value={incidents.length} helper="Enviados por tu cuenta" tone="rose" />
+          </div>
+        </section>
+      )}
+
+      {me.role === 'driver' && (
+        <section className="space-y-3">
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 shadow-sm">
+            <p className="font-bold">Valida unicamente boletos del dia y horario correspondiente.</p>
+            <p className="mt-1">El panel principal muestra viajes activos o pendientes; los terminados y cancelados pasan a historial/archivo.</p>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <StatCard label="Viajes proximos" value={driverUpcoming} tone="sky" />
+            <StatCard label="Viajes en curso" value={driverInCourse} tone="emerald" />
+            <StatCard label="Viajes terminados" value={driverFinished} tone="slate" />
+            <StatCard label="Pasajeros transportados" value={driverPassengersTransported} tone="emerald" />
+            <StatCard label="Boletos operados" value={driverTicketsOperated} helper="Estimado por viajes terminados" tone="slate" />
+            <StatCard label="Ingresos estimados" value={formatCurrency(driverEstimatedIncome)} helper="Segun liquidaciones disponibles" tone="emerald" />
+            <StatCard label="Reportes/incidencias" value={incidents.length} tone="rose" />
+            <StatCard label="Historial semanal" value={driverFinished} helper="Cerrados o archivables" tone="slate" />
+          </div>
+        </section>
+      )}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-6">

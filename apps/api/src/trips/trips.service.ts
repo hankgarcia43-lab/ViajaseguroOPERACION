@@ -51,6 +51,10 @@ type TripReservationSummary = {
   reservationsCount: number;
   reservedSeats: number;
   remainingSeats: number;
+  boardedReservationsCount: number;
+  boardedSeats: number;
+  pendingReservationsCount: number;
+  pendingSeats: number;
 };
 
 type TripEarningsSummary = {
@@ -469,15 +473,24 @@ export class TripsService {
         }
       },
       select: {
-        totalSeats: true
+        totalSeats: true,
+        status: true
       }
-    })) as Array<{ totalSeats: number }>;
+    })) as Array<{ totalSeats: number; status: string }>;
 
+    const boardedStatuses = new Set(['boarded', 'completed']);
     const reservedSeats = reservations.reduce((sum, item) => sum + item.totalSeats, 0);
+    const boardedReservations = reservations.filter((item) => boardedStatuses.has(String(item.status || '').toLowerCase()));
+    const boardedSeats = boardedReservations.reduce((sum, item) => sum + item.totalSeats, 0);
+
     return {
       reservationsCount: reservations.length,
       reservedSeats,
-      remainingSeats: Math.max(0, availableSeatsSnapshot - reservedSeats)
+      remainingSeats: Math.max(0, availableSeatsSnapshot - reservedSeats),
+      boardedReservationsCount: boardedReservations.length,
+      boardedSeats,
+      pendingReservationsCount: Math.max(0, reservations.length - boardedReservations.length),
+      pendingSeats: Math.max(0, reservedSeats - boardedSeats)
     };
   }
 

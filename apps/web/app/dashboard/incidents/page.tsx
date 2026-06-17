@@ -1,9 +1,9 @@
-﻿'use client';
+'use client';
 
 import { FormEvent, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { apiRequest, getToken } from '@/lib/api';
-import { CreateIncidentPayload, Incident, IncidentType } from '@/lib/incidents';
+import { CreateIncidentPayload, INCIDENT_TYPE_LABELS, Incident, IncidentType } from '@/lib/incidents';
 
 export default function IncidentsPage() {
   const [items, setItems] = useState<Incident[]>([]);
@@ -85,7 +85,7 @@ export default function IncidentsPage() {
     <section className="space-y-5">
       <header className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <h1 className="text-2xl font-semibold text-slate-900">Comentarios, reportes y alertas</h1>
-        <p className="text-sm text-slate-600">Usa este canal para reportar incidencias operativas durante el servicio.</p>
+        <p className="text-sm text-slate-600">Usa este canal para reportar incidencias operativas. Durante un viaje en curso tambien veras botones rapidos de SOS y reportar problema.</p>
       </header>
 
       {error && <p className="rounded-md bg-red-50 p-3 text-red-700">{error}</p>}
@@ -132,7 +132,7 @@ export default function IncidentsPage() {
                     {incident.status === 'resolved' ? 'Resuelto' : 'Abierto'}
                   </span>
                 </div>
-                <p className="text-sm text-slate-600">Tipo: {incident.type}</p>
+                <p className="text-sm text-slate-600">Tipo: {INCIDENT_TYPE_LABELS[incident.type] ?? incident.type}</p>
                 <p className="mt-2 text-sm text-slate-700">{incident.message}</p>
               </article>
             ))}

@@ -7,7 +7,7 @@ import { RouteHighlightCard } from '@/components/route-highlight-card';
 import { apiRequest, getSessionRole, getToken } from '@/lib/api';
 import { inferRouteCorridor, ROUTE_CORRIDORS } from '@/lib/route-corridors';
 import { groupRoutesByCluster } from '@/lib/route-display';
-import { BaseRouteSummary, RouteOffer } from '@/lib/route-offers';
+import { BaseRouteSummary, RouteOffer, routeActivityTimestamp, sortRoutesForFeed } from '@/lib/route-offers';
 
 type UserRole = 'passenger' | 'driver' | 'admin';
 
@@ -47,12 +47,14 @@ export default function RoutesPage() {
 
   const offerRouteIds = useMemo(() => new Set(myOffers.map((offer) => offer.routeId)), [myOffers]);
 
-  const displayRoutes = useMemo(() => groupRoutesByCluster(routes), [routes]);
+  const displayRoutes = useMemo(() => sortRoutesForFeed(groupRoutesByCluster(routes), { preferLowerCompetition: isDriver }), [isDriver, routes]);
 
   const sortedMyCreatedRoutes = useMemo(() => {
     return [...myCreatedRoutes].sort((a, b) => {
       if (a.id === highlightedCreatedRouteId) return -1;
       if (b.id === highlightedCreatedRouteId) return 1;
+      const activityDiff = routeActivityTimestamp(b) - routeActivityTimestamp(a);
+      if (activityDiff !== 0) return activityDiff;
       return (a.title ?? a.origin).localeCompare(b.title ?? b.origin);
     });
   }, [highlightedCreatedRouteId, myCreatedRoutes]);
@@ -105,10 +107,8 @@ export default function RoutesPage() {
   }, [groupedRoutes, searchTerm, selectedCorridor]);
 
   const priorityRoutes = useMemo(() => {
-    return displayRoutes
-      .filter(isPriorityIndiosVerdesRoute)
-      .sort((a, b) => (a.title ?? a.origin).localeCompare(b.title ?? b.origin));
-  }, [displayRoutes]);
+    return sortRoutesForFeed(displayRoutes.filter(isPriorityIndiosVerdesRoute), { preferLowerCompetition: isDriver });
+  }, [displayRoutes, isDriver]);
 
   function selectCorridor(corridorId: string) {
     setSelectedCorridorId(corridorId);
@@ -382,6 +382,8 @@ export default function RoutesPage() {
                       const priorityA = selectedCorridor && a.templateKey === selectedCorridor.primaryTemplateKey ? 2 : isPriorityIndiosVerdesRoute(a) ? 1 : 0;
                       const priorityB = selectedCorridor && b.templateKey === selectedCorridor.primaryTemplateKey ? 2 : isPriorityIndiosVerdesRoute(b) ? 1 : 0;
                       if (priorityA !== priorityB) return priorityB - priorityA;
+                      const activityDiff = routeActivityTimestamp(b) - routeActivityTimestamp(a);
+                      if (activityDiff !== 0) return activityDiff;
                       return isDriver ? aCount - bCount : bCount - aCount;
                     })
                     .map((route) => {

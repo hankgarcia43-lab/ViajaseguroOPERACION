@@ -16,6 +16,10 @@ export interface BaseRouteSummary {
   status: string;
   stopsText?: string | null;
   activeDriversCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  latestOfferUpdatedAt?: string | null;
+  latestActivityAt?: string;
 }
 
 export interface RouteOffer {
@@ -83,3 +87,37 @@ export interface ReservationByOfferResponse {
 }
 
 
+
+function toTimestamp(value?: string | null) {
+  if (!value) return 0;
+  const time = new Date(value).getTime();
+  return Number.isFinite(time) ? time : 0;
+}
+
+export function routeActivityTimestamp(route: Pick<BaseRouteSummary, 'latestActivityAt' | 'latestOfferUpdatedAt' | 'updatedAt' | 'createdAt'>) {
+  return Math.max(
+    toTimestamp(route.latestActivityAt),
+    toTimestamp(route.latestOfferUpdatedAt),
+    toTimestamp(route.updatedAt),
+    toTimestamp(route.createdAt)
+  );
+}
+
+export function sortRoutesForFeed<T extends BaseRouteSummary>(routes: T[], options: { preferLowerCompetition?: boolean } = {}) {
+  return [...routes].sort((a, b) => {
+    const statusRank = (route: BaseRouteSummary) => (String(route.status).toLowerCase() === 'active' ? 0 : 1);
+    const statusDiff = statusRank(a) - statusRank(b);
+    if (statusDiff !== 0) return statusDiff;
+
+    const activityDiff = routeActivityTimestamp(b) - routeActivityTimestamp(a);
+    if (activityDiff !== 0) return activityDiff;
+
+    const aDrivers = a.activeDriversCount ?? 0;
+    const bDrivers = b.activeDriversCount ?? 0;
+    if (aDrivers !== bDrivers) {
+      return options.preferLowerCompetition ? aDrivers - bDrivers : bDrivers - aDrivers;
+    }
+
+    return (b.publicId ?? 0) - (a.publicId ?? 0);
+  });
+}

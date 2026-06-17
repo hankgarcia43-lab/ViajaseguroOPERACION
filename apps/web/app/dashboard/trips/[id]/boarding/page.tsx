@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { FormEvent, useEffect, useRef, useState } from 'react';
+import { SafetyActionsPanel } from '@/components/safety-actions-panel';
 import { apiRequest, getToken } from '@/lib/api';
 import { Reservation, ValidateBoardingPayload } from '@/lib/reservations';
 import { getReservationStatusMeta, getTripStatusMeta } from '@/lib/status';
@@ -13,6 +14,36 @@ type BarcodeDetectorLike = {
 };
 
 type BarcodeDetectorConstructor = new (options?: { formats?: string[] }) => BarcodeDetectorLike;
+
+function capitalize(value: string) {
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function formatFullTripDate(value?: string | null) {
+  if (!value) return 'Fecha pendiente';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Fecha pendiente';
+  return capitalize(new Intl.DateTimeFormat('es-MX', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC'
+  }).format(date));
+}
+
+function formatTimeLabel(value?: string | null) {
+  if (!value) return 'Horario pendiente';
+  const [hourRaw, minuteRaw] = value.split(':');
+  const hour = Number.parseInt(hourRaw ?? '', 10);
+  const minute = Number.parseInt(minuteRaw ?? '', 10);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return value;
+  const date = new Date(Date.UTC(2026, 0, 1, hour, minute, 0));
+  return new Intl.DateTimeFormat('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'UTC' })
+    .format(date)
+    .replace(' a.m.', ' AM')
+    .replace(' p.m.', ' PM');
+}
 
 export default function TripBoardingPage() {
   const params = useParams<{ id: string }>();
@@ -231,7 +262,7 @@ export default function TripBoardingPage() {
     }
 
     if (trip?.status !== 'started') {
-      setError('Primero inicia el viaje desde Mis viajes. Despues vuelve a Validar boletos e ingresa el codigo.');
+      setError('Este viaje aun no esta listo para validacion. Primero inicia el viaje desde Mis viajes.');
       return;
     }
 
@@ -302,9 +333,23 @@ export default function TripBoardingPage() {
         </div>
       </div>
 
+      <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-950 shadow-sm">
+        <p className="font-bold">Valida unicamente los boletos del dia y horario correspondiente.</p>
+        <p className="mt-1">Revisa la fecha del boleto antes de permitir el abordaje. No aceptes codigos de dias anteriores o futuros.</p>
+      </div>
+
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 shadow-sm">
+        <p className="font-bold">El viaje debe iniciar y terminarse desde el panel para mantener el control operativo.</p>
+        <p className="mt-1">Reporta cualquier situacion sospechosa desde el boton SOS o alertas.</p>
+      </div>
+
       <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-semibold text-slate-900">{trip.route?.title || `${trip.route?.origin || 'Ruta'} -> ${trip.route?.destination || ''}`}</h2>
-        <p className="text-sm text-slate-700">Fecha: {new Date(trip.tripDate).toLocaleDateString()}</p>
+        <div className="mt-3 rounded-2xl border border-sky-200 bg-sky-50 p-4">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-sky-700">Dia que se esta validando</p>
+          <p className="mt-1 text-xl font-black leading-tight text-slate-950">{formatFullTripDate(trip.tripDate)} - {formatTimeLabel(trip.departureTimeSnapshot)}</p>
+          <p className="mt-2 text-xs font-semibold text-sky-900">Solo acepta codigos de boletos asociados a esta fecha.</p>
+        </div>
         <p className="text-sm text-slate-700">Estado del viaje: <span className={`rounded-full px-2 py-1 text-xs font-medium ${tripStatusMeta.className}`}>{tripStatusMeta.label}</span></p>
         <p className="text-sm text-slate-700">Reservas activas: {trip.reservationSummary?.reservationsCount ?? 0}</p>
         <p className="text-sm text-slate-700">Asientos reservados: {trip.reservationSummary?.reservedSeats ?? 0}</p>
@@ -316,7 +361,7 @@ export default function TripBoardingPage() {
       {!canValidateBoarding ? (
         <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950 shadow-sm">
           <p className="text-base font-bold">Antes de validar boletos debes iniciar el viaje.</p>
-          <p className="mt-1 text-sm">Regresa a <strong>Mis viajes</strong>, presiona <strong>1. Iniciar viaje</strong> y despues vuelve a esta pantalla.</p>
+          <p className="mt-1 text-sm">Este viaje aun no esta listo para validacion. Regresa a <strong>Mis viajes</strong>, inicia el viaje y despues vuelve a esta pantalla.</p>
           <Link href="/dashboard/trips" className="mt-3 inline-block rounded-md bg-amber-700 px-4 py-2 text-sm font-semibold text-white">
             Volver a Mis viajes
           </Link>
@@ -326,6 +371,15 @@ export default function TripBoardingPage() {
           <p className="text-base font-bold">Viaje iniciado: ya puedes validar boletos.</p>
           <p className="mt-1 text-sm">Pide al pasajero el <strong>codigo numerico de 6 digitos</strong> que aparece en su boleto aprobado.</p>
         </div>
+      )}
+
+      {canValidateBoarding && (
+        <SafetyActionsPanel
+          role="driver"
+          tripId={trip.id}
+          routeId={trip.routeId}
+          contextLabel={trip.route?.title ?? 'Validacion de abordaje'}
+        />
       )}
 
       <form onSubmit={onSubmit} className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -392,7 +446,7 @@ export default function TripBoardingPage() {
         )}
         {success && <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800 shadow-sm">{success}</p>}
 
-        <button type="submit" disabled={submitting || !canValidateBoarding} className="w-full rounded-md bg-brand-500 px-4 py-2 font-medium text-white disabled:cursor-not-allowed disabled:opacity-60">
+        <button type="submit" disabled={submitting || !canValidateBoarding} className="w-full rounded-md bg-slate-950 px-4 py-2 font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-700">
           {submitting ? 'Validando...' : canValidateBoarding ? 'Validar boleto' : 'Primero inicia el viaje'}
         </button>
       </form>

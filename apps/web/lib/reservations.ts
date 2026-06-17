@@ -71,6 +71,8 @@ export interface Reservation {
   publicId: number | null;
   tripId: string;
   passengerUserId: string;
+  weeklyReservationGroupId: string | null;
+  isWeeklyPaymentPrimary: boolean;
   totalSeats: number;
   companionCount: number;
   totalAmount: number;

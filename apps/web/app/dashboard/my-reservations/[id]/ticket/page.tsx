@@ -4,12 +4,41 @@ import Link from 'next/link';
 import { ChangeEvent, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { apiRequest, buildApiAssetUrl, getToken } from '@/lib/api';
-import { formatCurrency, formatShortDate } from '@/lib/app-config';
+import { formatCurrency } from '@/lib/app-config';
 import { getPaymentFlowMessage, PAYMENT_RETENTION_NOTICE } from '@/lib/payment-ui';
 import { MERCADO_PAGO_PAYMENT_REFERENCE, getMercadoPagoPaymentUrl } from '@/lib/payments';
 import { Reservation } from '@/lib/reservations';
 import { getPaymentStatusMeta, getReservationStatusMeta } from '@/lib/status';
 
+function capitalize(value: string) {
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function formatFullTripDate(value?: string | null) {
+  if (!value) return 'Fecha pendiente';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Fecha pendiente';
+  return capitalize(new Intl.DateTimeFormat('es-MX', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC'
+  }).format(date));
+}
+
+function formatTimeLabel(value?: string | null) {
+  if (!value) return 'Horario pendiente';
+  const [hourRaw, minuteRaw] = value.split(':');
+  const hour = Number.parseInt(hourRaw ?? '', 10);
+  const minute = Number.parseInt(minuteRaw ?? '', 10);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return value;
+  const date = new Date(Date.UTC(2026, 0, 1, hour, minute, 0));
+  return new Intl.DateTimeFormat('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'UTC' })
+    .format(date)
+    .replace(' a.m.', ' AM')
+    .replace(' p.m.', ' PM');
+}
 export default function ReservationTicketPage() {
   const params = useParams<{ id: string }>();
   const reservationId = params?.id;
@@ -115,13 +144,16 @@ export default function ReservationTicketPage() {
   const paymentStatusMeta = getPaymentStatusMeta(reservation.payment?.status);
   const proofUrl = buildApiAssetUrl(reservation.payment?.proofFileUrl);
   const canUploadProof = reservation.payment && ['pending', 'rejected'].includes(reservation.payment.status);
-  const hasBoardingCode = reservation.boardingCodeEnabled && reservation.payment?.status === 'approved';
+  const hasBoardingCode = reservation.boardingCodeEnabled && Boolean(reservation.numericCode);
   const vehiclePhotoUrl = buildApiAssetUrl(reservation.trip?.vehiclePhotoUrl);
 
   return (
     <section className="mx-auto max-w-4xl space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-slate-900">Comprobante de reserva</h1>
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Boleto de viaje</h1>
+          <p className="text-sm text-slate-600">Revisa la fecha antes de compartir tu codigo de abordaje.</p>
+        </div>
         <div className="flex gap-2">
           <Link href="/dashboard/my-payments" className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">
             Mis pagos
@@ -135,6 +167,11 @@ export default function ReservationTicketPage() {
       {error && <p className="rounded-md bg-red-50 p-3 text-red-700">{error}</p>}
       {success && <p className="rounded-md bg-emerald-50 p-3 text-emerald-700">{success}</p>}
 
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 shadow-sm">
+        <p className="font-bold">No compartas tu codigo antes de estar en el punto de abordaje.</p>
+        <p className="mt-1">Por seguridad, aborda solo en puntos publicos y visibles.</p>
+      </div>
+
       <article className="grid gap-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm lg:grid-cols-[1.2fr_0.8fr]">
         <div className="space-y-4 text-sm text-slate-700">
           <div>
@@ -142,8 +179,11 @@ export default function ReservationTicketPage() {
               {reservation.trip?.route?.title || `${reservation.trip?.route?.origin || 'Ruta'} -> ${reservation.trip?.route?.destination || ''}`}
             </p>
             <p className="text-xs text-slate-500">Reserva # {reservation.publicId ?? '-'}</p>
-            <p className="mt-1">Fecha: {reservation.trip ? formatShortDate(reservation.trip.tripDate) : '-'}</p>
-            <p>Hora de salida: {reservation.trip?.departureTimeSnapshot ?? '-'}</p>
+            <div className="mt-3 rounded-2xl border border-sky-200 bg-sky-50 p-4">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-sky-700">Fecha exacta del boleto</p>
+              <p className="mt-1 text-2xl font-black leading-tight text-slate-950">{formatFullTripDate(reservation.trip?.tripDate)} - {formatTimeLabel(reservation.trip?.departureTimeSnapshot)}</p>
+              <p className="mt-2 text-xs font-semibold text-sky-900">Muestra al conductor el codigo correspondiente a esta fecha.</p>
+            </div>
             <p>Referencia de abordaje: {reservation.trip?.boardingReference ?? 'Se habilita al preparar el viaje'}</p>
             <p>Asientos: {reservation.totalSeats}</p>
             <p>Total reserva: {formatCurrency(reservation.totalAmount)}</p>
@@ -159,7 +199,7 @@ export default function ReservationTicketPage() {
               <p className="text-xs font-semibold uppercase tracking-[0.2em]">Codigo de abordaje bloqueado</p>
               <p className="mt-2 text-sm">{getPaymentFlowMessage(reservation.payment?.status)}</p>
               <p className="mt-2 text-xs text-amber-800">
-                Tu pago aun no ha sido validado. El codigo de abordaje se habilitara cuando el admin confirme tu pago.
+                Tu codigo aparecera cuando el pago sea validado. No compartas codigos de otros dias o semanas.
               </p>
             </div>
           ) : (
@@ -167,7 +207,7 @@ export default function ReservationTicketPage() {
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">Codigo principal de abordaje</p>
               <p className="mt-2 text-4xl font-semibold tracking-[0.35em] text-slate-900">{reservation.numericCode}</p>
               <p className="mt-2 text-xs text-slate-600">
-                Este codigo visible de 6 digitos es la via principal para validar tu abordaje. El QR queda como respaldo.
+                Este codigo visible de 6 digitos corresponde solo a la fecha de este boleto. El QR queda como respaldo.
               </p>
             </div>
           )}

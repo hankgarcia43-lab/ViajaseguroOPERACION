@@ -236,6 +236,16 @@ export default function ReserveTripPage() {
         <p className="text-sm text-slate-700">Asientos disponibles: {trip.remainingSeats}</p>
       </article>
 
+      <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-950 shadow-sm">
+        <p className="font-bold">Elige una ruta, revisa la referencia de abordaje y confirma que el horario te funciona.</p>
+        <p className="mt-1">Despues de pagar, sube tu comprobante para que el admin valide tu reserva. Cuando tu pago sea validado, tus boletos apareceran por dia.</p>
+      </div>
+
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 shadow-sm">
+        <p className="font-bold">Por seguridad, aborda solo en puntos publicos y visibles.</p>
+        <p className="mt-1">No compartas tu codigo antes de estar en el punto de abordaje.</p>
+      </div>
+
       <form onSubmit={onSubmit} className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <label className="block text-sm text-slate-700">
           Total de asientos por dia

@@ -6,7 +6,7 @@ import { RouteHighlightCard } from '@/components/route-highlight-card';
 import { apiRequest, getSessionRole, getToken } from '@/lib/api';
 import { inferRouteCorridor } from '@/lib/route-corridors';
 import { groupRoutesByCluster } from '@/lib/route-display';
-import { BaseRouteSummary, RouteOffer } from '@/lib/route-offers';
+import { BaseRouteSummary, RouteOffer, sortRoutesForFeed } from '@/lib/route-offers';
 
 type UserRole = 'passenger' | 'driver' | 'admin';
 
@@ -46,7 +46,7 @@ export default function SearchTripsPage() {
   const isPassenger = role === 'passenger';
   const isAdmin = role === 'admin';
   const offerRouteIds = useMemo(() => new Set(myOffers.map((offer) => offer.routeId)), [myOffers]);
-  const displayRoutes = useMemo(() => groupRoutesByCluster(routes), [routes]);
+  const displayRoutes = useMemo(() => sortRoutesForFeed(groupRoutesByCluster(routes), { preferLowerCompetition: isDriver }), [isDriver, routes]);
 
   useEffect(() => {
     const rawRole = getSessionRole();
@@ -133,8 +133,9 @@ export default function SearchTripsPage() {
       )}
       {isPassenger && (
         <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-4 text-sm text-cyan-900">
-          <p className="font-semibold">Reserva semanal recomendada</p>
-          <p className="mt-1">Si viajas al trabajo cada semana, reserva varios dias para asegurar tu lugar y mantener un traslado mas estable.</p>
+          <p className="font-semibold">Elige una ruta con calma</p>
+          <p className="mt-1">Revisa municipio, destino, conductor disponible, referencia de abordaje y horario antes de reservar.</p>
+          <p className="mt-1">Si viajas varios dias, usa reserva semanal para pagar el total en un solo movimiento y recibir boletos separados por fecha.</p>
         </div>
       )}
 
@@ -152,13 +153,7 @@ export default function SearchTripsPage() {
         </div>
       ) : null) : (
         <div className="grid gap-4 2xl:grid-cols-2">
-          {[...displayRoutes]
-            .sort((a, b) => {
-              const aCount = a.activeDriversCount ?? 0;
-              const bCount = b.activeDriversCount ?? 0;
-              return isDriver ? aCount - bCount : bCount - aCount;
-            })
-            .map((route) => {
+          {displayRoutes.map((route) => {
               const corridor = inferRouteCorridor(route);
               const alreadyTaken = offerRouteIds.has(route.id);
               const activeDrivers = route.activeDriversCount ?? 0;

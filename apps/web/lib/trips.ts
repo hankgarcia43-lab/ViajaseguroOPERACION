@@ -32,6 +32,10 @@ export interface DriverTrip {
     reservationsCount: number;
     reservedSeats: number;
     remainingSeats: number;
+    boardedReservationsCount?: number;
+    boardedSeats?: number;
+    pendingReservationsCount?: number;
+    pendingSeats?: number;
   };
   earningsSummary?: {
     grossCollected: number;

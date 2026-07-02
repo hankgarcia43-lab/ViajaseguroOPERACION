@@ -170,8 +170,8 @@ export default function RouteOffersDetailPage() {
     return selectedWeekdays.length * seats * selectedOffer.pricePerSeat;
   }, [selectedOffer, totalSeats, selectedWeekdays]);
 
-  const weeklyDiscountApplied = selectedWeekdays.length > 1;
-  const discountAmount = weeklyDiscountApplied ? Math.round(grossAmount * 0.1 * 100) / 100 : 0;
+  const weeklyDiscountApplied = false;
+  const discountAmount = 0;
   const finalAmount = Math.max(0, Math.round((grossAmount - discountAmount) * 100) / 100);
 
   function toggleWeekday(weekday: string) {
@@ -216,7 +216,7 @@ export default function RouteOffersDetailPage() {
 
     const nextDays = availableWeekdayList.slice(0, 7);
     if (nextDays.length < 2) {
-      setError('Para viaje semanal se necesitan al menos 2 dias disponibles.');
+      setError('Para solicitud semanal se necesitan al menos 2 dias disponibles.');
       setSelectedWeekdays(nextDays);
       return;
     }
@@ -241,12 +241,12 @@ export default function RouteOffersDetailPage() {
 
     const seats = Number.parseInt(totalSeats, 10);
     if (!Number.isInteger(seats) || seats < 1) {
-      setError('Selecciona una cantidad valida de asientos.');
+      setError('Selecciona una cantidad valida de lugares.');
       return;
     }
 
     if (selectedWeekdays.length === 0) {
-      setError('Selecciona el dia del viaje.');
+      setError('Selecciona el dia de la ruta compartida.');
       return;
     }
 
@@ -272,10 +272,10 @@ export default function RouteOffersDetailPage() {
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload)
       });
-      setSuccess(response.message + ` Total final: $${response.finalAmount.toFixed(2)} MXN. Te llevamos a pagos para subir tu comprobante.`);
+      setSuccess(response.message + ` Estimacion orientativa total: $${response.finalAmount.toFixed(2)} MXN. Revisa tus solicitudes para ver el estado.`);
       setSelectedWeekdays([]);
       setTimeout(() => {
-        const target = response.totalDays === 1 && response.primaryReservationId ? `/dashboard/my-payments?reservation=${response.primaryReservationId}` : '/dashboard/my-payments';
+        const target = '/dashboard/my-reservations';
         router.push(target);
       }, 700);
     } catch (e) {
@@ -292,7 +292,7 @@ export default function RouteOffersDetailPage() {
       <header className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Elige poblado y conductor</h1>
-          <p className="text-sm text-slate-600">Primero selecciona el poblado o paradero. Despues veras conductores con referencia, horario y precio resaltados.</p>
+          <p className="text-sm text-slate-600">Primero selecciona el poblado o paradero. Despues veras conductores con referencia, horario y estimacion orientativa resaltados.</p>
         </div>
         {data?.route && (
           <RouteHighlightCard
@@ -402,7 +402,7 @@ export default function RouteOffersDetailPage() {
                       <p className="text-xs font-bold uppercase opacity-80">Horario</p>
                       <p className="mt-1 text-xl font-black">{route.departureTime}</p>
                       <p className="text-xs opacity-80">llega {route.estimatedArrivalTime}</p>
-                      <p className="mt-4 text-xs font-bold uppercase opacity-80">Por asiento</p>
+                      <p className="mt-4 text-xs font-bold uppercase opacity-80">Estimacion</p>
                       <p className="mt-1 whitespace-nowrap text-2xl font-black xl:text-3xl">${offer.pricePerSeat.toFixed(2)}</p>
                       <p className="text-xs font-semibold opacity-90">MXN</p>
                     </div>
@@ -420,7 +420,7 @@ export default function RouteOffersDetailPage() {
         {role === 'driver' ? (
           <aside className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="text-lg font-semibold text-slate-900">Publica tu disponibilidad</h2>
-            <p className="text-sm text-slate-600">Si este poblado tiene alto flujo o pasas seguido por aqui, toma la ruta y publica tus asientos.</p>
+            <p className="text-sm text-slate-600">Si este poblado tiene alto flujo o pasas seguido por aqui, toma la ruta y publica tus lugares disponibles.</p>
             {selectedTownGroup && (
               <Link href={`/dashboard/routes/${selectedTownGroup.route.id}/take`} className="block rounded-md bg-emerald-700 px-4 py-2 text-center text-sm font-medium text-white">
                 Tomar ruta en {selectedTownGroup.town}
@@ -429,16 +429,16 @@ export default function RouteOffersDetailPage() {
           </aside>
         ) : (
           <form onSubmit={reserveByOffer} className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">Arma tu reserva</h2>
-            <p className="text-sm text-slate-600">Elige 1 dia o viaje semanal. Si reservas mas de un dia, se aplica 10% de descuento y pagas todo en un solo movimiento.</p>
+            <h2 className="text-lg font-semibold text-slate-900">Solicitar unirme</h2>
+            <p className="text-sm text-slate-600">Elige 1 dia o varios dias de ruta. El conductor debe aceptar tu solicitud; VIAJA SEGURO no cobra el traslado.</p>
 
             <label className="block text-sm text-slate-700">
-              Asientos
+              Lugares solicitados
               <input type="number" min={1} max={10} value={totalSeats} onChange={(e) => setTotalSeats(e.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" />
             </label>
 
             <div>
-              <p className="text-sm text-slate-700">Tipo de reserva</p>
+              <p className="text-sm text-slate-700">Tipo de solicitud</p>
               <div className="mt-2 grid gap-2 sm:grid-cols-2">
                 <button
                   type="button"
@@ -454,7 +454,7 @@ export default function RouteOffersDetailPage() {
                   onClick={selectWeeklyTrip}
                   className={`rounded-md border px-3 py-2 text-sm font-medium ${reservationMode === 'weekly' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-300 text-slate-700'} disabled:cursor-not-allowed disabled:opacity-50`}
                 >
-                  Viaje semanal -10%
+                  Solicitud semanal
                 </button>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2">
@@ -474,25 +474,28 @@ export default function RouteOffersDetailPage() {
                   );
                 })}
               </div>
-              <p className="mt-2 text-xs text-slate-500">Puedes ajustar los dias disponibles del conductor. Si eliges 2 o mas dias, se aplica 10% de descuento semanal.</p>
+              <p className="mt-2 text-xs text-slate-500">Puedes ajustar los dias disponibles del conductor. Cada dia genera un pase separado si la solicitud es aceptada.</p>
             </div>
 
             <div className="rounded-md bg-slate-50 p-3 text-sm text-slate-700">
               <p>Conductor: {selectedOffer?.driver?.fullName ?? 'Sin seleccionar'}</p>
               <p>Poblado: {selectedTownGroup?.town ?? 'Sin seleccionar'}</p>
               <p>Dias seleccionados: {selectedWeekdays.length ? selectedWeekdays.map((day) => formatWeekdayInSpanish(day)).join(', ') : 'Sin seleccionar'}</p>
-              <p className="mt-2 text-slate-600">Precio por asiento: ${selectedOffer?.pricePerSeat.toFixed(2) ?? '0.00'} MXN</p>
-              <p className="text-slate-600">Asientos: {Number.parseInt(totalSeats, 10) || 0}</p>
-              <p className="mt-2 text-slate-600">Subtotal: ${grossAmount.toFixed(2)} MXN</p>
-              {weeklyDiscountApplied && <p className="text-emerald-700">Descuento semanal 10%: -${discountAmount.toFixed(2)} MXN</p>}
-              <p className="mt-2 text-lg font-semibold text-emerald-700">Total final: ${finalAmount.toFixed(2)} MXN</p>
+              <p className="mt-2 text-slate-600">Estimacion por lugar: ${selectedOffer?.pricePerSeat.toFixed(2) ?? '0.00'} MXN</p>
+              <p className="text-slate-600">Lugares: {Number.parseInt(totalSeats, 10) || 0}</p>
+              <p className="mt-2 text-slate-600">Referencia orientativa: ${grossAmount.toFixed(2)} MXN</p>
+              {weeklyDiscountApplied && <p className="text-emerald-700">Ajuste semanal: -${discountAmount.toFixed(2)} MXN</p>}
+              <p className="mt-2 text-lg font-semibold text-emerald-700">Estimacion total: ${finalAmount.toFixed(2)} MXN</p>
+              <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+                Este monto es unicamente una referencia orientativa de costos compartidos, como gasolina, casetas o mantenimiento. VIAJA SEGURO no fija tarifas de transporte, no cobra el traslado y no administra pagos entre usuarios y conductores.
+              </p>
             </div>
 
             <button type="submit" disabled={saving || !selectedOffer} className="w-full rounded-md bg-brand-500 px-4 py-2 font-medium text-white disabled:opacity-60">
-              {saving ? 'Reservando...' : 'Confirmar reserva'}
+              {saving ? 'Enviando solicitud...' : 'Solicitar unirme'}
             </button>
 
-            <Link href="/dashboard/my-reservations" className="block text-center text-sm text-brand-700 underline">Ver mis reservas</Link>
+            <Link href="/dashboard/my-reservations" className="block text-center text-sm text-brand-700 underline">Ver mis solicitudes</Link>
           </form>
         )}
       </div>

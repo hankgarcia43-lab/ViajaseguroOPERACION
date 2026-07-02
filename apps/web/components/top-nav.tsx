@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation';
 const links = [
   { href: '/', label: 'Inicio' },
   { href: '/login', label: 'Entrar' },
-  { href: '/register/passenger', label: 'Pasajero' },
+  { href: '/register/passenger', label: 'Usuario' },
   { href: '/register/driver', label: 'Conductor' },
   { href: '/dashboard', label: 'Mi panel' }
 ];

@@ -276,7 +276,7 @@ export class TripsService {
     }
 
     if (![TRIP_STATUS.SCHEDULED, TRIP_STATUS.STARTED].includes(trip.status as any) || trip.route?.status !== 'active') {
-      throw new ForbiddenException('El viaje no esta disponible para reservacion');
+      throw new ForbiddenException('La ruta no esta disponible para solicitud');
     }
 
     const remainingSeats = await this.getRemainingSeats(trip.id, trip.availableSeatsSnapshot);
@@ -409,11 +409,11 @@ export class TripsService {
     }
 
     if (user.role.toLowerCase() !== 'passenger') {
-      throw new ForbiddenException('Solo pasajeros pueden buscar viajes');
+      throw new ForbiddenException('Solo usuarios pueden buscar rutas');
     }
 
     if (!user.passengerProfile) {
-      throw new ForbiddenException('El usuario no tiene perfil de pasajero');
+      throw new ForbiddenException('El usuario no tiene perfil de usuario');
     }
   }
 
@@ -428,7 +428,7 @@ export class TripsService {
       return map;
     }
 
-    const activeReservationStatuses = ['confirmed', 'paid', 'boarded', 'completed'];
+    const activeReservationStatuses = ['pending', 'accepted', 'confirmed', 'paid', 'boarded', 'completed'];
     const grouped = (await this.reservationDelegate().groupBy({
       by: ['tripId'],
       where: {
@@ -463,7 +463,7 @@ export class TripsService {
   }
 
   private async getReservationSummary(tripId: string, availableSeatsSnapshot: number): Promise<TripReservationSummary> {
-    const activeReservationStatuses = ['confirmed', 'paid', 'boarded', 'completed'];
+    const activeReservationStatuses = ['pending', 'accepted', 'confirmed', 'paid', 'boarded', 'completed'];
 
     const reservations = (await this.reservationDelegate().findMany({
       where: {

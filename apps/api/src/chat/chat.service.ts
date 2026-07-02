@@ -74,7 +74,7 @@ export class ChatService {
     });
 
     if (!reservation || !reservation.trip) {
-      throw new NotFoundException('No se encontro la reserva para abrir el chat.');
+      throw new NotFoundException('No se encontro la solicitud para abrir el chat.');
     }
 
     const isDriver = reservation.trip.driverUserId === requestUserId;
@@ -86,7 +86,7 @@ export class ChatService {
     }
 
     if (strict && isAdmin) {
-      throw new ForbiddenException('El chat personal es solo entre pasajero y conductor.');
+      throw new ForbiddenException('El chat personal es solo entre usuario y conductor.');
     }
 
     return {

@@ -34,7 +34,7 @@ export const ROUTE_CORRIDORS: RouteCorridor[] = [
     keywords: ['tepexpan', 'acolman', 'san cristobal', 'ecatepec', 'tecamac', 'ojo de agua', 'zumpango', 'indios verdes', 'mexibus l4', 'mexicable l2'],
     primaryTemplateKey: 'corredor-norte-indios-verdes',
     passengerHint: 'Elige esta troncal si quieres llegar a Indios Verdes y luego transbordar rapido a Metro, Metrobus o rutas hacia CDMX.',
-    driverHint: 'Toma esta troncal si pasas por municipios del norte y puedes recoger pasajeros en puntos visibles rumbo a Indios Verdes.'
+    driverHint: 'Toma esta troncal si pasas por municipios del norte y puedes recoger usuarios en puntos visibles rumbo a Indios Verdes.'
   },
   {
     id: 'oriente-pantitlan',
@@ -94,7 +94,7 @@ export const ROUTE_CORRIDORS: RouteCorridor[] = [
     keywords: ['ecatepec', 'tecamac', 'ciudad azteca', 'linea b', 'mexibus l1'],
     primaryTemplateKey: 'corredor-ecatepec-ciudad-azteca',
     passengerHint: 'Elige esta troncal si necesitas conectar con Ciudad Azteca, Metro Linea B o Mexibus.',
-    driverHint: 'Toma esta troncal si operas entre Ecatepec/Tecamac y puedes dejar pasajeros cerca de Ciudad Azteca.'
+    driverHint: 'Toma esta troncal si operas entre Ecatepec/Tecamac y puedes dejar usuarios cerca de Ciudad Azteca.'
   },
   {
     id: 'nodos-laborales-cdmx',

@@ -27,7 +27,7 @@ export default function ReservationChatPage() {
   async function loadMessages() {
     const token = getToken();
     if (!token || !reservationId) {
-      setError('No hay sesion activa o reserva invalida.');
+      setError('No hay sesion activa o solicitud invalida.');
       setLoading(false);
       return;
     }
@@ -82,9 +82,9 @@ export default function ReservationChatPage() {
   }
 
   const title = useMemo(() => {
-    if (role === 'driver') return 'Chat con pasajero';
+    if (role === 'driver') return 'Chat con usuario';
     if (role === 'passenger') return 'Chat con conductor';
-    return 'Chat de reserva';
+    return 'Chat de solicitud';
   }, [role]);
 
   if (loading) {
@@ -95,7 +95,7 @@ export default function ReservationChatPage() {
     <section className="mx-auto max-w-3xl space-y-4">
       <header className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <h1 className="text-2xl font-semibold text-slate-900">{title}</h1>
-        <p className="text-sm text-slate-600">Reserva #{reservationId}</p>
+        <p className="text-sm text-slate-600">Solicitud #{reservationId}</p>
         <p className="text-xs text-slate-500">Usa este chat para dudas operativas del abordaje y horario.</p>
       </header>
 
@@ -109,7 +109,7 @@ export default function ReservationChatPage() {
             {messages.map((message) => (
               <article key={message.id} className="rounded-md border border-slate-200 bg-slate-50 p-3">
                 <p className="text-xs text-slate-500">
-                  {message.sender?.fullName ?? 'Usuario'} · {new Date(message.createdAt).toLocaleString()}
+                  {message.sender?.fullName ?? 'Usuario'} Â· {new Date(message.createdAt).toLocaleString()}
                 </p>
                 <p className="mt-1 text-sm text-slate-800">{message.message}</p>
               </article>

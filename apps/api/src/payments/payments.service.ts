@@ -67,6 +67,11 @@ const PAYMENT_PROVIDER = {
 @Injectable()
 export class PaymentsService {
   constructor(private readonly prisma: PrismaService) {}
+  private throwTransportPaymentDisabled(): never {
+    throw new ForbiddenException(
+      'Los pagos por rutas compartidas estan desactivados. Mercado Pago se usa solo para membresias, verificaciones, suscripciones o servicios digitales de VIAJA SEGURO.'
+    );
+  }
 
   async findAllForAdmin(options: { includeArchived?: boolean } = {}) {
     const payments = (await this.paymentDelegate().findMany({
@@ -90,7 +95,7 @@ export class PaymentsService {
 
   async myPayments(userId: string, role: string, options: { includeArchived?: boolean } = {}) {
     if (role !== 'passenger') {
-      throw new ForbiddenException('Solo pasajeros pueden ver su lista de pagos');
+      throw new ForbiddenException('Solo usuarios pueden ver pagos de membresia o servicios digitales');
     }
 
     const payments = (await this.paymentDelegate().findMany({
@@ -118,41 +123,11 @@ export class PaymentsService {
   }
 
   async uploadProof(userId: string, reservationId: string, file: any) {
-    const payment = await this.findPaymentByReservationOrThrow(reservationId);
-
-    if (payment.reservation?.passengerUserId !== userId) {
-      throw new ForbiddenException('Solo el pasajero dueno de la reserva puede subir comprobante');
-    }
-
-    const normalizedStatus = this.normalizePaymentStatus(payment.status);
-    if ([PAYMENT_STATUS.APPROVED, PAYMENT_STATUS.REFUNDED].includes(normalizedStatus as any)) {
-      throw new ForbiddenException('Este pago ya no admite nuevos comprobantes');
-    }
-
-    if (!file) {
-      throw new BadRequestException('Debes adjuntar un comprobante');
-    }
-
-    const config = this.getManualPaymentConfig();
-
-    await this.paymentDelegate().update({
-      where: { id: payment.id },
-      data: {
-        status: PAYMENT_STATUS.SUBMITTED,
-        provider: PAYMENT_PROVIDER.MANUAL,
-        paymentMethodLabel: config.methodLabel,
-        paymentInstructions: config.instructions,
-        proofFileName: file.originalname,
-        proofFilePath: `/uploads/payment-proofs/${file.filename}`,
-        reviewedByAdminUserId: null,
-        reviewedAt: null,
-        reviewNotes: null
-      }
-    });
-
-    return this.findById(userId, 'passenger', payment.id);
+    void userId;
+    void reservationId;
+    void file;
+    this.throwTransportPaymentDisabled();
   }
-
   async approveManualPayment(adminUserId: string, paymentId: string, dto: ReviewPaymentDto) {
     const payment = await this.findPaymentByIdOrThrow(paymentId);
     const normalizedStatus = this.normalizePaymentStatus(payment.status);
@@ -245,109 +220,11 @@ export class PaymentsService {
   }
 
   async createMercadoPagoCheckout(userId: string, role: string, reservationId: string) {
-    const payment = await this.findPaymentByReservationForCheckoutOrThrow(reservationId);
-
-    if (role !== 'admin' && payment.reservation?.passengerUserId !== userId) {
-      throw new ForbiddenException('Solo el pasajero dueno de la reserva puede iniciar checkout');
-    }
-
-    this.assertCheckoutAllowed(payment);
-
-    const existingCheckoutUrl = this.resolvePaymentCheckoutUrl(payment);
-    if (payment.provider === PAYMENT_PROVIDER.MERCADOPAGO && existingCheckoutUrl) {
-      return {
-        payment: this.mapPayment(payment),
-        checkoutUrl: existingCheckoutUrl,
-        preferenceId: payment.providerPreferenceId ?? payment.providerReference ?? null,
-        initPoint: payment.initPoint ?? null,
-        sandboxInitPoint: payment.sandboxInitPoint ?? null
-      };
-    }
-    const accessToken = this.getMercadoPagoAccessToken();
-    const appUrl = this.getFrontendBaseUrl();
-    const ticketUrl = `${appUrl}/dashboard/my-reservations/${payment.reservationId}/ticket`;
-
-    const title =
-      payment.reservation?.trip?.route?.title ||
-      `${payment.reservation?.trip?.route?.origin ?? 'Viaje'} -> ${payment.reservation?.trip?.route?.destination ?? ''}`;
-
-    const body: Record<string, unknown> = {
-      external_reference: payment.id,
-      statement_descriptor: 'VIAJA SEGURO',
-      auto_return: 'approved',
-      back_urls: {
-        success: `${ticketUrl}?mp_status=success`,
-        failure: `${ticketUrl}?mp_status=failure`,
-        pending: `${ticketUrl}?mp_status=pending`
-      },
-      items: [
-        {
-          title: title.trim() || 'Reserva Viaja Seguro',
-          quantity: 1,
-          unit_price: payment.amount,
-          currency_id: 'MXN'
-        }
-      ],
-      metadata: {
-        reservation_id: payment.reservationId,
-        payment_id: payment.id
-      }
-    };
-
-    if (payment.reservation?.passenger?.email) {
-      body.payer = {
-        email: payment.reservation.passenger.email,
-        name: payment.reservation.passenger.fullName
-      };
-    }
-
-    const webhookUrl = process.env.MERCADOPAGO_WEBHOOK_URL;
-    if (webhookUrl) {
-      body.notification_url = webhookUrl;
-    }
-
-    const mpPreference = await this.callMercadoPagoApi('/checkout/preferences', {
-      method: 'POST',
-      accessToken,
-      body,
-      idempotencyKey: `pref-${payment.id}-${Date.now()}`
-    });
-
-    const sandboxMode = process.env.MERCADOPAGO_USE_SANDBOX === 'true' || process.env.NODE_ENV !== 'production';
-    const checkoutUrl = sandboxMode && mpPreference.sandbox_init_point ? mpPreference.sandbox_init_point : mpPreference.init_point;
-
-    if (!checkoutUrl) {
-      throw new BadGatewayException('Mercado Pago no devolvio URL de checkout');
-    }
-
-    const preferenceId = mpPreference.id ? String(mpPreference.id) : null;
-
-    await this.paymentDelegate().update({
-      where: { id: payment.id },
-      data: {
-        provider: PAYMENT_PROVIDER.MERCADOPAGO,
-        providerReference: preferenceId ?? payment.providerReference,
-        providerPreferenceId: preferenceId,
-        checkoutUrl,
-        initPoint: mpPreference.init_point ?? null,
-        sandboxInitPoint: mpPreference.sandbox_init_point ?? null,
-        paymentMethodLabel: 'Mercado Pago Checkout Pro',
-        paymentInstructions: 'Presiona el boton Pagar con Mercado Pago para abrir el checkout seguro. Tambien puedes conservar el flujo manual subiendo tu comprobante si soporte te lo indica.',
-        status: PAYMENT_STATUS.PENDING
-      }
-    });
-
-    const updated = await this.findPaymentByIdOrThrow(payment.id);
-
-    return {
-      payment: this.mapPayment(updated),
-      checkoutUrl,
-      preferenceId: mpPreference.id ?? null,
-      initPoint: mpPreference.init_point ?? null,
-      sandboxInitPoint: mpPreference.sandbox_init_point ?? null
-    };
+    void userId;
+    void role;
+    void reservationId;
+    this.throwTransportPaymentDisabled();
   }
-
   async processMercadoPagoWebhook(
     payload: any,
     headers: Record<string, string | string[] | undefined>,
@@ -421,79 +298,24 @@ export class PaymentsService {
   }
 
   async simulatePay(userId: string, role: string, reservationId: string, dto: SimulatePaymentDto) {
-    const payment = await this.findPaymentByReservationOrThrow(reservationId);
-    await this.assertSimulationPermission(userId, role, payment);
-
-    const normalizedStatus = this.normalizePaymentStatus(payment.status);
-    if (![PAYMENT_STATUS.PENDING, PAYMENT_STATUS.REJECTED].includes(normalizedStatus as any)) {
-      throw new ForbiddenException('Solo pagos pending o rejected pueden pasar a approved');
-    }
-
-    await this.applyProviderStatusToPayment(payment.id, payment.reservationId, payment.status, PAYMENT_STATUS.APPROVED, payment.reservation?.status, {
-      provider: payment.provider || PAYMENT_PROVIDER.SIMULATED,
-      providerReference: dto.providerReference ?? payment.providerReference,
-      refundReason: null,
-      refundAmount: payment.amount,
-      reviewedByAdminUserId: role === 'admin' ? userId : null,
-      reviewedAt: new Date(),
-      reviewNotes: 'Simulacion local de pago aprobado'
-    });
-
-    return this.findById(userId, role, payment.id);
+    void userId;
+    void role;
+    void reservationId;
+    void dto;
+    this.throwTransportPaymentDisabled();
   }
-
   async simulateFail(userId: string, role: string, reservationId: string) {
-    const payment = await this.findPaymentByReservationOrThrow(reservationId);
-    await this.assertSimulationPermission(userId, role, payment);
-
-    const normalizedStatus = this.normalizePaymentStatus(payment.status);
-    if (![PAYMENT_STATUS.PENDING, PAYMENT_STATUS.SUBMITTED].includes(normalizedStatus as any)) {
-      throw new ForbiddenException('Solo pagos pending o submitted pueden pasar a rejected');
-    }
-
-    if ([RESERVATION_STATUS.BOARDED, RESERVATION_STATUS.COMPLETED].includes(payment.reservation?.status as any)) {
-      throw new ForbiddenException('No puedes rechazar una reserva ya abordada o completada');
-    }
-
-    await this.applyProviderStatusToPayment(payment.id, payment.reservationId, payment.status, PAYMENT_STATUS.REJECTED, payment.reservation?.status, {
-      provider: payment.provider || PAYMENT_PROVIDER.SIMULATED,
-      providerReference: payment.providerReference,
-      refundReason: null,
-      refundAmount: payment.amount,
-      reviewedByAdminUserId: role === 'admin' ? userId : null,
-      reviewedAt: new Date(),
-      reviewNotes: 'Simulacion local de pago rechazado'
-    });
-
-    return this.findById(userId, role, payment.id);
+    void userId;
+    void role;
+    void reservationId;
+    this.throwTransportPaymentDisabled();
   }
-
   async simulateRefund(userId: string, role: string, reservationId: string) {
-    const payment = await this.findPaymentByReservationOrThrow(reservationId);
-    await this.assertSimulationPermission(userId, role, payment);
-
-    const normalizedStatus = this.normalizePaymentStatus(payment.status);
-    if (normalizedStatus !== PAYMENT_STATUS.APPROVED) {
-      throw new ForbiddenException('Solo pagos approved pueden pasar a refunded');
-    }
-
-    if ([RESERVATION_STATUS.BOARDED, RESERVATION_STATUS.COMPLETED].includes(payment.reservation?.status as any)) {
-      throw new ForbiddenException('No puedes hacer refund de una reserva abordada/completada en esta fase');
-    }
-
-    await this.applyProviderStatusToPayment(payment.id, payment.reservationId, payment.status, PAYMENT_STATUS.REFUNDED, payment.reservation?.status, {
-      provider: payment.provider || PAYMENT_PROVIDER.SIMULATED,
-      providerReference: payment.providerReference,
-      refundReason: 'Simulacion local de refund',
-      refundAmount: payment.amount,
-      reviewedByAdminUserId: role === 'admin' ? userId : null,
-      reviewedAt: new Date(),
-      reviewNotes: 'Simulacion local de refund'
-    });
-
-    return this.findById(userId, role, payment.id);
+    void userId;
+    void role;
+    void reservationId;
+    this.throwTransportPaymentDisabled();
   }
-
   private async applyProviderStatusToPayment(
     paymentId: string,
     reservationId: string,
@@ -688,10 +510,10 @@ export class PaymentsService {
     const businessAccount = null;
     const instructions =
       [
-        'Abre el link oficial de Mercado Pago desde VIAJA SEGURO.',
-        'Ingresa el monto exacto que aparece en tu reserva.',
+        'Abre el link oficial de Mercado Pago desde VIAJA SEGURO solo para membresias, verificaciones o servicios digitales.',
+        'No realices pagos de traslado dentro de la plataforma.',
         `Referencia: ${reference}`,
-        'Guarda tu comprobante y subelo para validacion manual del admin.'
+        'VIAJA SEGURO no fija tarifas de transporte ni realiza pagos a conductores.'
       ].join('\n');
 
     return {
@@ -923,7 +745,7 @@ export class PaymentsService {
       paymentReference: config.reference,
       paymentBusinessAccount: null,
       paymentProcessorLabel: config.processorLabel,
-      paymentProcessingMessage: `El pago se realiza desde el link oficial de Mercado Pago y sera validado manualmente por el admin.`,
+      paymentProcessingMessage: `Los pagos a VIAJA SEGURO corresponden solo a membresias, verificaciones o servicios digitales; no a traslados.`,
       paymentInstructions: payment.paymentInstructions ?? config.instructions,
       proofFileName: payment.proofFileName,
       proofFilePath: payment.proofFilePath,

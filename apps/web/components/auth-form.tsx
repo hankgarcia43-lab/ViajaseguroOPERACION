@@ -14,33 +14,33 @@ interface AuthFormProps {
 const COPY = {
   login: {
     title: 'Bienvenido a ViajaSeguro',
-    subtitle: 'Accede a tu panel para continuar con reservas, rutas o supervision.',
+    subtitle: 'Accede a tu panel para continuar con solicitudes, rutas o supervision.',
     icon: 'VS',
     accent: 'from-blue-600 to-indigo-600',
-    bullets: ['Rutas fijas diarias', 'Conductores verificados', 'Precio transparente'],
+    bullets: ['Rutas compartidas verificadas', 'Conductores verificados', 'Estimacion orientativa'],
     guide: ['Usa el correo y contrasena con los que te registraste.', 'Si no ves tu panel correcto, cierra sesion e inicia con la cuenta adecuada.'],
     button: 'Iniciar sesion',
     secondaryHref: '/register/passenger',
     secondaryText: 'No tienes cuenta? Registrate gratis'
   },
   passenger: {
-    title: 'Bienvenido, Pasajero',
-    subtitle: 'Viaja seguro y economico de EdoMex a CDMX',
+    title: 'Bienvenido, Usuario',
+    subtitle: 'Solicita unirte a rutas compartidas verificadas del piloto',
     icon: 'VS',
     accent: 'from-blue-600 to-indigo-600',
-    bullets: ['Rutas fijas diarias', 'Conductores verificados', 'Precio transparente'],
-    guide: ['Registra tu nombre real y telefono activo.', 'Despues sube INE frente y reverso en Verificacion.', 'Al reservar, paga el total semanal y sube un solo comprobante.'],
-    button: 'Crear cuenta de pasajero',
+    bullets: ['Rutas compartidas verificadas', 'Conductores verificados', 'Estimacion orientativa'],
+    guide: ['Registra tu nombre real y telefono activo.', 'Despues sube INE frente y reverso en Verificacion.', 'Al solicitar, revisa la estimacion y espera la aceptacion del conductor.'],
+    button: 'Crear cuenta de usuario',
     secondaryHref: '/login',
     secondaryText: 'Ya tienes cuenta? Inicia sesion'
   },
   driver: {
     title: 'Bienvenido, Conductor',
-    subtitle: 'Gana dinero manejando con comision operativa clara',
+    subtitle: 'Publica o toma rutas compatibles con tu traslado recurrente',
     icon: 'VS',
     accent: 'from-indigo-600 to-violet-600',
-    bullets: ['Comision operativa visible', 'Verificacion confiable', 'Define tus horarios'],
-    guide: ['Registra datos reales para que admin pueda validarte.', 'Despues sube INE, licencia y documentos del vehiculo.', 'Cuando estes aprobado, toma una ruta compatible con tu traslado.'],
+    bullets: ['Solicitudes claras', 'Verificacion confiable', 'Define tus horarios'],
+    guide: ['Registra datos reales para que admin pueda validarte.', 'Despues sube INE, licencia y documentos del vehiculo.', 'Cuando estes aprobado, publica o toma una ruta compatible con tu traslado.'],
     button: 'Crear cuenta de conductor',
     secondaryHref: '/login',
     secondaryText: 'Ya tienes cuenta? Inicia sesion'

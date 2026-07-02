@@ -80,7 +80,7 @@ export default function TripBoardingPage() {
     async function loadTrip() {
       const token = getToken();
       if (!token || !tripId) {
-        setError('No hay sesion activa o viaje invalido.');
+        setError('No hay sesion activa o ruta invalida.');
         setLoading(false);
         return;
       }
@@ -93,7 +93,7 @@ export default function TripBoardingPage() {
         });
         setTrip(data);
       } catch (requestError) {
-        setError(requestError instanceof Error ? requestError.message : 'No se pudo cargar el viaje');
+        setError(requestError instanceof Error ? requestError.message : 'No se pudo cargar la ruta');
       } finally {
         setLoading(false);
       }
@@ -115,7 +115,7 @@ export default function TripBoardingPage() {
     const trimmed = raw.trim();
     if (!trimmed) return '';
 
-    if (trimmed.startsWith('VS-RES:')) {
+    if (trimmed.startsWith('VS-RES:') || trimmed.startsWith('VS-ROUTE:')) {
       const parts = trimmed.split(':');
       if (parts.length >= 3) {
         return parts.slice(2).join(':').trim();
@@ -232,7 +232,7 @@ export default function TripBoardingPage() {
             const token = extractQrToken(rawValue);
             if (token) {
               setQrToken(token);
-              setSuccess('QR detectado correctamente. Puedes validar abordaje ahora.');
+              setSuccess('QR detectado correctamente. Puedes validar el pase ahora.');
               notifyQrDetected();
               stopScanner();
               return;
@@ -257,12 +257,12 @@ export default function TripBoardingPage() {
 
     const token = getToken();
     if (!token || !tripId) {
-      setError('No hay sesion activa o viaje invalido.');
+      setError('No hay sesion activa o ruta invalida.');
       return;
     }
 
     if (trip?.status !== 'started') {
-      setError('Este viaje aun no esta listo para validacion. Primero inicia el viaje desde Mis viajes.');
+      setError('Esta ruta aun no esta lista para validacion. Primero inicia la ruta desde Mis rutas.');
       return;
     }
 
@@ -295,22 +295,22 @@ export default function TripBoardingPage() {
       });
 
       setResult(data);
-      setSuccess(`Abordaje validado correctamente para el codigo ${data.numericCode}.`);
+      setSuccess(`Pase validado correctamente para el codigo ${data.numericCode}.`);
       setNumericCode('');
       setQrToken('');
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo validar el abordaje');
+      setError(requestError instanceof Error ? requestError.message : 'No se pudo validar el pase');
     } finally {
       setSubmitting(false);
     }
   }
 
   if (loading) {
-    return <p className="text-slate-700">Cargando viaje...</p>;
+    return <p className="text-slate-700">Cargando ruta...</p>;
   }
 
   if (!trip) {
-    return <p className="rounded-md bg-red-50 p-3 text-red-700">{error ?? 'Viaje no disponible'}</p>;
+    return <p className="rounded-md bg-red-50 p-3 text-red-700">{error ?? 'Ruta no disponible'}</p>;
   }
 
   const tripStatusMeta = getTripStatusMeta(trip.status);
@@ -324,22 +324,22 @@ export default function TripBoardingPage() {
     <section className="mx-auto max-w-2xl space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Validar abordaje</h1>
-          <p className="text-sm text-slate-600">Primero inicia el viaje. Despues captura el codigo numerico de 6 digitos del pasajero.</p>
+          <h1 className="text-2xl font-semibold text-slate-900">Validar pase</h1>
+          <p className="text-sm text-slate-600">Primero inicia la ruta. Despues captura el codigo numerico de 6 digitos del usuario.</p>
           <p className="mt-1 text-xs font-semibold text-slate-700">El QR es respaldo; el codigo numerico es el flujo principal.</p>
         </div>
         <div className="flex gap-2">
-          <Link href="/dashboard/trips" className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">Volver a mis viajes</Link>
+          <Link href="/dashboard/trips" className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">Volver a mis rutas</Link>
         </div>
       </div>
 
       <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-950 shadow-sm">
-        <p className="font-bold">Valida unicamente los boletos del dia y horario correspondiente.</p>
-        <p className="mt-1">Revisa la fecha del boleto antes de permitir el abordaje. No aceptes codigos de dias anteriores o futuros.</p>
+        <p className="font-bold">Valida unicamente los pases del dia y horario correspondiente.</p>
+        <p className="mt-1">Revisa la fecha del pase antes de permitir el abordaje. No aceptes codigos de dias anteriores o futuros.</p>
       </div>
 
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 shadow-sm">
-        <p className="font-bold">El viaje debe iniciar y terminarse desde el panel para mantener el control operativo.</p>
+        <p className="font-bold">La ruta debe iniciar y terminarse desde el panel para mantener el control operativo.</p>
         <p className="mt-1">Reporta cualquier situacion sospechosa desde el boton SOS o alertas.</p>
       </div>
 
@@ -348,28 +348,28 @@ export default function TripBoardingPage() {
         <div className="mt-3 rounded-2xl border border-sky-200 bg-sky-50 p-4">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-sky-700">Dia que se esta validando</p>
           <p className="mt-1 text-xl font-black leading-tight text-slate-950">{formatFullTripDate(trip.tripDate)} - {formatTimeLabel(trip.departureTimeSnapshot)}</p>
-          <p className="mt-2 text-xs font-semibold text-sky-900">Solo acepta codigos de boletos asociados a esta fecha.</p>
+          <p className="mt-2 text-xs font-semibold text-sky-900">Solo acepta codigos de pases asociados a esta fecha.</p>
         </div>
-        <p className="text-sm text-slate-700">Estado del viaje: <span className={`rounded-full px-2 py-1 text-xs font-medium ${tripStatusMeta.className}`}>{tripStatusMeta.label}</span></p>
-        <p className="text-sm text-slate-700">Reservas activas: {trip.reservationSummary?.reservationsCount ?? 0}</p>
-        <p className="text-sm text-slate-700">Asientos reservados: {trip.reservationSummary?.reservedSeats ?? 0}</p>
-        <p className="text-sm text-slate-700">Asientos disponibles: {trip.reservationSummary?.remainingSeats ?? trip.availableSeatsSnapshot}</p>
+        <p className="text-sm text-slate-700">Estado de la ruta: <span className={`rounded-full px-2 py-1 text-xs font-medium ${tripStatusMeta.className}`}>{tripStatusMeta.label}</span></p>
+        <p className="text-sm text-slate-700">Solicitudes activas: {trip.reservationSummary?.reservationsCount ?? 0}</p>
+        <p className="text-sm text-slate-700">Lugares solicitados: {trip.reservationSummary?.reservedSeats ?? 0}</p>
+        <p className="text-sm text-slate-700">Lugares disponibles: {trip.reservationSummary?.remainingSeats ?? trip.availableSeatsSnapshot}</p>
         <p className="text-sm text-slate-700">Referencia de abordaje: {trip.boardingReference ?? 'Sin definir'}</p>
         <p className="mt-2 rounded-md bg-amber-50 p-2 text-xs text-amber-800">Confirma que el encuentro sea en un punto publico, identificado y seguro.</p>
       </article>
 
       {!canValidateBoarding ? (
         <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950 shadow-sm">
-          <p className="text-base font-bold">Antes de validar boletos debes iniciar el viaje.</p>
-          <p className="mt-1 text-sm">Este viaje aun no esta listo para validacion. Regresa a <strong>Mis viajes</strong>, inicia el viaje y despues vuelve a esta pantalla.</p>
+          <p className="text-base font-bold">Antes de validar pases debes iniciar la ruta.</p>
+          <p className="mt-1 text-sm">Esta ruta aun no esta lista para validacion. Regresa a <strong>Mis rutas</strong>, inicia la salida y despues vuelve a esta pantalla.</p>
           <Link href="/dashboard/trips" className="mt-3 inline-block rounded-md bg-amber-700 px-4 py-2 text-sm font-semibold text-white">
-            Volver a Mis viajes
+            Volver a Mis rutas
           </Link>
         </div>
       ) : (
         <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-emerald-950 shadow-sm">
-          <p className="text-base font-bold">Viaje iniciado: ya puedes validar boletos.</p>
-          <p className="mt-1 text-sm">Pide al pasajero el <strong>codigo numerico de 6 digitos</strong> que aparece en su boleto aprobado.</p>
+          <p className="text-base font-bold">Ruta iniciada: ya puedes validar pases.</p>
+          <p className="mt-1 text-sm">Pide al usuario el <strong>codigo numerico de 6 digitos</strong> que aparece en su pase aprobado.</p>
         </div>
       )}
 
@@ -385,7 +385,7 @@ export default function TripBoardingPage() {
       <form onSubmit={onSubmit} className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="rounded-lg border border-brand-200 bg-brand-50 p-4">
           <p className="text-sm font-semibold text-brand-700">Paso principal</p>
-          <p className="mt-1 text-sm text-slate-700">Pide al pasajero su codigo numerico y escribelo aqui. El QR se mantiene solo como apoyo.</p>
+          <p className="mt-1 text-sm text-slate-700">Pide al usuario su codigo numerico y escribelo aqui. El QR se mantiene solo como apoyo.</p>
         </div>
 
         <label className="block text-sm text-slate-700">
@@ -447,20 +447,20 @@ export default function TripBoardingPage() {
         {success && <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800 shadow-sm">{success}</p>}
 
         <button type="submit" disabled={submitting || !canValidateBoarding} className="w-full rounded-md bg-slate-950 px-4 py-2 font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-700">
-          {submitting ? 'Validando...' : canValidateBoarding ? 'Validar boleto' : 'Primero inicia el viaje'}
+          {submitting ? 'Validando...' : canValidateBoarding ? 'Validar pase' : 'Primero inicia la ruta'}
         </button>
       </form>
 
       {result && (
         <article className="rounded-xl border border-green-200 bg-green-50 p-5">
           <h3 className="font-semibold text-green-900">Abordaje validado</h3>
-          <p className="text-sm text-green-800">Reserva: {result.id}</p>
+          <p className="text-sm text-green-800">Solicitud: {result.id}</p>
           <p className="text-sm text-green-800">Codigo: {result.numericCode}</p>
-          <p className="text-sm text-green-800">Pasajero titular: {result.passenger?.fullName ?? 'No disponible'}</p>
-          <p className="text-sm text-green-800">Asientos pagados: {result.totalSeats}</p>
+          <p className="text-sm text-green-800">Usuario titular: {result.passenger?.fullName ?? 'No disponible'}</p>
+          <p className="text-sm text-green-800">Lugares aceptados: {result.totalSeats}</p>
           <p className="text-sm text-green-800">Estado actual: <span className={resultStatusMeta.className}>{resultStatusMeta.label}</span></p>
           <Link href={`/dashboard/chat/${result.id}`} className="mt-2 inline-block rounded-md border border-emerald-300 px-3 py-1 text-xs text-emerald-800">
-            Chat con pasajero
+            Chat con usuario
           </Link>
         </article>
       )}

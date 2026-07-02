@@ -119,15 +119,15 @@ export default function RoutesPage() {
     return (
       <div className="mt-4 grid gap-2 md:grid-cols-2">
         <Link href={`/dashboard/routes/${route.id}`} className="rounded-md bg-brand-500 px-4 py-2 text-center text-sm font-medium text-white">
-          Pasajero: ver conductores y reservar
+          Usuario: ver conductores disponibles
         </Link>
         {isDriver ? (
           <Link href={`/dashboard/routes/${route.id}/take`} className="rounded-md bg-emerald-600 px-4 py-2 text-center text-sm font-medium text-white">
-            {alreadyTaken ? 'Conductor: editar mi viaje' : 'Conductor: generar ingresos en esta ruta'}
+            {alreadyTaken ? 'Conductor: editar disponibilidad' : 'Conductor: publicar disponibilidad'}
           </Link>
         ) : (
           <span className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2 text-center text-sm font-medium text-emerald-800">
-            Conductor: entra con cuenta de chofer para tomarla
+            Conductor: entra con cuenta de conductor para tomarla
           </span>
         )}
       </div>
@@ -190,13 +190,13 @@ export default function RoutesPage() {
         <h1 className="text-2xl font-semibold text-slate-900">Corredores laborales EdoMex {'->'} CDMX</h1>
         <p className="text-sm text-slate-600">
           {isDriver
-            ? 'Crea tu propia ruta para trabajar o toma una publicada y personaliza tu viaje para publicarlo rapidamente.'
+            ? 'Crea tu propia ruta compartida o toma una publicada y personaliza tu disponibilidad rapidamente.'
             : 'Explora rutas publicadas por secciones. Primero veras las rutas prioritarias hacia Indios Verdes y despues el resto de corredores.'}
         </p>
         {(isDriver || isAdmin) && (
           <div className="mt-3">
             <Link href="/dashboard/routes/create" className="rounded-md bg-brand-500 px-4 py-2 text-sm font-medium text-white">
-              Crear mi ruta para trabajar
+              Crear ruta compartida
             </Link>
           </div>
         )}
@@ -223,7 +223,7 @@ export default function RoutesPage() {
             </select>
           </label>
         </div>
-        <p className="mt-2 text-xs text-slate-500">Tip: primero elige destino fuerte; despues compara precio, horario y conductores activos.</p>
+        <p className="mt-2 text-xs text-slate-500">Tip: primero elige destino fuerte; despues compara estimacion, horario y conductores activos.</p>
       </section>
       {isDriver && (
         <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -231,7 +231,7 @@ export default function RoutesPage() {
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Mis rutas creadas</p>
             <h2 className="mt-1 text-lg font-semibold text-slate-900">Rutas que puedes tomar rapido</h2>
-            <p className="text-sm text-slate-600">Aqui aparecen las rutas que tu creaste como chofer. Entra directo a publicar o actualizar tu disponibilidad.</p>
+            <p className="text-sm text-slate-600">Aqui aparecen las rutas que tu creaste como conductor. Entra directo a publicar o actualizar tu disponibilidad.</p>
           </div>
           <Link href="/dashboard/routes/create" className="rounded-md bg-brand-500 px-4 py-2 text-sm font-medium text-white">
             Crear otra ruta
@@ -241,7 +241,7 @@ export default function RoutesPage() {
         {sortedMyCreatedRoutes.length === 0 ? (
           <div className="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-700">
             <p className="font-medium text-slate-900">Aun no has creado rutas propias.</p>
-            <p className="mt-1">Crea una ruta con origen, destino, horario y asientos. Despues volveras aqui para tomarla y publicarla a pasajeros.</p>
+            <p className="mt-1">Crea una ruta con origen, destino, horario y lugares. Despues volveras aqui para tomarla y publicarla a usuarios.</p>
           </div>
         ) : (
           <div className="mt-4 grid gap-3 2xl:grid-cols-2">
@@ -288,7 +288,7 @@ export default function RoutesPage() {
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700">Rutas prioritarias listas para tomar</p>
               <h2 className="mt-1 text-xl font-semibold text-slate-900">Indios Verdes: Tepexpan, Ojo de Agua y San Cristobal</h2>
-              <p className="text-sm text-slate-600">Estas rutas conectan zonas de alta demanda. Pasajeros apartan asiento; conductores pueden generar ingresos moviendo personas que van hacia la misma zona o cerca de su trabajo.</p>
+              <p className="text-sm text-slate-600">Estas rutas conectan zonas de alta demanda. Usuarios solicitan unirse; conductores coordinan lugares disponibles en rutas que ya realizan o que les quedan cerca.</p>
             </div>
             <button type="button" onClick={() => selectCorridor('norte-indios-verdes')} className="rounded-md border border-brand-300 px-3 py-2 text-sm font-medium text-brand-700">
               Ver todas las del corredor
@@ -445,9 +445,9 @@ export default function RoutesPage() {
           subtitle="Flujo simple"
           points={[
             '1) Admin publica rutas piloto con municipio, poblado libre, referencia y horario.',
-            '2) Chofer pulsa Tomar ruta y personaliza su viaje.',
-            '3) Pasajero elige conductor por referencia, horario y precio.',
-            '4) Mantener puntos de abordaje claros y seguros.'
+            '2) Conductor pulsa Tomar ruta y personaliza su disponibilidad.',
+            '3) Usuario elige conductor por referencia, horario y estimacion.',
+            '4) Mantener puntos de encuentro claros y seguros.'
           ]}
           nextStep={
             isDriver

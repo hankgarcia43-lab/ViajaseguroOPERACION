@@ -1,4 +1,4 @@
-﻿import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -49,6 +49,11 @@ export class ReservationsController {
     return this.reservationsService.validateBoarding(user.sub, dto);
   }
 
+  @Get('driver/trip/:tripId')
+  @Roles('driver')
+  findForDriverTrip(@CurrentUser() user: { sub: string }, @Param('tripId') tripId: string) {
+    return this.reservationsService.findForDriverTrip(user.sub, tripId);
+  }
   @Get(':id/ticket')
   @Roles('passenger')
   ticket(@CurrentUser() user: { sub: string }, @Param('id') reservationId: string) {
@@ -67,6 +72,17 @@ export class ReservationsController {
     return this.reservationsService.cancelByPassenger(user.sub, reservationId);
   }
 
+  @Patch(':id/accept')
+  @Roles('driver')
+  accept(@CurrentUser() user: { sub: string }, @Param('id') reservationId: string) {
+    return this.reservationsService.acceptByDriver(user.sub, reservationId);
+  }
+
+  @Patch(':id/reject')
+  @Roles('driver')
+  reject(@CurrentUser() user: { sub: string }, @Param('id') reservationId: string) {
+    return this.reservationsService.rejectByDriver(user.sub, reservationId);
+  }
   @Patch(':id/board')
   @Roles('driver')
   board(@CurrentUser() user: { sub: string }, @Param('id') reservationId: string) {
@@ -85,4 +101,3 @@ export class ReservationsController {
     return this.reservationsService.completeByDriver(user.sub, reservationId);
   }
 }
-

@@ -28,37 +28,37 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   {
     href: '/dashboard/admin/routes',
     label: 'Rutas',
-    description: 'Crear rutas especificas del piloto'
+    description: 'Crear rutas compartidas del piloto'
   },
   {
     href: '/dashboard/admin/fare-policy',
-    label: 'Tarifa por km',
-    description: 'Politica comercial para rutas y precios'
+    label: 'Estimacion por km',
+    description: 'Referencia orientativa para rutas'
   },
   {
     href: '/dashboard/admin/payments',
-    label: 'Pagos',
-    description: 'Pagos, proveedor y referencias'
+    label: 'Pagos plataforma',
+    description: 'Membresias, verificaciones y servicios digitales'
   },
   {
     href: '/dashboard/admin/refunds',
-    label: 'Refunds',
-    description: 'Refunds manuales e historial'
+    label: 'Reembolsos legacy',
+    description: 'Historial administrativo heredado'
   },
   {
     href: '/dashboard/admin/weekly-payouts',
-    label: 'Liquidaciones',
-    description: 'Payouts internos por periodo'
+    label: 'Archivo legacy',
+    description: 'Liquidaciones desactivadas para piloto'
   },
   {
     href: '/dashboard/admin/trips',
-    label: 'Viajes',
-    description: 'Vista operativa de viajes y salidas'
+    label: 'Rutas activas',
+    description: 'Vista operativa de salidas compartidas'
   },
   {
     href: '/dashboard/admin/reservations',
-    label: 'Reservas',
-    description: 'Vista operativa de reservations'
+    label: 'Solicitudes',
+    description: 'Vista operativa de solicitudes de usuarios'
   },
   {
     href: '/dashboard/admin/incidents',

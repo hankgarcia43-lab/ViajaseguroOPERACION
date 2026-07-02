@@ -1,6 +1,6 @@
-# Viaja Seguro - MVP Operativo
+# Viaja Seguro - Comunidad de rutas compartidas
 
-MVP de transporte programado con tres roles: pasajero, conductor y admin.
+VIAJA SEGURO es un MVP operativo para coordinar rutas compartidas recurrentes entre miembros verificados: usuario, conductor y admin.
 
 ## Stack actual
 
@@ -9,7 +9,8 @@ MVP de transporte programado con tres roles: pasajero, conductor y admin.
 - Backend/API: NestJS y TypeScript en `apps/api`.
 - Base de datos: Prisma con datasource PostgreSQL.
 - Auth: JWT con roles `passenger`, `driver` y `admin`.
-- Pagos: link fijo de Mercado Pago + comprobante manual + validacion admin.
+- Modelo piloto: solicitudes de usuarios, aceptacion del conductor y pase/codigo de abordaje.
+- Pagos: Mercado Pago solo para membresias, verificaciones, suscripciones o servicios digitales de la plataforma.
 - E2E: Playwright en `tests/e2e`.
 
 ## Estructura
@@ -24,17 +25,20 @@ docs/         QA, operacion y despliegue
 tests/e2e/    Pruebas Playwright
 ```
 
-## Flujo operativo conservado
+## Flujo operativo piloto
 
-1. Admin gestiona rutas especificas del piloto.
-2. Conductor toma rutas o viajes disponibles.
-3. Pasajero reserva.
-4. Pasajero paga con link fijo de Mercado Pago o flujo manual.
-5. Pasajero sube comprobante.
-6. Admin valida pago.
-7. Se habilita codigo/QR de abordaje.
-8. Conductor valida abordaje.
-9. Admin supervisa pagos, usuarios, vehiculos, reportes y liquidaciones.
+1. Admin crea rutas compartidas especificas del piloto.
+2. Conductor verificado publica o toma una ruta compatible con su traslado.
+3. Usuario solicita unirse uno o varios dias.
+4. La app muestra una estimacion orientativa, no un cobro de traslado.
+5. Conductor acepta o rechaza la solicitud.
+6. Si la solicitud es aceptada, se habilita pase/codigo por fecha.
+7. Conductor valida el pase del dia correspondiente.
+8. Admin supervisa personas, documentos, vehiculos, rutas, solicitudes, reportes y pagos de plataforma.
+
+## Regla legal y operativa
+
+VIAJA SEGURO no debe procesar pagos de viajes, reservas, comisiones por trayecto, liquidaciones a conductores ni cuentas bancarias de usuarios. El link de Mercado Pago se usa solo para servicios de plataforma como membresias, verificaciones, suscripciones o servicios digitales.
 
 ## Desarrollo local
 
@@ -84,18 +88,18 @@ Usa los ejemplos seguros:
 - Web: `apps/web/.env.example`
 - Web local: `apps/web/.env.local.example`
 
-Nunca subas `.env`, `.env.local`, secretos JWT, tokens de Mercado Pago ni datos bancarios reales.
+Nunca subas `.env`, `.env.local`, secretos JWT, tokens privados de Mercado Pago ni datos bancarios reales.
 
-## Mercado Pago MVP
+## Mercado Pago piloto
 
-El MVP usa un link fijo configurable:
+El link fijo configurable queda reservado para pagos de plataforma:
 
 ```bash
 NEXT_PUBLIC_MP_PAYMENT_LINK=https://link.mercadopago.com.mx/viajaseguro2026
 NEXT_PUBLIC_MP_PAYMENT_REFERENCE=VIAJA SEGURO
 ```
 
-El usuario debe ver el monto exacto en la app, abrir Mercado Pago, ingresar manualmente ese monto, subir comprobante y esperar validacion admin. No se requiere Checkout Pro ni webhooks para esta fase.
+No se usa para cobrar rutas compartidas ni para validar pases de traslado.
 
 ## Deploy
 
@@ -109,4 +113,4 @@ Resumen:
 
 ## Estado de base de datos
 
-El schema Prisma actual usa PostgreSQL y el flujo activo usa un baseline PostgreSQL en `apps/api/prisma/migrations/20260527000000_postgresql_baseline`. Las migraciones SQLite historicas se conservan archivadas en `apps/api/prisma/migrations_sqlite_archive` solo como referencia. Para produccion usa `npm run prisma:deploy`; la base de datos inicial debe estar vacia o preparada con una estrategia de migracion de datos.
+El schema Prisma actual usa PostgreSQL y conserva campos historicos de reservas, pagos y liquidaciones del MVP anterior. Para este pivot no se hizo migracion destructiva: la capa de aplicacion deja de crear pagos de traslado nuevos y reinterpreta el flujo como solicitudes/pases. La deuda tecnica esta documentada en `docs/shared-mobility-pilot.md`.

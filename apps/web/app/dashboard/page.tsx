@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { ContextHelpPanel } from '@/components/context-help-panel';
 import { SafetyActionsPanel } from '@/components/safety-actions-panel';
 import { apiRequest, buildApiAssetUrl, getToken } from '@/lib/api';
-import { APP_COMPANY_NAME, formatCurrency } from '@/lib/app-config';
+import { APP_COMPANY_NAME } from '@/lib/app-config';
 import { getVerificationStatusMeta } from '@/lib/status';
 import { Incident } from '@/lib/incidents';
 import { Payment } from '@/lib/payments';
@@ -161,18 +161,18 @@ export default function DashboardPage() {
 
   const roleCopy = {
     passenger: {
-      title: 'Encuentra una ruta confiable y reserva sin complicaciones',
-      subtitle: 'Elige corredor, compara conductor, selecciona dias de viaje y conserva tu boleto en el panel.',
-      chips: ['Punto de abordaje claro', 'Reserva semanal disponible', 'Boleto con datos del viaje']
+      title: 'Encuentra una ruta compartida y solicita unirte con claridad',
+      subtitle: 'Elige corredor, revisa conductor, selecciona dias y conserva tus pases en el panel.',
+      chips: ['Punto publico y visible', 'Solicitud semanal disponible', 'Pase con datos de la ruta']
     },
     driver: {
-      title: 'Genera ingresos trasladando personas cerca de tu ruta diaria',
-      subtitle: 'Si ya manejas hacia una zona de trabajo, toma una ruta compatible, publica tus horarios y llena asientos disponibles con pasajeros verificados.',
-      chips: ['Aprovecha tu trayecto', 'Define horarios y referencias', 'Solicita liquidacion semanal']
+      title: 'Publica rutas recurrentes y coordina con miembros verificados',
+      subtitle: 'Si ya manejas hacia una zona de trabajo, publica una ruta compatible, tus horarios y lugares disponibles para recibir solicitudes.',
+      chips: ['Aprovecha tu trayecto', 'Define horarios y referencias', 'Actividad de ruta']
     },
     admin: {
       title: 'Control total para una operacion ordenada',
-      subtitle: `Administra rutas, verificaciones, pagos y liquidaciones desde un tablero central de ${APP_COMPANY_NAME}.`,
+      subtitle: `Administra rutas, verificaciones, membresias y solicitudes desde un tablero central de ${APP_COMPANY_NAME}.`,
       chips: ['Mayor control', 'Aprobaciones seguras', 'Operacion demostrable']
     }
   }[me.role];
@@ -180,17 +180,17 @@ export default function DashboardPage() {
   const roleGuide =
     me.role === 'passenger'
       ? {
-          subtitle: 'Sigue este orden para evitar bloqueos en el viaje.',
+          subtitle: 'Sigue este orden para coordinar tu ruta compartida.',
           points: [
             'Completa verificacion con INE frente y reverso.',
-            'Selecciona uno o mas dias si viajas por semana.',
-            'Paga el total de tus asientos y dias en un solo movimiento.',
-            'Sube comprobante y espera validacion admin.',
-            'Cuando el pago este aprobado se habilita tu boleto.'
+            'Selecciona uno o mas dias si necesitas ruta semanal.',
+            'Envia tu solicitud y espera aceptacion del conductor.',
+            'Revisa conductor, vehiculo y referencia antes de abordar.',
+            'Cuando el conductor acepte se habilita tu pase.'
           ],
-          nextStep: 'Ir a buscar viajes o revisar tus reservas.',
+          nextStep: 'Ir a buscar rutas o revisar tus solicitudes.',
           ctaHref: '/dashboard/search-trips',
-          ctaLabel: 'Buscar viajes'
+          ctaLabel: 'Buscar rutas'
         }
       : me.role === 'driver'
       ? {
@@ -199,10 +199,10 @@ export default function DashboardPage() {
             'Manten tu verificacion y vehiculo en estado aprobado.',
             'Toma una ruta que coincida con tu trayecto real de trabajo.',
             'Registra horario, dias, asientos y referencia exacta de abordaje.',
-            'Inicia viaje y valida a cada pasajero con su codigo numerico.',
-            'Consulta tus ganancias y liquidaciones.'
+            'Inicia ruta y valida a cada usuario con su codigo numerico.',
+            'Consulta actividad de ruta y reportes.'
           ],
-          nextStep: 'Tomar ruta activa y continuar en Mis viajes.',
+          nextStep: 'Publicar ruta activa y continuar en Mis rutas.',
           ctaHref: '/dashboard/routes',
           ctaLabel: 'Ir a rutas'
         }
@@ -211,9 +211,9 @@ export default function DashboardPage() {
           points: [
             'Crea solo rutas piloto reales y elimina o pausa las que no se operen.',
             'Aprueba verificaciones de usuario y vehiculo.',
-            'Valida pagos para habilitar abordajes.',
+            'Supervisa membresias de plataforma y solicitudes.',
             'Revisa personas registradas antes de promover o suspender cuentas.',
-            'Cierra la semana con liquidaciones claras.'
+            'Mantiene control de rutas, documentos e incidentes.'
           ],
           nextStep: 'Entrar al panel admin y revisar pendientes.',
           ctaHref: '/dashboard/admin',
@@ -235,7 +235,6 @@ export default function DashboardPage() {
   const driverTicketsOperated = driverTrips
     .filter((trip) => trip.status === 'finished')
     .reduce((total, trip) => total + (trip.reservationSummary?.reservationsCount ?? 0), 0);
-  const driverEstimatedIncome = driverTrips.reduce((total, trip) => total + (trip.earningsSummary?.driverNetAfterRefunds ?? 0), 0);
   const currentPassengerReservation = reservations.find(isReservationInCourse) ?? null;
   const currentDriverTrip = driverTrips.find((trip) => trip.status === 'started') ?? null;
   const currentPassengerVehiclePhotoUrl = buildApiAssetUrl(currentPassengerReservation?.trip?.vehiclePhotoUrl);
@@ -257,7 +256,7 @@ export default function DashboardPage() {
       });
       setDriverTrips((current) => current.map((trip) => (trip.id === tripId ? { ...trip, status: 'finished' } : trip)));
     } catch (requestError) {
-      setStatsError(requestError instanceof Error ? requestError.message : 'No se pudo finalizar el viaje.');
+      setStatsError(requestError instanceof Error ? requestError.message : 'No se pudo finalizar la ruta.');
     } finally {
       setFinishBusy(false);
     }
@@ -294,16 +293,16 @@ export default function DashboardPage() {
         <section className="space-y-4 rounded-2xl border border-emerald-300 bg-emerald-50 p-5 text-emerald-950 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">Viaje en curso</p>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">Ruta en curso</p>
               <h2 className="mt-1 text-2xl font-black text-slate-950">
                 {currentPassengerReservation.trip?.route?.title || `${currentPassengerReservation.trip?.route?.origin || 'Ruta'} -> ${currentPassengerReservation.trip?.route?.destination || ''}`}
               </h2>
               <p className="mt-2 text-sm font-semibold text-emerald-900">
-                Tu viaje esta en curso. Mantente atento al punto de descenso y reporta cualquier situacion sospechosa.
+                Tu ruta esta en curso. Mantente atento al punto de descenso y reporta cualquier situacion sospechosa.
               </p>
             </div>
             <Link href={`/dashboard/my-reservations/${currentPassengerReservation.id}/ticket`} className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-emerald-800">
-              Ver boleto de hoy
+              Ver pase de hoy
             </Link>
           </div>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -315,7 +314,7 @@ export default function DashboardPage() {
             <div className="rounded-xl bg-white p-4 shadow-sm">
               <p className="text-xs font-bold uppercase text-slate-500">Conductor</p>
               <p className="mt-1 font-black text-slate-950">{currentPassengerReservation.trip?.driver?.fullName ?? 'Por confirmar'}</p>
-              <p className="text-sm text-slate-700">Vehiculo asignado si aparece foto aprobada.</p>
+              <p className="text-sm text-slate-700">Verifica vehiculo, placas y conductor antes de abordar.</p>
             </div>
             <div className="rounded-xl bg-white p-4 shadow-sm">
               <p className="text-xs font-bold uppercase text-slate-500">Punto de abordaje</p>
@@ -324,7 +323,7 @@ export default function DashboardPage() {
             <div className="rounded-xl bg-white p-4 shadow-sm">
               <p className="text-xs font-bold uppercase text-slate-500">Destino</p>
               <p className="mt-1 font-black text-slate-950">{currentPassengerReservation.trip?.route?.destination ?? 'Destino pendiente'}</p>
-              <p className="text-sm text-slate-700">Aborda solo en puntos publicos y visibles.</p>
+              <p className="text-sm text-slate-700">Usa solo puntos publicos y visibles.</p>
             </div>
           </div>
           {currentPassengerVehiclePhotoUrl && (
@@ -335,7 +334,7 @@ export default function DashboardPage() {
             tripId={currentPassengerReservation.tripId}
             reservationId={currentPassengerReservation.id}
             routeId={currentPassengerReservation.trip?.route?.id}
-            contextLabel={currentPassengerReservation.trip?.route?.title ?? 'Viaje en curso del pasajero'}
+            contextLabel={currentPassengerReservation.trip?.route?.title ?? 'Ruta en curso del usuario'}
           />
         </section>
       )}
@@ -344,12 +343,12 @@ export default function DashboardPage() {
         <section className="space-y-4 rounded-2xl border border-emerald-300 bg-emerald-50 p-5 text-emerald-950 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">Viaje en curso</p>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">Ruta en curso</p>
               <h2 className="mt-1 text-2xl font-black text-slate-950">
                 {currentDriverTrip.route?.title || `${currentDriverTrip.route?.origin || 'Ruta'} -> ${currentDriverTrip.route?.destination || ''}`}
               </h2>
               <p className="mt-2 text-sm font-semibold text-emerald-900">
-                Viaje en curso. Manten la validacion de pasajeros actualizada y reporta cualquier incidente.
+                Ruta en curso. Manten la validacion de usuarios actualizada y reporta cualquier incidente.
               </p>
             </div>
             <button
@@ -358,14 +357,14 @@ export default function DashboardPage() {
               onClick={() => void finishCurrentTrip(currentDriverTrip.id)}
               className="rounded-md bg-slate-950 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-slate-800 disabled:cursor-wait disabled:bg-slate-300 disabled:text-slate-700"
             >
-              {finishBusy ? 'Finalizando...' : 'Finalizar viaje'}
+              {finishBusy ? 'Finalizando...' : 'Finalizar ruta'}
             </button>
           </div>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <StatCard label="Pasajeros esperados" value={currentDriverTrip.reservationSummary?.reservedSeats ?? 0} tone="sky" />
-            <StatCard label="Pasajeros abordados" value={currentDriverTrip.reservationSummary?.boardedSeats ?? 0} tone="emerald" />
-            <StatCard label="Pasajeros pendientes" value={currentDriverTrip.reservationSummary?.pendingSeats ?? 0} tone="amber" />
-            <StatCard label="Boletos pendientes" value={currentDriverTrip.reservationSummary?.pendingReservationsCount ?? 0} tone="amber" />
+            <StatCard label="Usuarios esperados" value={currentDriverTrip.reservationSummary?.reservedSeats ?? 0} tone="sky" />
+            <StatCard label="Usuarios abordados" value={currentDriverTrip.reservationSummary?.boardedSeats ?? 0} tone="emerald" />
+            <StatCard label="Usuarios pendientes" value={currentDriverTrip.reservationSummary?.pendingSeats ?? 0} tone="amber" />
+            <StatCard label="Pases pendientes" value={currentDriverTrip.reservationSummary?.pendingReservationsCount ?? 0} tone="amber" />
           </div>
           <div className="grid gap-3 md:grid-cols-3">
             <div className="rounded-xl bg-white p-4 shadow-sm">
@@ -380,7 +379,7 @@ export default function DashboardPage() {
             <div className="rounded-xl bg-white p-4 shadow-sm">
               <p className="text-xs font-bold uppercase text-slate-500">Validacion</p>
               <Link href={`/dashboard/trips/${currentDriverTrip.id}/boarding`} className="mt-1 inline-flex rounded-md bg-emerald-700 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-800">
-                Validar boletos
+                Validar pases
               </Link>
             </div>
           </div>
@@ -388,7 +387,7 @@ export default function DashboardPage() {
             role="driver"
             tripId={currentDriverTrip.id}
             routeId={currentDriverTrip.routeId}
-            contextLabel={currentDriverTrip.route?.title ?? 'Viaje en curso del conductor'}
+            contextLabel={currentDriverTrip.route?.title ?? 'Ruta en curso del conductor'}
           />
         </section>
       )}
@@ -397,16 +396,16 @@ export default function DashboardPage() {
         <section className="space-y-3">
           <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-950 shadow-sm">
             <p className="font-bold">Tus datos terminados quedan en historial para no saturar el panel principal.</p>
-            <p className="mt-1">Muestra al conductor el codigo correspondiente a la fecha del viaje y revisa la fecha antes de compartirlo.</p>
+            <p className="mt-1">Muestra al conductor el codigo correspondiente a la fecha de la ruta y revisa la fecha antes de compartirlo.</p>
           </div>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <StatCard label="Viajes proximos" value={passengerUpcoming} tone="sky" />
-            <StatCard label="Viajes en curso" value={passengerInCourse} tone="emerald" />
-            <StatCard label="Viajes terminados" value={passengerFinished} tone="slate" />
-            <StatCard label="Reservas pagadas" value={passengerPaid} tone="emerald" />
-            <StatCard label="Reservas en revision" value={passengerInReview} tone="amber" />
-            <StatCard label="Boletos usados" value={passengerUsedTickets} tone="slate" />
-            <StatCard label="Historial de viajes" value={passengerFinished} helper="Terminados o archivados" tone="slate" />
+            <StatCard label="Rutas proximas" value={passengerUpcoming} tone="sky" />
+            <StatCard label="Rutas en curso" value={passengerInCourse} tone="emerald" />
+            <StatCard label="Rutas terminadas" value={passengerFinished} tone="slate" />
+            <StatCard label="Solicitudes aceptadas" value={passengerPaid} tone="emerald" />
+            <StatCard label="Solicitudes en revision" value={passengerInReview} tone="amber" />
+            <StatCard label="Pases usados" value={passengerUsedTickets} tone="slate" />
+            <StatCard label="Historial de rutas" value={passengerFinished} helper="Terminados o archivados" tone="slate" />
             <StatCard label="Alertas/reportes" value={incidents.length} helper="Enviados por tu cuenta" tone="rose" />
           </div>
         </section>
@@ -415,16 +414,16 @@ export default function DashboardPage() {
       {me.role === 'driver' && (
         <section className="space-y-3">
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 shadow-sm">
-            <p className="font-bold">Valida unicamente boletos del dia y horario correspondiente.</p>
-            <p className="mt-1">El panel principal muestra viajes activos o pendientes; los terminados y cancelados pasan a historial/archivo.</p>
+            <p className="font-bold">Valida unicamente pases del dia y horario correspondiente.</p>
+            <p className="mt-1">El panel principal muestra rutas activas o pendientes; los terminados y cancelados pasan a historial/archivo.</p>
           </div>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <StatCard label="Viajes proximos" value={driverUpcoming} tone="sky" />
-            <StatCard label="Viajes en curso" value={driverInCourse} tone="emerald" />
-            <StatCard label="Viajes terminados" value={driverFinished} tone="slate" />
-            <StatCard label="Pasajeros transportados" value={driverPassengersTransported} tone="emerald" />
-            <StatCard label="Boletos operados" value={driverTicketsOperated} helper="Estimado por viajes terminados" tone="slate" />
-            <StatCard label="Ingresos estimados" value={formatCurrency(driverEstimatedIncome)} helper="Segun liquidaciones disponibles" tone="emerald" />
+            <StatCard label="Rutas proximas" value={driverUpcoming} tone="sky" />
+            <StatCard label="Rutas en curso" value={driverInCourse} tone="emerald" />
+            <StatCard label="Rutas terminadas" value={driverFinished} tone="slate" />
+            <StatCard label="Usuarios transportados" value={driverPassengersTransported} tone="emerald" />
+            <StatCard label="Pases operados" value={driverTicketsOperated} helper="Estimado por rutas terminadas" tone="slate" />
+            <StatCard label="Actividad aceptada" value={driverTicketsOperated} helper="Pases operados" tone="emerald" />
             <StatCard label="Reportes/incidencias" value={incidents.length} tone="rose" />
             <StatCard label="Historial semanal" value={driverFinished} helper="Cerrados o archivables" tone="slate" />
           </div>
@@ -447,19 +446,19 @@ export default function DashboardPage() {
               <article className="vs-card">
                 <p className="vs-kicker">Paso 2</p>
                 <h2 className="mt-3 text-xl font-semibold text-slate-950">Tomar ruta activa</h2>
-                <p className="mt-3 text-sm leading-6 text-slate-600">Elige una ruta cercana a tu traslado diario. Publica tus horarios, punto de abordaje y asientos disponibles para recibir reservas.</p>
+                <p className="mt-3 text-sm leading-6 text-slate-600">Elige una ruta cercana a tu traslado diario. Publica horarios, punto de encuentro y lugares disponibles para recibir solicitudes.</p>
                 <div className="mt-5 flex flex-wrap gap-2">
                   <Link href="/dashboard/routes" className="vs-button-accent">Tomar rutas</Link>
-                  <Link href="/dashboard/trips" className="vs-button-secondary">Ver mis viajes</Link>
+                  <Link href="/dashboard/trips" className="vs-button-secondary">Ver mis rutas</Link>
                 </div>
               </article>
               <article className="vs-card">
                 <p className="vs-kicker">Paso 3</p>
-                <h2 className="mt-3 text-xl font-semibold text-slate-950">Abordaje y liquidacion</h2>
-                <p className="mt-3 text-sm leading-6 text-slate-600">Cuando el pasajero pague y admin valide, veras la reserva. Al completar viajes, solicita tu liquidacion semanal.</p>
+                <h2 className="mt-3 text-xl font-semibold text-slate-950">Validacion y actividad</h2>
+                <p className="mt-3 text-sm leading-6 text-slate-600">Cuando aceptes una solicitud, el usuario vera su pase. Al completar rutas, revisa tu actividad operativa.</p>
                 <div className="mt-5 flex flex-wrap gap-2">
-                  <Link href="/dashboard/trips" className="vs-button-accent">Mis viajes</Link>
-                  <Link href="/dashboard/driver/payouts" className="vs-button-secondary">Mis liquidaciones</Link>
+                  <Link href="/dashboard/trips" className="vs-button-accent">Mis rutas</Link>
+                  <Link href="/dashboard/driver/payouts" className="vs-button-secondary">Actividad de ruta</Link>
                 </div>
               </article>
             </div>
@@ -470,16 +469,16 @@ export default function DashboardPage() {
               <article className="vs-card">
                 <p className="vs-kicker">Buscar</p>
                 <h2 className="mt-3 text-xl font-semibold text-slate-950">Viaja con horario fijo y tarifa clara</h2>
-                <p className="mt-3 text-sm leading-6 text-slate-600">Consulta viajes disponibles, ocupacion y hora de salida antes de reservar.</p>
-                <div className="mt-5 flex flex-wrap gap-2"><Link href="/dashboard/search-trips" className="vs-button-accent">Buscar viajes</Link></div>
+                <p className="mt-3 text-sm leading-6 text-slate-600">Consulta rutas disponibles, ocupacion y hora de salida antes de solicitar unirte.</p>
+                <div className="mt-5 flex flex-wrap gap-2"><Link href="/dashboard/search-trips" className="vs-button-accent">Buscar rutas</Link></div>
               </article>
               <article className="vs-card">
-                <p className="vs-kicker">Reservar</p>
-                <h2 className="mt-3 text-xl font-semibold text-slate-950">Sigue tu reserva sin perderte</h2>
-                <p className="mt-3 text-sm leading-6 text-slate-600">Revisa ticket, estado del pago y cuando se habilita tu codigo de abordaje.</p>
+                <p className="vs-kicker">Solicitar</p>
+                <h2 className="mt-3 text-xl font-semibold text-slate-950">Sigue tus solicitudes sin perderte</h2>
+                <p className="mt-3 text-sm leading-6 text-slate-600">Revisa pase, estado de solicitud y codigo de abordaje.</p>
                 <div className="mt-5 flex flex-wrap gap-2">
-                  <Link href="/dashboard/my-reservations" className="vs-button-secondary">Mis reservas</Link>
-                  <Link href="/dashboard/my-payments" className="vs-button-secondary">Mis pagos</Link>
+                  <Link href="/dashboard/my-reservations" className="vs-button-secondary">Mis solicitudes</Link>
+                  <Link href="/dashboard/my-payments" className="vs-button-secondary">Membresia</Link>
                 </div>
               </article>
               <article className="vs-card">
@@ -495,10 +494,10 @@ export default function DashboardPage() {
             <article className="vs-card">
               <p className="vs-kicker">Centro de control</p>
               <h2 className="mt-3 text-2xl font-semibold text-slate-950">Panel operativo del MVP</h2>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">Publica rutas, autoriza cuentas, valida pagos y supervisa viajes desde un solo lugar.</p>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">Publica rutas, autoriza cuentas, revisa membresias y supervisa solicitudes desde un solo lugar.</p>
               <div className="mt-5 flex flex-wrap gap-2">
                 <Link href="/dashboard/admin" className="vs-button-accent">Abrir panel admin</Link>
-                <Link href="/dashboard/admin/payments" className="vs-button-secondary">Pagos</Link>
+                <Link href="/dashboard/admin/payments" className="vs-button-secondary">Pagos plataforma</Link>
                 <Link href="/dashboard/admin/verifications" className="vs-button-secondary">Verificaciones</Link>
               </div>
             </article>
@@ -517,7 +516,3 @@ export default function DashboardPage() {
     </section>
   );
 }
-
-
-
-

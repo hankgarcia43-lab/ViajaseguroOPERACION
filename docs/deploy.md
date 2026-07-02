@@ -21,6 +21,8 @@ NEXT_PUBLIC_API_URL=https://TU-BACKEND-RENDER.onrender.com/api
 NEXT_PUBLIC_MP_PAYMENT_LINK=https://link.mercadopago.com.mx/viajaseguro2026
 NEXT_PUBLIC_MP_PAYMENT_REFERENCE=VIAJA SEGURO
 NEXT_PUBLIC_ENABLE_DEV_PAYMENT_SIMULATION=false
+NEXT_PUBLIC_CLOSED_PILOT_MODE=true
+NEXT_PUBLIC_PUBLIC_REGISTRATION_ENABLED=false
 NEXT_PUBLIC_COMPANY_NAME=VIAJA SEGURO
 NEXT_PUBLIC_SUPPORT_EMAIL=soporte@viajaseguro.mx
 NEXT_PUBLIC_SUPPORT_WHATSAPP=+525500000000
@@ -63,6 +65,14 @@ ADMIN_SUPERUSER_MODE=false
 AUTO_APPROVE_DRIVERS=false
 ENABLE_DEV_DRIVER_AUTO_APPROVE_BYPASS=false
 ALLOW_DEV_PAYMENT_SIMULATION=false
+CLOSED_PILOT_MODE=true
+INVITE_ONLY=true
+PUBLIC_REGISTRATION_ENABLED=false
+MAX_ACTIVE_DRIVERS=20
+MAX_ACTIVE_USERS=100
+ALLOWED_MUNICIPALITIES=acolman,ecatepec,tecamac,texcoco,teotihuacan
+ALLOWED_DESTINATIONS=indios-verdes,pantitlan,buenavista,ciudad-azteca
+# Mercado Pago solo para membresias/verificaciones/servicios digitales
 MERCADOPAGO_PAYMENT_LINK=https://link.mercadopago.com.mx/viajaseguro2026
 MERCADOPAGO_ACCESS_TOKEN=
 MERCADOPAGO_WEBHOOK_SECRET=
@@ -108,15 +118,17 @@ npm run prisma:deploy
 
 Pruebas manuales minimas:
 
-- Login pasajero.
+- Login usuario.
 - Login conductor.
 - Login admin.
-- Crear/ver ruta especifica del piloto.
-- Conductor toma ruta.
-- Pasajero reserva.
-- Pasajero ve monto exacto.
-- Pasajero abre Mercado Pago con link fijo.
-- Pasajero sube comprobante.
-- Admin aprueba pago.
-- Pasajero ve ticket/codigo.
-- Conductor valida abordaje.
+- Crear/ver ruta compartida especifica del piloto.
+- Conductor publica o toma ruta recurrente.
+- Usuario solicita unirse uno o varios dias.
+- Usuario ve estimacion orientativa, sin pago de traslado.
+- Conductor acepta o rechaza solicitud.
+- Usuario ve pase/codigo por fecha aceptada.
+- Conductor inicia ruta.
+- Conductor valida pase del dia.
+- Probar SOS/reporte.
+- Finalizar ruta y revisar historial.
+- Probar Mercado Pago solo para membresia/verificacion de plataforma.

@@ -1,231 +1,71 @@
-'use client';
-
 import Link from 'next/link';
-import { ChangeEvent, useEffect, useState } from 'react';
-import { apiRequest, buildApiAssetUrl, getToken } from '@/lib/api';
-import { formatCurrency, formatShortDate } from '@/lib/app-config';
-import { getPaymentFlowMessage, PAYMENT_RETENTION_NOTICE } from '@/lib/payment-ui';
-import { MERCADO_PAGO_DIRECT_PAYMENT_LINK, MERCADO_PAGO_PAYMENT_REFERENCE, getMercadoPagoPaymentUrl, Payment } from '@/lib/payments';
-import { getPaymentStatusMeta, getReservationStatusMeta } from '@/lib/status';
+import { MERCADO_PAGO_DIRECT_PAYMENT_LINK, MERCADO_PAGO_PAYMENT_REFERENCE } from '@/lib/payments';
+
+const membershipPlans = [
+  {
+    name: 'Usuario miembro',
+    detail: 'Acceso para solicitar unirse a rutas compartidas durante el piloto cerrado.',
+    tone: 'border-sky-200 bg-sky-50 text-sky-950'
+  },
+  {
+    name: 'Conductor verificado',
+    detail: 'Revision operativa para publicar rutas recurrentes y recibir solicitudes.',
+    tone: 'border-emerald-200 bg-emerald-50 text-emerald-950'
+  },
+  {
+    name: 'Ruta destacada',
+    detail: 'Servicio digital futuro para dar mayor visibilidad a rutas compartidas aprobadas.',
+    tone: 'border-amber-200 bg-amber-50 text-amber-950'
+  }
+];
 
 export default function MyPaymentsPage() {
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [busyReservationId, setBusyReservationId] = useState<string | null>(null);
-  const [showArchived, setShowArchived] = useState(false);
-  const [focusReservationId, setFocusReservationId] = useState<string | null>(null);
-
-  async function loadPayments() {
-    const token = getToken();
-    if (!token) {
-      setError('No hay sesion activa.');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const data = await apiRequest<Payment[]>('/payments/my-payments?includeArchived=true', {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-      setPayments(data);
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudieron cargar los pagos');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    void loadPayments();
-  }, []);
-
-  function payWithMercadoPago(payment: Payment) {
-    setError(null);
-    setSuccess(null);
-    setBusyReservationId(payment.reservationId);
-
-    try {
-      window.open(getMercadoPagoPaymentUrl(payment), '_blank', 'noopener,noreferrer');
-      setSuccess(`Se abrio Mercado Pago. Ingresa el monto exacto, conserva tu comprobante y regresa a la app para subirlo. Referencia: ${MERCADO_PAGO_PAYMENT_REFERENCE}.`);
-    } catch {
-      setError('No se pudo abrir Mercado Pago. Intenta nuevamente.');
-    } finally {
-      setBusyReservationId(null);
-    }
-  }
-
-  async function uploadProof(reservationId: string, file: File | null) {
-    const token = getToken();
-    if (!token || !file) {
-      setError('Debes seleccionar un comprobante.');
-      return;
-    }
-
-    setBusyReservationId(reservationId);
-    setError(null);
-    setSuccess(null);
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      await apiRequest<Payment>(`/payments/${reservationId}/upload-proof`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`
-        },
-        body: formData
-      });
-      setSuccess('Comprobante enviado correctamente.');
-      await loadPayments();
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo subir el comprobante');
-    } finally {
-      setBusyReservationId(null);
-    }
-  }
-
-  if (loading) {
-    return <p className="text-slate-700">Cargando pagos...</p>;
-  }
-
-  const scopedPayments = focusReservationId ? payments.filter((payment) => payment.reservationId === focusReservationId) : payments;
-  const activePayments = scopedPayments.filter((payment) => !payment.archivedAt);
-  const archivedPayments = scopedPayments.filter((payment) => payment.archivedAt);
-  const visiblePayments = showArchived ? archivedPayments : activePayments;
-
   return (
-    <section className="space-y-4">
+    <section className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-slate-900">Mis pagos</h1>
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-sky-700">Pagos de plataforma</p>
+          <h1 className="text-2xl font-semibold text-slate-900">Membresia y servicios VIAJA SEGURO</h1>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
+            Los pagos realizados a VIAJA SEGURO corresponden unicamente a membresias, verificaciones, suscripciones o servicios digitales de la plataforma. VIAJA SEGURO no cobra rutas ni realiza pagos a conductores.
+          </p>
+        </div>
         <div className="flex gap-2">
           <Link href="/dashboard/my-reservations" className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">
-            Mis reservas
+            Mis solicitudes
           </Link>
-          <Link href="/dashboard/search-trips" className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">
-            Buscar viajes
+          <Link href="/dashboard/routes" className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">
+            Buscar rutas
           </Link>
         </div>
       </div>
 
-      {error && <p className="rounded-md bg-red-50 p-3 text-red-700">{error}</p>}
-      {success && <p className="rounded-md bg-emerald-50 p-3 text-emerald-700">{success}</p>}
-
-      <article className="rounded-3xl border border-sky-200 bg-sky-50 p-5 text-slate-900 shadow-sm">
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">Link oficial de pago</p>
-        <p className="mt-2 text-lg font-semibold">Mercado Pago Viaja Seguro</p>
-        <p className="mt-1 text-sm text-slate-600">Usalo cuando ya tengas una reserva y la app te muestre el monto exacto.</p>
-        <p className="mt-1 text-sm text-slate-600">Referencia para el pago: <span className="font-semibold text-slate-900">{MERCADO_PAGO_PAYMENT_REFERENCE}</span></p>
-        <a href={MERCADO_PAGO_DIRECT_PAYMENT_LINK} target="_blank" rel="noreferrer" className="mt-4 inline-flex rounded-3xl bg-sky-700 px-5 py-3 text-sm font-semibold text-white shadow-lg hover:bg-sky-600">
-          Abrir Mercado Pago
-        </a>
+      <article className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-950 shadow-sm">
+        <p className="font-bold">Importante para el piloto cerrado</p>
+        <p className="mt-1">
+          Este link no debe usarse para pagar traslados. Cualquier apoyo economico relacionado con gasolina, casetas o mantenimiento se acuerda directamente entre miembros verificados, fuera de VIAJA SEGURO.
+        </p>
       </article>
 
-      <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={() => setShowArchived(false)} className={`rounded-full px-3 py-2 text-sm ${!showArchived ? 'bg-brand-500 text-white' : 'border border-slate-300 text-slate-700'}`}>
-          Pagos activos ({activePayments.length})
-        </button>
-        <button type="button" onClick={() => setShowArchived(true)} className={`rounded-full px-3 py-2 text-sm ${showArchived ? 'bg-brand-500 text-white' : 'border border-slate-300 text-slate-700'}`}>
-          Historial aprobado ({archivedPayments.length})
-        </button>
-      </div>
+      <section className="grid gap-4 md:grid-cols-3">
+        {membershipPlans.map((plan) => (
+          <article key={plan.name} className={`rounded-2xl border p-5 shadow-sm ${plan.tone}`}>
+            <h2 className="text-lg font-black text-slate-950">{plan.name}</h2>
+            <p className="mt-2 text-sm leading-6">{plan.detail}</p>
+          </article>
+        ))}
+      </section>
 
-      {visiblePayments.length === 0 ? (
-        <p className="rounded-xl border border-slate-200 bg-white p-6 text-slate-700">{showArchived ? 'Aun no tienes pagos aprobados archivados.' : 'Aun no tienes pagos activos asociados.'}</p>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {visiblePayments.map((payment) => {
-            const paymentStatusMeta = getPaymentStatusMeta(payment.status);
-            const reservationStatusMeta = getReservationStatusMeta(payment.reservation?.status);
-            const isBusy = busyReservationId === payment.reservationId;
-            const canUploadProof = ['pending', 'rejected'].includes(payment.status);
-            const canPayOnline = ['pending', 'submitted', 'rejected'].includes(payment.status);
-            const proofUrl = buildApiAssetUrl(payment.proofFileUrl);
-
-            return (
-              <article key={payment.id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h2 className="text-lg font-semibold text-slate-900">
-                  {payment.reservation?.trip?.route?.title || `${payment.reservation?.trip?.route?.origin || 'Ruta'} -> ${payment.reservation?.trip?.route?.destination || ''}`}
-                </h2>
-                <p className="text-sm text-slate-700">Fecha: {payment.reservation?.trip ? formatShortDate(payment.reservation.trip.tripDate) : '-'}</p>
-                <p className="text-sm text-slate-700">Asientos reservados: {payment.reservation?.totalSeats ?? 1}</p>
-                <p className="text-sm text-slate-700">Monto total a pagar: {formatCurrency(payment.amount)}</p>
-                <p className="text-sm text-slate-700">
-                  Estado pago:{' '}
-                  <span className={`rounded-full px-2 py-1 text-xs font-medium ${paymentStatusMeta.className}`}>{paymentStatusMeta.label}</span>
-                </p>
-
-                <div className="mt-4 space-y-4 rounded-3xl border border-sky-200 bg-sky-50 p-5 text-slate-900 shadow-sm">
-                  <div className="space-y-2">
-                    <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">Pagar con Mercado Pago</p>
-                    <p className="text-lg font-semibold text-slate-900">Monto exacto total: {formatCurrency(payment.amount)}</p>
-                    <p className="text-sm text-slate-600">Este pago cubre {payment.reservation?.totalSeats ?? 1} asiento(s) de esta reserva.</p>
-                    <ol className="space-y-1 pl-5 text-sm text-slate-600">
-                      <li className="list-decimal">Entra al link oficial de Mercado Pago desde el boton de abajo.</li>
-                      <li className="list-decimal">Escribe exactamente {formatCurrency(payment.amount)} como monto a pagar.</li>
-                      <li className="list-decimal">Realiza el pago y guarda tu comprobante o captura.</li>
-                      <li className="list-decimal">Regresa a VIAJA SEGURO y sube el comprobante en este pago.</li>
-                      <li className="list-decimal">Cuando el admin lo valide, abre tu ticket para confirmar tus boletos y codigo de abordaje.</li>
-                    </ol>
-                    <p className="text-sm text-slate-600">Tu pago sera validado manualmente.</p>
-                    <p className="text-sm text-slate-600">Referencia: <span className="font-semibold text-slate-900">{MERCADO_PAGO_PAYMENT_REFERENCE}</span></p>
-                  </div>
-                  {canPayOnline ? (
-                    <button
-                      type="button"
-                      onClick={() => payWithMercadoPago(payment)}
-                      disabled={isBusy}
-                      className="w-full rounded-3xl bg-sky-700 px-5 py-4 text-left text-sm font-semibold text-white shadow-lg transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {isBusy ? 'Abriendo Mercado Pago...' : 'Pagar con Mercado Pago'}
-                    </button>
-                  ) : (
-                    <p className="rounded-2xl bg-white p-3 text-xs text-slate-700">Este pago ya no requiere un pago online.</p>
-                  )}
-                </div>
-                <p className="mt-3 rounded-md bg-slate-100 p-3 text-sm text-slate-700">{getPaymentFlowMessage(payment.status)}</p>
-                <p className="mt-3 rounded-md bg-brand-50 p-3 text-xs text-brand-800">{PAYMENT_RETENTION_NOTICE}</p>
-                <p className="mt-3 text-sm text-slate-700">
-                  Estado reserva:{' '}
-                  <span className={`rounded-full px-2 py-1 text-xs font-medium ${reservationStatusMeta.className}`}>{reservationStatusMeta.label}</span>
-                </p>
-                {payment.reviewNotes && <p className="text-sm text-slate-700">Revision admin: {payment.reviewNotes}</p>}
-                {proofUrl && (
-                  <a href={proofUrl} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-brand-600 underline">
-                    Ver comprobante enviado
-                  </a>
-                )}
-
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Link href={`/dashboard/my-reservations/${payment.reservationId}/ticket`} className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">
-                    Ver ticket
-                  </Link>
-
-                  {canUploadProof && (
-                    <label className="cursor-pointer rounded-md border border-sky-300 px-3 py-2 text-sm text-sky-700">
-                      {isBusy ? 'Enviando...' : payment.status === 'rejected' ? 'Reenviar comprobante' : 'Subir comprobante'}
-                      <input
-                        type="file"
-                        accept=".jpg,.jpeg,.png,.pdf"
-                        className="hidden"
-                        disabled={isBusy}
-                        onChange={(event: ChangeEvent<HTMLInputElement>) => {
-                          void uploadProof(payment.reservationId, event.target.files?.[0] ?? null);
-                          event.target.value = '';
-                        }}
-                      />
-                    </label>
-                  )}
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      )}
+      <article className="rounded-3xl border border-sky-200 bg-white p-6 shadow-sm">
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">Link oficial</p>
+        <h2 className="mt-2 text-xl font-bold text-slate-950">Mercado Pago VIAJA SEGURO</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          Usa este link solo cuando el admin te indique activar una membresia, verificacion o servicio digital. Referencia sugerida: <span className="font-semibold text-slate-950">{MERCADO_PAGO_PAYMENT_REFERENCE}</span>.
+        </p>
+        <a href={MERCADO_PAGO_DIRECT_PAYMENT_LINK} target="_blank" rel="noreferrer" className="mt-5 inline-flex rounded-2xl bg-sky-700 px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-sky-600">
+          Activar membresia con Mercado Pago
+        </a>
+      </article>
     </section>
   );
 }

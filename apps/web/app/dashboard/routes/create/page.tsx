@@ -155,7 +155,7 @@ export default function CreateRoutePage() {
 
     const parsedSeats = Number.parseInt(availableSeats, 10);
     if (!Number.isInteger(parsedSeats) || parsedSeats < 1 || parsedSeats > 20) {
-      setError('Los asientos disponibles deben estar entre 1 y 20.');
+      setError('Los lugares disponibles deben estar entre 1 y 20.');
       return;
     }
 
@@ -260,7 +260,7 @@ export default function CreateRoutePage() {
               <input type="time" value={estimatedArrivalTime} onChange={(event) => setEstimatedArrivalTime(event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" />
             </label>
             <label className="block text-sm text-slate-700">
-              Asientos disponibles
+              Lugares disponibles
               <input type="number" min={1} max={20} step={1} value={availableSeats} onChange={(event) => setAvailableSeats(event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" />
             </label>
           </div>
@@ -295,9 +295,9 @@ export default function CreateRoutePage() {
           <h2 className="text-lg font-semibold text-slate-900">Flujo recomendado</h2>
           <div className="mt-3 space-y-2 text-sm text-slate-700">
             <p>1. Elige uno de los puntos piloto: Acolman, Ecatepec, Tecamac, Texcoco o Teotihuacan.</p>
-            <p>2. Escribe el poblado o colonia exacta donde puedes recoger pasajeros.</p>
+            <p>2. Escribe el poblado o colonia exacta donde puedes recoger usuarios.</p>
             <p>3. Publica la ruta y luego tomala para agregar referencia exacta de abordaje.</p>
-            <p>4. Los pasajeros primero veran municipio y destino; despues elegiran poblado y conductor.</p>
+            <p>4. Los usuarios primero veran municipio y destino; despues elegiran poblado y conductor.</p>
           </div>
           <Link href="/dashboard/routes" className="mt-4 inline-block rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">
             Ir a Mis rutas

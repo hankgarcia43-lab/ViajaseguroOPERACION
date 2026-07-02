@@ -24,7 +24,7 @@ interface SafetyActionsPanelProps {
 }
 
 const ROLE_LABELS: Record<SafetyRole, string> = {
-  passenger: 'pasajero',
+  passenger: 'usuario',
   driver: 'conductor'
 };
 
@@ -52,7 +52,7 @@ export function SafetyActionsPanel({
   const [success, setSuccess] = useState<string | null>(null);
 
   const contextText = useMemo(() => {
-    const parts = [contextLabel, tripId ? `Viaje: ${tripId}` : null, reservationId ? `Reserva: ${reservationId}` : null].filter(Boolean);
+    const parts = [contextLabel, tripId ? `Ruta: ${tripId}` : null, reservationId ? `Solicitud: ${reservationId}` : null].filter(Boolean);
     return parts.length ? parts.join(' | ') : `Panel ${ROLE_LABELS[role]}`;
   }, [contextLabel, reservationId, role, tripId]);
 
@@ -114,7 +114,7 @@ export function SafetyActionsPanel({
     <section className={`rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-950 shadow-sm ${className}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-base font-black">Seguridad durante el viaje</p>
+          <p className="text-base font-black">Seguridad durante la ruta</p>
           {!compact && (
             <p className="mt-1 text-red-900">
               El SOS crea una alerta interna visible para admin. No llama automaticamente a emergencias.
@@ -159,7 +159,7 @@ export function SafetyActionsPanel({
                   <p className="text-xs font-bold uppercase tracking-[0.18em] text-red-700">Confirmacion SOS</p>
                   <h2 className="mt-1 text-xl font-black">Confirma el envio de alerta SOS</h2>
                   <p className="mt-2 text-sm text-slate-600">
-                    Se enviara una alerta interna al panel admin con el contexto del viaje. Si estas en peligro inmediato, contacta a las autoridades.
+                    Se enviara una alerta interna al panel admin con el contexto de la ruta. Si estas en peligro inmediato, contacta a las autoridades.
                   </p>
                 </div>
                 <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900">{contextText}</div>
@@ -177,7 +177,7 @@ export function SafetyActionsPanel({
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-700">Reporte rapido</p>
                   <h2 className="mt-1 text-xl font-black">Reportar problema</h2>
-                  <p className="mt-2 text-sm text-slate-600">El reporte quedara visible para admin con fecha y relacion al viaje o reserva.</p>
+                  <p className="mt-2 text-sm text-slate-600">El reporte quedara visible para admin con fecha y relacion a la ruta o solicitud.</p>
                 </div>
                 <label className="block text-sm text-slate-700">
                   Tipo de reporte

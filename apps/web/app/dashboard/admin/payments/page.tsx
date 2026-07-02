@@ -173,7 +173,7 @@ export default function AdminPaymentsPage() {
       <header className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h1 className="text-2xl font-semibold text-slate-900">Admin - Pagos</h1>
         <p className="mt-2 text-sm text-slate-600">
-          Revisa comprobantes enviados por pasajeros o valida manualmente un pago para continuar con la operacion.
+          Revisa pagos de plataforma: membresias, verificaciones, suscripciones o servicios digitales.
         </p>
       </header>
 {error && <p className="rounded-md bg-red-50 p-3 text-red-700">{error}</p>}
@@ -183,7 +183,7 @@ export default function AdminPaymentsPage() {
         <p className="text-sm font-semibold text-slate-900">Pendientes por revisar: {pendingReview.length}</p>
         <p className="mt-1 text-sm text-slate-600">Pagos aprobados archivados: {payments.filter((payment) => payment.archivedAt).length}</p>
         <p className="mt-1 text-sm text-slate-600">
-          Si el pasajero ya pago fuera de la app, puedes marcarlo manualmente como validado incluso si aun no hay comprobante cargado.
+          No uses esta pantalla para cobrar rutas compartidas. Los registros heredados se conservan solo para auditoria administrativa.
         </p>
       </article>
 
@@ -245,7 +245,7 @@ export default function AdminPaymentsPage() {
             )}
           </div>
         </div>
-        <p className="mt-2 text-xs text-slate-500">Archivar no borra comprobantes, pagos ni reservas; solo limpia la operacion diaria.</p>
+        <p className="mt-2 text-xs text-slate-500">Archivar no borra registros, pagos ni solicitudes; solo limpia la operacion diaria.</p>
       </div>
       {filteredPayments.length === 0 ? (
         <p className="rounded-xl border border-slate-200 bg-white p-6 text-slate-700">No hay pagos para este filtro.</p>
@@ -268,7 +268,7 @@ export default function AdminPaymentsPage() {
                       Seleccionar
                     </label>
                     <div>
-                      <p className="text-sm font-semibold text-slate-900">Reserva # {payment.reservation?.publicId ?? '-'}</p>
+                      <p className="text-sm font-semibold text-slate-900">Solicitud # {payment.reservation?.publicId ?? '-'}</p>
                       <p className="text-xs text-slate-500">Viaje # {payment.reservation?.trip?.publicId ?? '-'} | Ruta # {payment.reservation?.trip?.route?.publicId ?? '-'}</p>
                       <p className="text-xs text-slate-500">UUID payment: {payment.id.slice(0, 8)}</p>
                     </div>
@@ -280,7 +280,7 @@ export default function AdminPaymentsPage() {
                 </div>
 
                 <p className="mt-3 text-lg font-semibold text-slate-900">${payment.amount.toFixed(2)} MXN</p>
-                <p className="mt-2 text-sm text-slate-700">Pasajero: {payment.reservation?.passenger?.fullName ?? 'N/A'}</p>
+                <p className="mt-2 text-sm text-slate-700">Usuario: {payment.reservation?.passenger?.fullName ?? 'N/A'}</p>
                 <p className="text-sm text-slate-700">Email: {payment.reservation?.passenger?.email ?? 'N/A'}</p>
                 <p className="text-sm text-slate-700">Proveedor: {payment.provider || 'mercadopago_link'}</p>
                 <p className="text-sm text-slate-700">Metodo: {payment.paymentMethodLabel ?? 'Mercado Pago'}</p>
@@ -303,10 +303,10 @@ export default function AdminPaymentsPage() {
 
                 {proofUrl ? (
                   <a href={proofUrl} target="_blank" rel="noreferrer" className="mt-3 inline-block text-sm text-brand-600 underline">
-                    Ver comprobante
+                    Ver registro
                   </a>
                 ) : (
-                  <p className="mt-3 text-sm text-amber-700">Aun no se ha subido comprobante.</p>
+                  <p className="mt-3 text-sm text-amber-700">Aun no se ha subido registro.</p>
                 )}
 
                 {payment.reviewNotes && <p className="mt-2 text-sm text-slate-700">Revision: {payment.reviewNotes}</p>}
@@ -321,7 +321,7 @@ export default function AdminPaymentsPage() {
                       onClick={() => bulkArchivePayments([payment.id])}
                       className="rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 disabled:opacity-50"
                     >
-                      Archivar comprobante
+                      Archivar registro
                     </button>
                   ) : (
                     <button
@@ -353,7 +353,7 @@ export default function AdminPaymentsPage() {
                           onClick={() => reviewPayment(payment.id, 'approve')}
                           className="rounded-md border border-emerald-300 px-3 py-2 text-sm text-emerald-700 disabled:opacity-50"
                         >
-                          {isBusy ? 'Procesando...' : payment.status === 'pending' ? 'Cobro manual / validar' : 'Aprobar pago'}
+                          {isBusy ? 'Procesando...' : payment.status === 'pending' ? 'Validar pago plataforma' : 'Aprobar pago plataforma'}
                         </button>
                       )}
 
@@ -364,7 +364,7 @@ export default function AdminPaymentsPage() {
                           onClick={() => reviewPayment(payment.id, 'reject')}
                           className="rounded-md border border-red-300 px-3 py-2 text-sm text-red-700 disabled:opacity-50"
                         >
-                          {isBusy ? 'Procesando...' : payment.status === 'pending' ? 'Marcar rechazado' : 'Rechazar comprobante'}
+                          {isBusy ? 'Procesando...' : payment.status === 'pending' ? 'Marcar rechazado' : 'Rechazar registro'}
                         </button>
                       )}
                     </div>

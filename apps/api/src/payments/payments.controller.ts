@@ -92,7 +92,7 @@ export class PaymentsController {
     }
 
     if (!file) {
-      throw new BadRequestException('Debes adjuntar un comprobante');
+      throw new BadRequestException('Debes adjuntar un registro valido');
     }
 
     return this.paymentsService.uploadProof(user.sub, reservationId, file);
@@ -126,4 +126,3 @@ export class PaymentsController {
     return this.paymentsService.simulateRefund(user.sub, user.role, reservationId);
   }
 }
-

@@ -45,6 +45,12 @@ type TripRecord = {
 };
 
 const RESERVATION_STATUS = {
+  PENDING: 'pending',
+  ACCEPTED: 'accepted',
+  REJECTED: 'rejected',
+  CANCELLED_BY_USER: 'cancelled_by_user',
+  CANCELLED_BY_DRIVER: 'cancelled_by_driver',
+  REPORTED: 'reported',
   PAID: 'paid',
   CONFIRMED: 'confirmed',
   BOARDED: 'boarded',
@@ -69,7 +75,7 @@ const TRIP_STATUS = {
   CANCELLED: 'cancelled'
 } as const;
 
-const WEEKLY_RESERVATION_DISCOUNT_RATE = 0.1;
+const WEEKLY_RESERVATION_DISCOUNT_RATE = 0;
 
 @Injectable()
 export class ReservationsService {
@@ -116,14 +122,14 @@ export class ReservationsService {
     }
 
     if (trip.status === TRIP_STATUS.CANCELLED || trip.status === TRIP_STATUS.FINISHED) {
-      throw new ForbiddenException('No se puede reservar sobre viajes cancelados o finalizados');
+      throw new ForbiddenException('No se puede solicitar sobre rutas canceladas o finalizadas');
     }
 
     const reservedSeats = await this.getReservedSeats(trip.id);
     const remainingSeats = trip.availableSeatsSnapshot - reservedSeats;
 
     if (dto.totalSeats > remainingSeats) {
-      throw new ForbiddenException('No hay asientos suficientes para esta reserva');
+      throw new ForbiddenException('No hay lugares suficientes para esta solicitud');
     }
 
     const selectedWeekdays = this.normalizeSelectedWeekdays(dto.selectedWeekdays);
@@ -131,7 +137,7 @@ export class ReservationsService {
       return this.createReservationsFromTripWeekdays(passenger.id, trip, selectedWeekdays, dto.totalSeats, companionCount);
     }
 
-    const totalAmount = dto.totalSeats * trip.pricePerSeatSnapshot;
+    const totalAmount = this.roundCurrency(dto.totalSeats * trip.pricePerSeatSnapshot);
 
     const reservation = await this.createReservationWithTicketAndPayment({
       tripId: trip.id,
@@ -139,8 +145,9 @@ export class ReservationsService {
       totalSeats: dto.totalSeats,
       companionCount,
       totalAmount,
-      status: RESERVATION_STATUS.CONFIRMED,
-      routeOfferId: trip.routeOfferId ?? undefined
+      status: RESERVATION_STATUS.PENDING,
+      routeOfferId: trip.routeOfferId ?? undefined,
+      createPayment: false
     });
 
     return this.mapReservation(reservation, remainingSeats - dto.totalSeats);
@@ -156,17 +163,17 @@ export class ReservationsService {
     companionCount: number
   ) {
     if (selectedWeekdays.length === 0) {
-      throw new BadRequestException('Selecciona al menos un dia para reservar.');
+      throw new BadRequestException('Selecciona al menos un dia para solicitar unirte.');
     }
 
     if (selectedWeekdays.length > 7) {
-      throw new BadRequestException('Puedes reservar maximo 7 dias por semana en una sola solicitud.');
+      throw new BadRequestException('Puedes seleccionar maximo 7 dias por semana en una sola solicitud.');
     }
 
     const weeklyReservationGroupId = randomUUID();
     const weeklyGrossAmount = this.roundCurrency(selectedWeekdays.length * totalSeats * seedTrip.pricePerSeatSnapshot);
-    const weeklyDiscountApplied = selectedWeekdays.length > 1;
-    const weeklyDiscountAmount = weeklyDiscountApplied ? this.roundCurrency(weeklyGrossAmount * WEEKLY_RESERVATION_DISCOUNT_RATE) : 0;
+    const weeklyDiscountApplied = false;
+    const weeklyDiscountAmount = 0;
     const weeklyTotalAmount = this.roundCurrency(weeklyGrossAmount - weeklyDiscountAmount);
     const items: ReservationRecord[] = [];
 
@@ -210,7 +217,7 @@ export class ReservationsService {
 
       if (totalSeats > remainingSeats) {
         throw new ForbiddenException(
-          `No hay asientos suficientes para ${this.formatWeekdayLabel(weekday)}. Disponibles: ${Math.max(remainingSeats, 0)}.`
+          `No hay lugares suficientes para ${this.formatWeekdayLabel(weekday)}. Disponibles: ${Math.max(remainingSeats, 0)}.`
         );
       }
 
@@ -221,11 +228,11 @@ export class ReservationsService {
         totalSeats,
         companionCount,
         totalAmount: totalSeats * trip.pricePerSeatSnapshot,
-        status: RESERVATION_STATUS.CONFIRMED,
+        status: RESERVATION_STATUS.PENDING,
         routeOfferId: seedTrip.routeOfferId ?? undefined,
         weeklyReservationGroupId,
         isWeeklyPaymentPrimary: isPrimaryReservation,
-        createPayment: isPrimaryReservation,
+        createPayment: false,
         paymentAmountOverride: isPrimaryReservation ? weeklyTotalAmount : undefined
       });
 
@@ -251,8 +258,8 @@ export class ReservationsService {
       reservations: mapped,
       primaryReservationId: mapped[0]?.id ?? null,
       message: mapped.length === 1
-        ? 'Reserva creada para 1 dia. Se genero un pago por el total.'
-        : 'Reserva semanal creada para ' + mapped.length + ' dias con 10% de descuento. Se genero un solo pago por el total semanal.'
+        ? 'Solicitud enviada para 1 dia. El conductor debe aceptarla para habilitar el pase de ruta.'
+        : 'Solicitud semanal enviada para ' + mapped.length + ' dias. El conductor debe aceptar cada dia para habilitar los pases de ruta.'
     };
   }
 
@@ -275,15 +282,15 @@ export class ReservationsService {
     }
 
     if (selectedWeekdays.length > 7) {
-      throw new BadRequestException('Puedes reservar maximo 7 dias por semana en una sola solicitud.');
+      throw new BadRequestException('Puedes seleccionar maximo 7 dias por semana en una sola solicitud.');
     }
 
     const normalizedTotalSeats = dto.totalSeats;
     const companionCount = normalizedTotalSeats - 1;
     const weeklyReservationGroupId = randomUUID();
     const weeklyGrossAmount = this.roundCurrency(selectedWeekdays.length * normalizedTotalSeats * offer.pricePerSeat);
-    const weeklyDiscountApplied = selectedWeekdays.length > 1;
-    const weeklyDiscountAmount = weeklyDiscountApplied ? this.roundCurrency(weeklyGrossAmount * WEEKLY_RESERVATION_DISCOUNT_RATE) : 0;
+    const weeklyDiscountApplied = false;
+    const weeklyDiscountAmount = 0;
     const weeklyTotalAmount = this.roundCurrency(weeklyGrossAmount - weeklyDiscountAmount);
     const items: ReservationRecord[] = [];
 
@@ -323,7 +330,7 @@ export class ReservationsService {
 
       if (normalizedTotalSeats > remainingSeats) {
         throw new ForbiddenException(
-          `No hay asientos suficientes para ${this.formatWeekdayLabel(weekday)}. Disponibles: ${Math.max(remainingSeats, 0)}.`
+          `No hay lugares suficientes para ${this.formatWeekdayLabel(weekday)}. Disponibles: ${Math.max(remainingSeats, 0)}.`
         );
       }
 
@@ -335,11 +342,11 @@ export class ReservationsService {
         totalSeats: normalizedTotalSeats,
         companionCount,
         totalAmount,
-        status: RESERVATION_STATUS.CONFIRMED,
+        status: RESERVATION_STATUS.PENDING,
         routeOfferId: offer.id,
         weeklyReservationGroupId,
         isWeeklyPaymentPrimary: isPrimaryReservation,
-        createPayment: isPrimaryReservation,
+        createPayment: false,
         paymentAmountOverride: isPrimaryReservation ? weeklyTotalAmount : undefined
       });
 
@@ -368,8 +375,8 @@ export class ReservationsService {
       reservations: mapped,
       primaryReservationId: mapped[0]?.id ?? null,
       message: selectedWeekdays.length === 1
-        ? 'Reserva creada con un boleto para ' + normalizedTotalSeats + ' asiento(s). Se genero el pago por el total.'
-        : 'Reserva semanal creada para ' + selectedWeekdays.length + ' dias con 10% de descuento. Se genero un solo pago por el total semanal.'
+        ? 'Solicitud enviada para ' + normalizedTotalSeats + ' lugar(es). El conductor la revisara antes de habilitar el pase.'
+        : 'Solicitud semanal enviada para ' + selectedWeekdays.length + ' dias. Cada pase queda asociado a su fecha y no genera pago de traslado en la plataforma.'
     };
   }
 
@@ -481,6 +488,52 @@ export class ReservationsService {
     return this.mapReservation(reservation, remainingSeats);
   }
 
+  async findForDriverTrip(driverUserId: string, tripId: string) {
+    await this.ensureDriver(driverUserId);
+
+    const reservations = (await this.reservationDelegate().findMany({
+      where: {
+        tripId,
+        trip: {
+          driverUserId
+        }
+      },
+      include: {
+        trip: {
+          include: {
+            route: true,
+            driver: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+                vehicle: {
+                  include: {
+                    documents: {
+                      where: { documentType: 'vehicle_photo', status: 'approved' },
+                      orderBy: [{ createdAt: 'desc' }]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        passenger: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true
+          }
+        },
+        payment: true
+      },
+      orderBy: [{ createdAt: 'desc' }]
+    })) as ReservationRecord[];
+
+    const remainingSeats = await this.getRemainingSeats(tripId);
+    return reservations.map((reservation) => this.mapReservation(reservation, remainingSeats));
+  }
   async findByIdForPassenger(passengerUserId: string, reservationId: string) {
     await this.ensurePassenger(passengerUserId);
 
@@ -523,7 +576,7 @@ export class ReservationsService {
     }
 
     if (reservation.passengerUserId !== passengerUserId) {
-      throw new ForbiddenException('No puedes ver reservas de otro pasajero');
+      throw new ForbiddenException('No puedes ver solicitudes de otro usuario');
     }
 
     const remainingSeats = await this.getRemainingSeats(reservation.tripId);
@@ -539,13 +592,13 @@ export class ReservationsService {
   async cancelByPassenger(passengerUserId: string, reservationId: string) {
     const reservation = await this.findOwnedReservationForPassenger(passengerUserId, reservationId);
 
-    if (![RESERVATION_STATUS.CONFIRMED, RESERVATION_STATUS.PAID].includes(reservation.status as any)) {
-      throw new ForbiddenException('Solo reservas confirmed o paid pueden cancelarse');
+    if (![RESERVATION_STATUS.PENDING, RESERVATION_STATUS.ACCEPTED, RESERVATION_STATUS.CONFIRMED, RESERVATION_STATUS.PAID].includes(reservation.status as any)) {
+      throw new ForbiddenException('Solo solicitudes pendientes o aceptadas pueden cancelarse');
     }
 
     const updated = (await this.reservationDelegate().update({
       where: { id: reservationId },
-      data: { status: RESERVATION_STATUS.CANCELLED },
+      data: { status: RESERVATION_STATUS.CANCELLED_BY_USER },
       include: {
         trip: {
           include: {
@@ -575,13 +628,34 @@ export class ReservationsService {
     return this.mapReservation(updated, remainingSeats);
   }
 
+  async acceptByDriver(driverUserId: string, reservationId: string) {
+    await this.ensureVerifiedDriver(driverUserId);
+    const reservation = await this.findReservationForDriver(driverUserId, reservationId);
+
+    if (![RESERVATION_STATUS.PENDING, RESERVATION_STATUS.CONFIRMED].includes(reservation.status as any)) {
+      throw new ForbiddenException('Solo solicitudes pendientes pueden aceptarse');
+    }
+
+    return this.updateReservationStatus(reservationId, RESERVATION_STATUS.ACCEPTED);
+  }
+
+  async rejectByDriver(driverUserId: string, reservationId: string) {
+    await this.ensureVerifiedDriver(driverUserId);
+    const reservation = await this.findReservationForDriver(driverUserId, reservationId);
+
+    if (![RESERVATION_STATUS.PENDING, RESERVATION_STATUS.CONFIRMED, RESERVATION_STATUS.ACCEPTED].includes(reservation.status as any)) {
+      throw new ForbiddenException('Solo solicitudes pendientes o aceptadas pueden rechazarse');
+    }
+
+    return this.updateReservationStatus(reservationId, RESERVATION_STATUS.REJECTED);
+  }
   async boardByDriver(driverUserId: string, reservationId: string) {
     await this.ensureVerifiedDriver(driverUserId);
     const reservation = await this.findReservationForDriver(driverUserId, reservationId);
     this.validateStatusForBoarding(reservation.status, reservation.payment?.status);
 
     if (reservation.trip?.status !== TRIP_STATUS.STARTED) {
-      throw new ForbiddenException('El viaje debe estar iniciado para abordar');
+      throw new ForbiddenException('La ruta debe estar iniciada para validar el pase');
     }
 
     return this.markBoardedAtomically(reservationId);
@@ -634,21 +708,21 @@ export class ReservationsService {
     })) as ReservationRecord | null;
 
     if (!reservation) {
-      throw new NotFoundException('No encontramos una reserva pagada con ese codigo. Revisa que sean los 6 digitos del boleto correcto.');
+      throw new NotFoundException('No encontramos una solicitud aceptada con ese codigo. Revisa que sean los 6 digitos del pase correcto.');
     }
 
     if (dto.tripId && reservation.tripId !== dto.tripId) {
-      throw new ForbiddenException('Este boleto no corresponde al viaje de hoy. Revisa la fecha del boleto antes de permitir el abordaje.');
+      throw new ForbiddenException('Este pase no corresponde a la ruta compartida de hoy. Revisa la fecha antes de permitir el abordaje.');
     }
 
     if (reservation.trip?.driverUserId !== driverUserId) {
-      throw new ForbiddenException('No puedes validar abordaje de viajes de otro conductor');
+      throw new ForbiddenException('No puedes validar pase de viajes de otro conductor');
     }
 
     this.validateStatusForBoarding(reservation.status, reservation.payment?.status);
 
     if (reservation.trip?.status !== TRIP_STATUS.STARTED) {
-      throw new ForbiddenException('Este viaje aun no esta listo para validacion. Primero inicia el viaje desde Mis viajes.');
+      throw new ForbiddenException('Esta ruta aun no esta lista para validacion. Primero inicia la ruta desde Mis rutas.');
     }
 
     return this.markBoardedAtomically(reservation.id);
@@ -658,8 +732,8 @@ export class ReservationsService {
     await this.ensureVerifiedDriver(driverUserId);
     const reservation = await this.findReservationForDriver(driverUserId, reservationId);
 
-    if (![RESERVATION_STATUS.PAID].includes(reservation.status as any)) {
-      throw new ForbiddenException('Solo reservas paid pueden marcarse no_show');
+    if (![RESERVATION_STATUS.ACCEPTED, RESERVATION_STATUS.PAID].includes(reservation.status as any)) {
+      throw new ForbiddenException('Solo solicitudes aceptadas pueden marcarse no_show');
     }
 
     return this.updateReservationStatus(reservationId, RESERVATION_STATUS.NO_SHOW);
@@ -670,11 +744,11 @@ export class ReservationsService {
     const reservation = await this.findReservationForDriver(driverUserId, reservationId);
 
     if (reservation.status !== RESERVATION_STATUS.BOARDED) {
-      throw new ForbiddenException('Solo reservas boarded pueden completarse');
+      throw new ForbiddenException('Solo solicitudes boarded pueden completarse');
     }
 
     if (reservation.trip?.status !== TRIP_STATUS.FINISHED) {
-      throw new ForbiddenException('El viaje debe estar finalizado para completar la reserva');
+      throw new ForbiddenException('La ruta debe estar finalizada para completar la solicitud');
     }
 
     return this.updateReservationStatus(reservationId, RESERVATION_STATUS.COMPLETED);
@@ -727,7 +801,9 @@ export class ReservationsService {
     const updateResult = await this.reservationDelegate().updateMany({
       where: {
         id: reservationId,
-        status: RESERVATION_STATUS.PAID
+        status: {
+          in: [RESERVATION_STATUS.ACCEPTED, RESERVATION_STATUS.PAID]
+        }
       },
       data: {
         status: RESERVATION_STATUS.BOARDED
@@ -735,7 +811,7 @@ export class ReservationsService {
     });
 
     if (updateResult.count === 0) {
-      throw new ForbiddenException('La reserva ya fue abordada o cambio de estado');
+      throw new ForbiddenException('La solicitud ya fue validada o cambio de estado');
     }
 
     const updated = (await this.reservationDelegate().findUnique({
@@ -815,7 +891,7 @@ export class ReservationsService {
     }
 
     if (reservation.passengerUserId !== passengerUserId) {
-      throw new ForbiddenException('No puedes modificar reservas de otro pasajero');
+      throw new ForbiddenException('No puedes modificar solicitudes de otro usuario');
     }
 
     return reservation;
@@ -856,7 +932,7 @@ export class ReservationsService {
     }
 
     if (reservation.trip?.driverUserId !== driverUserId) {
-      throw new ForbiddenException('No puedes operar reservas de viajes de otro conductor');
+      throw new ForbiddenException('No puedes operar solicitudes de rutas de otro conductor');
     }
 
     return reservation;
@@ -875,11 +951,11 @@ export class ReservationsService {
     }
 
     if (user.role.toLowerCase() !== 'passenger') {
-      throw new ForbiddenException('Solo pasajeros pueden reservar');
+      throw new ForbiddenException('Solo usuarios pueden solicitar rutas');
     }
 
     if (!user.passengerProfile) {
-      throw new ForbiddenException('No existe perfil de pasajero');
+      throw new ForbiddenException('No existe perfil de usuario');
     }
 
     return user;
@@ -919,6 +995,8 @@ export class ReservationsService {
   private async getReservedSeats(tripId: string) {
     const activeStatuses = [
       RESERVATION_STATUS.CONFIRMED,
+      RESERVATION_STATUS.PENDING,
+      RESERVATION_STATUS.ACCEPTED,
       RESERVATION_STATUS.PAID,
       RESERVATION_STATUS.BOARDED,
       RESERVATION_STATUS.COMPLETED
@@ -961,6 +1039,8 @@ export class ReservationsService {
 
     const activeStatuses = [
       RESERVATION_STATUS.CONFIRMED,
+      RESERVATION_STATUS.PENDING,
+      RESERVATION_STATUS.ACCEPTED,
       RESERVATION_STATUS.PAID,
       RESERVATION_STATUS.BOARDED,
       RESERVATION_STATUS.COMPLETED
@@ -1022,7 +1102,8 @@ export class ReservationsService {
     createPayment?: boolean;
     paymentAmountOverride?: number;
   }) {
-    const appCommissionPercent = await this.farePolicyService.getCurrentAppCommissionPercent();
+    const shouldCreatePayment = data.createPayment === true;
+    const appCommissionPercent = shouldCreatePayment ? await this.farePolicyService.getCurrentAppCommissionPercent() : 0;
     const appCommissionRate = appCommissionPercent / 100;
     let retries = 5;
 
@@ -1040,19 +1121,19 @@ export class ReservationsService {
             paymentAmountOverride: undefined,
             numericCode,
             qrToken,
-            payment: data.createPayment === false ? undefined : {
+            payment: shouldCreatePayment ? {
               create: {
                 weeklyReservationGroupId: data.weeklyReservationGroupId ?? null,
                 amount: this.roundCurrency(data.paymentAmountOverride ?? data.totalAmount),
                 status: PAYMENT_STATUS.PENDING,
-                provider: 'mercadopago_link',
-                paymentMethodLabel: 'Mercado Pago',
+                provider: 'platform_membership',
+                paymentMethodLabel: 'Membresia / servicio digital VIAJA SEGURO',
                 paymentInstructions:
-                  'Abre el link oficial de Mercado Pago, ingresa el monto exacto de esta reserva, guarda tu comprobante y subelo en VIAJA SEGURO para validacion del admin.',
+                  'Este pago corresponde a membresias, verificaciones o servicios digitales de la plataforma. VIAJA SEGURO no cobra traslados ni administra pagos entre usuario y conductor.',
                 appCommissionAmount: this.roundCurrency((data.paymentAmountOverride ?? data.totalAmount) * appCommissionRate),
                 driverNetAmount: this.roundCurrency((data.paymentAmountOverride ?? data.totalAmount) * (1 - appCommissionRate))
               }
-            }
+            } : undefined
           },
           include: {
             trip: {
@@ -1074,7 +1155,7 @@ export class ReservationsService {
       }
     }
 
-    throw new ForbiddenException('No se pudo generar ticket unico para la reserva, intenta de nuevo');
+    throw new ForbiddenException('No se pudo generar ticket unico para la solicitud, intenta de nuevo');
   }
 
   private async nextPublicId(entity: string) {
@@ -1141,7 +1222,7 @@ export class ReservationsService {
     const instructions =
       [
         'Abre el link oficial de Mercado Pago desde VIAJA SEGURO.',
-        'Ingresa el monto exacto que aparece en tu reserva.',
+        'Ingresa el monto exacto que aparece en tu solicitud.',
         `Referencia: ${reference}`,
         'Guarda tu comprobante y subelo para validacion manual del admin.'
       ].join('\n');
@@ -1177,16 +1258,16 @@ export class ReservationsService {
   }
 
   private validateStatusForBoarding(status: string, paymentStatus?: string) {
-    const allowedReservationStatuses = [RESERVATION_STATUS.PAID];
+    const allowedReservationStatuses = [RESERVATION_STATUS.ACCEPTED, RESERVATION_STATUS.PAID];
     const normalizedPaymentStatus = String(paymentStatus || '').toLowerCase();
     const approvedPaymentStatuses = [PAYMENT_STATUS.APPROVED, 'paid'];
 
     if (!allowedReservationStatuses.includes(status as any)) {
-      throw new ForbiddenException('Solo reservas con pago validado pueden marcarse boarded');
+      throw new ForbiddenException('Solo solicitudes aceptadas pueden validarse');
     }
 
-    if (!approvedPaymentStatuses.includes(normalizedPaymentStatus as any) && status !== RESERVATION_STATUS.PAID) {
-      throw new ForbiddenException('El pago debe estar validado por admin para permitir abordaje');
+    if (status === RESERVATION_STATUS.PAID && !approvedPaymentStatuses.includes(normalizedPaymentStatus as any)) {
+      throw new ForbiddenException('El pago heredado debe estar validado para permitir este abordaje');
     }
   }
 
@@ -1264,8 +1345,13 @@ export class ReservationsService {
 
   private mapReservation(reservation: ReservationRecord, remainingSeats?: number) {
     const paymentConfig = this.getManualPaymentConfig();
-    const hasApprovedPayment = this.hasApprovedPayment(reservation.payment?.status) || reservation.status === RESERVATION_STATUS.PAID;
-    const qrValue = hasApprovedPayment ? `VS-RES:${reservation.id}:${reservation.qrToken}` : null;
+    const hasAcceptedRouteRequest = [
+      RESERVATION_STATUS.ACCEPTED,
+      RESERVATION_STATUS.PAID,
+      RESERVATION_STATUS.BOARDED,
+      RESERVATION_STATUS.COMPLETED
+    ].includes(reservation.status as any) || this.hasApprovedPayment(reservation.payment?.status);
+    const qrValue = hasAcceptedRouteRequest ? `VS-ROUTE:${reservation.id}:${reservation.qrToken}` : null;
 
     return {
       id: reservation.id,
@@ -1277,10 +1363,10 @@ export class ReservationsService {
       totalSeats: reservation.totalSeats,
       companionCount: reservation.companionCount,
       totalAmount: reservation.totalAmount,
-      numericCode: hasApprovedPayment ? reservation.numericCode : null,
-      qrToken: hasApprovedPayment ? reservation.qrToken : null,
+      numericCode: hasAcceptedRouteRequest ? reservation.numericCode : null,
+      qrToken: hasAcceptedRouteRequest ? reservation.qrToken : null,
       qrValue,
-      boardingCodeEnabled: hasApprovedPayment,
+      boardingCodeEnabled: hasAcceptedRouteRequest,
       status: reservation.status,
       createdAt: reservation.createdAt,
       updatedAt: reservation.updatedAt,
@@ -1303,7 +1389,7 @@ export class ReservationsService {
             paymentReference: paymentConfig.reference,
             paymentBusinessAccount: null,
             paymentProcessorLabel: paymentConfig.processorLabel,
-            paymentProcessingMessage: `El pago se realiza desde el link oficial de Mercado Pago y sera validado manualmente por el admin.`,
+            paymentProcessingMessage: `Los pagos a VIAJA SEGURO corresponden solo a membresias, verificaciones o servicios digitales; no a traslados.`,
             paymentInstructions: reservation.payment.paymentInstructions ?? paymentConfig.instructions,
             proofFileName: reservation.payment.proofFileName ?? null,
             proofFilePath: reservation.payment.proofFilePath ?? null,
@@ -1326,7 +1412,7 @@ export class ReservationsService {
             estimatedArrivalTimeSnapshot: reservation.trip.estimatedArrivalTimeSnapshot,
             availableSeatsSnapshot: reservation.trip.availableSeatsSnapshot,
             pricePerSeatSnapshot: reservation.trip.pricePerSeatSnapshot,
-            boardingReference: hasApprovedPayment ? reservation.trip.boardingReference : null,
+            boardingReference: hasAcceptedRouteRequest ? reservation.trip.boardingReference : null,
             route: reservation.trip.route
               ? {
                   id: reservation.trip.route.id,
@@ -1342,7 +1428,7 @@ export class ReservationsService {
                   email: reservation.trip.driver.email
                 }
               : null,
-            vehiclePhotoUrl: hasApprovedPayment
+            vehiclePhotoUrl: hasAcceptedRouteRequest
               ? reservation.trip.driver?.vehicle?.documents?.[0]?.filePath ?? null
               : null
           }

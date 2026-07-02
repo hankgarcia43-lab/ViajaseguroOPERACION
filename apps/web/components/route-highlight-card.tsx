@@ -91,7 +91,7 @@ export function RouteHighlightCard({
           <div className="flex flex-wrap items-center gap-2">
             <span className={`max-w-full rounded-full px-3 py-1 text-xs font-bold uppercase leading-tight ${classes.accent}`}>{badge ?? 'Ruta activa'}</span>
             {typeof activeDriversCount === 'number' && (
-              <span className="max-w-full rounded-full bg-white px-3 py-1 text-xs font-semibold leading-tight text-slate-700 shadow-sm">{activeDriversCount} choferes</span>
+              <span className="max-w-full rounded-full bg-white px-3 py-1 text-xs font-semibold leading-tight text-slate-700 shadow-sm">{activeDriversCount} conductores</span>
             )}
           </div>
 

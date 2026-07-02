@@ -21,20 +21,20 @@ function roleCopy(role: MeResponse['role']) {
   if (role === 'driver') {
     return {
       title: 'Panel conductor',
-      subtitle: 'Rutas, viajes, abordaje y liquidaciones en un solo flujo.'
+      subtitle: 'Rutas compartidas, solicitudes, pases y seguridad en un solo flujo.'
     };
   }
 
   if (role === 'admin') {
     return {
       title: 'Panel admin',
-      subtitle: 'Control operativo de verificaciones, pagos y viajes.'
+      subtitle: 'Control operativo de personas, rutas, solicitudes y pagos de plataforma.'
     };
   }
 
   return {
-    title: 'Panel pasajero',
-    subtitle: 'Busqueda, reserva, pago y ticket sin perderte.'
+    title: 'Panel usuario',
+    subtitle: 'Busqueda, solicitudes, pases y seguimiento sin perderte.'
   };
 }
 

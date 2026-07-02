@@ -139,7 +139,7 @@ export class UserDocumentsService {
 
     const role = this.usersService.mapRole(user.role) as 'passenger' | 'driver' | 'admin';
     if (role !== 'passenger' && role !== 'driver') {
-      throw new ForbiddenException('Solo pasajeros y conductores tienen flujo de verificacion documental');
+      throw new ForbiddenException('Solo usuarios y conductores tienen flujo de verificacion documental');
     }
 
     return {
@@ -189,7 +189,7 @@ export class UserDocumentsService {
       throw new ForbiddenException(
         requiredRole === 'driver'
           ? 'Debes completar y aprobar tu verificacion para operar rutas o trips'
-          : 'Debes completar y aprobar tu verificacion para reservar viajes'
+          : 'Debes completar y aprobar tu verificacion para solicitar rutas'
       );
     }
 
@@ -201,7 +201,7 @@ export class UserDocumentsService {
       requiredRole === 'passenger' &&
       (!user.passengerProfile || this.usersService.mapStatus(user.passengerProfile.status) !== 'approved')
     ) {
-      throw new ForbiddenException('Tu perfil de pasajero debe estar aprobado para reservar viajes');
+      throw new ForbiddenException('Tu perfil de usuario debe estar aprobado para solicitar rutas');
     }
 
     return user;
@@ -287,7 +287,7 @@ export class UserDocumentsService {
 
     const role = this.usersService.mapRole(user.role) as 'passenger' | 'driver' | 'admin';
     if (role !== 'passenger' && role !== 'driver') {
-      throw new ForbiddenException('Solo pasajeros y conductores pueden subir documentos de verificacion');
+      throw new ForbiddenException('Solo usuarios y conductores pueden subir documentos de verificacion');
     }
 
     return user;
@@ -346,4 +346,3 @@ export class UserDocumentsService {
     };
   }
 }
-

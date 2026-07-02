@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { apiRequest, getToken } from '@/lib/api';
-import { AvailableTrip, CreateReservationPayload, Reservation } from '@/lib/reservations';
+import { AvailableTrip, CreateReservationPayload } from '@/lib/reservations';
 import { getTripStatusMeta } from '@/lib/status';
 
 const WEEKDAY_LABELS: Record<string, string> = {
@@ -46,7 +46,7 @@ export default function ReserveTripPage() {
     async function loadTrip() {
       const token = getToken();
       if (!token || !tripId) {
-        setError('No hay sesion activa o viaje invalido.');
+        setError('No hay sesion activa o ruta invalida.');
         setLoading(false);
         return;
       }
@@ -87,8 +87,8 @@ export default function ReserveTripPage() {
     return selectedDaysCount * totalSeats * trip.pricePerSeatSnapshot;
   }, [trip, totalSeats, selectedDaysCount]);
 
-  const weeklyDiscountApplied = selectedWeekdays.length > 1;
-  const discountAmount = weeklyDiscountApplied ? Math.round(grossAmount * 0.1 * 100) / 100 : 0;
+  const weeklyDiscountApplied = false;
+  const discountAmount = 0;
   const totalAmount = Math.max(0, Math.round((grossAmount - discountAmount) * 100) / 100);
 
   function selectSingleDay() {
@@ -106,7 +106,7 @@ export default function ReserveTripPage() {
   function selectWeeklyTrip() {
     const nextDays = availableWeekdayList.slice(0, 7);
     if (nextDays.length < 2) {
-      setError('Para viaje semanal se necesitan al menos 2 dias disponibles.');
+      setError('Para solicitud semanal se necesitan al menos 2 dias disponibles.');
       setSelectedWeekdays(nextDays);
       return;
     }
@@ -118,7 +118,7 @@ export default function ReserveTripPage() {
 
   function toggleWeekday(weekday: string) {
     if (!availableWeekdays.has(weekday)) {
-      setError('Ese dia no esta disponible para este viaje.');
+      setError('Ese dia no esta disponible para esta ruta compartida.');
       return;
     }
 
@@ -145,17 +145,17 @@ export default function ReserveTripPage() {
     }
 
     if (!Number.isInteger(totalSeats) || totalSeats < 1) {
-      setError('El total de asientos debe ser un numero entero mayor o igual a 1.');
+      setError('El total de lugares debe ser un numero entero mayor o igual a 1.');
       return;
     }
 
     if (totalSeats > trip.remainingSeats) {
-      setError('La cantidad de asientos excede la disponibilidad actual.');
+      setError('La cantidad de lugares excede la disponibilidad actual.');
       return;
     }
 
     if (selectedWeekdays.length < 1) {
-      setError('Selecciona al menos 1 dia para viajar.');
+      setError('Selecciona al menos 1 dia para solicitar unirte.');
       return;
     }
 
@@ -180,7 +180,7 @@ export default function ReserveTripPage() {
     };
 
     try {
-      const response = await apiRequest<Reservation | { primaryReservationId?: string | null; totalDays?: number }>('/reservations', {
+      await apiRequest<unknown>('/reservations', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`
@@ -188,11 +188,9 @@ export default function ReserveTripPage() {
         body: JSON.stringify(payload)
       });
 
-      const primaryReservationId = 'id' in response ? response.id : response.primaryReservationId;
-      const target = selectedWeekdays.length === 1 && primaryReservationId ? `/dashboard/my-payments?reservation=${primaryReservationId}` : '/dashboard/my-payments';
-      router.push(target);
+      router.push('/dashboard/my-reservations');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo crear la reserva');
+      setError(e instanceof Error ? e.message : 'No se pudo crear la solicitud');
     } finally {
       setSaving(false);
     }
@@ -212,10 +210,10 @@ export default function ReserveTripPage() {
   return (
     <section className="mx-auto max-w-2xl space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-slate-900">Reservar viaje</h1>
+        <h1 className="text-2xl font-semibold text-slate-900">Solicitar unirme</h1>
         <div className="flex gap-2">
           <Link href="/dashboard/my-reservations" className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">
-            Mis reservas
+            Mis solicitudes
           </Link>
           <Link href="/dashboard/search-trips" className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">
             Volver a buscar
@@ -232,13 +230,13 @@ export default function ReserveTripPage() {
         </div>
         <p className="text-sm text-slate-700">Fecha base: {new Date(trip.tripDate).toLocaleDateString()}</p>
         <p className="text-sm text-slate-700">Salida: {trip.departureTimeSnapshot}</p>
-        <p className="text-sm text-slate-700">Precio por asiento: ${trip.pricePerSeatSnapshot.toFixed(2)} MXN</p>
-        <p className="text-sm text-slate-700">Asientos disponibles: {trip.remainingSeats}</p>
+        <p className="text-sm text-slate-700">Estimacion por lugar: ${trip.pricePerSeatSnapshot.toFixed(2)} MXN</p>
+        <p className="text-sm text-slate-700">Lugares disponibles: {trip.remainingSeats}</p>
       </article>
 
       <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-950 shadow-sm">
-        <p className="font-bold">Elige una ruta, revisa la referencia de abordaje y confirma que el horario te funciona.</p>
-        <p className="mt-1">Despues de pagar, sube tu comprobante para que el admin valide tu reserva. Cuando tu pago sea validado, tus boletos apareceran por dia.</p>
+        <p className="font-bold">Elige una ruta compartida, revisa la referencia y confirma que el horario te funciona.</p>
+        <p className="mt-1">El conductor debe aceptar tu solicitud. Cuando sea aceptada, tus pases apareceran separados por dia.</p>
       </div>
 
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 shadow-sm">
@@ -248,7 +246,7 @@ export default function ReserveTripPage() {
 
       <form onSubmit={onSubmit} className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <label className="block text-sm text-slate-700">
-          Total de asientos por dia
+          Lugares solicitados por dia
           <input
             required
             min={1}
@@ -262,7 +260,7 @@ export default function ReserveTripPage() {
         </label>
 
         <div>
-          <p className="text-sm text-slate-700">Tipo de reserva</p>
+          <p className="text-sm text-slate-700">Tipo de solicitud</p>
           <div className="mt-2 grid gap-2 sm:grid-cols-2">
             <button
               type="button"
@@ -278,7 +276,7 @@ export default function ReserveTripPage() {
               onClick={selectWeeklyTrip}
               className={`rounded-md border px-3 py-2 text-sm font-medium ${reservationMode === 'weekly' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-300 text-slate-700'} disabled:cursor-not-allowed disabled:opacity-50`}
             >
-              Viaje semanal -10%
+              Solicitud semanal
             </button>
           </div>
 
@@ -294,17 +292,17 @@ export default function ReserveTripPage() {
               );
             })}
           </div>
-          <p className="mt-2 text-xs text-slate-500">Puedes ajustar los dias disponibles. Si eliges 2 o mas dias, se aplica 10% de descuento semanal.</p>
+          <p className="mt-2 text-xs text-slate-500">Puedes ajustar los dias disponibles. Cada dia genera un pase separado si la solicitud es aceptada.</p>
         </div>
 
         <div className="rounded-md bg-slate-50 p-3 text-sm text-slate-700">
           <p>Dias seleccionados: {selectedWeekdays.length ? selectedWeekdays.map((day) => formatWeekday(day)).join(', ') : 'Sin seleccionar'}</p>
-          <p>Precio por asiento: ${trip.pricePerSeatSnapshot.toFixed(2)} MXN</p>
-          <p>Asientos por dia: {totalSeats}</p>
-          <p className="mt-1 text-slate-600">Subtotal: ${grossAmount.toFixed(2)} MXN</p>
-          {weeklyDiscountApplied && <p className="text-emerald-700">Descuento semanal 10%: -${discountAmount.toFixed(2)} MXN</p>}
-          <p className="mt-1 text-lg font-semibold text-emerald-700">Total a pagar: ${totalAmount.toFixed(2)} MXN</p>
-          <p className="mt-1 text-xs text-slate-500">El total suma dias seleccionados por asientos. Pagaras desde Mercado Pago y subiras comprobante.</p>
+          <p>Estimacion por lugar: ${trip.pricePerSeatSnapshot.toFixed(2)} MXN</p>
+          <p>Lugares por dia: {totalSeats}</p>
+          <p className="mt-1 text-slate-600">Referencia orientativa: ${grossAmount.toFixed(2)} MXN</p>
+          {weeklyDiscountApplied && <p className="text-emerald-700">Ajuste semanal: -${discountAmount.toFixed(2)} MXN</p>}
+          <p className="mt-1 text-lg font-semibold text-emerald-700">Estimacion total: ${totalAmount.toFixed(2)} MXN</p>
+          <p className="mt-1 text-xs text-slate-500">Este monto es solo una referencia orientativa de costos compartidos. VIAJA SEGURO no cobra el traslado ni administra pagos entre usuario y conductor.</p>
         </div>
 
         {error && (
@@ -323,7 +321,7 @@ export default function ReserveTripPage() {
           disabled={saving || trip.remainingSeats < 1}
           className="w-full rounded-md bg-brand-500 px-4 py-2 font-medium text-white disabled:opacity-60"
         >
-          {saving ? 'Reservando...' : 'Confirmar reserva y pagar'}
+          {saving ? 'Enviando solicitud...' : 'Solicitar unirme'}
         </button>
       </form>
     </section>

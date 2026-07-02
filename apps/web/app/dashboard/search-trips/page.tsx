@@ -134,8 +134,8 @@ export default function SearchTripsPage() {
       {isPassenger && (
         <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-4 text-sm text-cyan-900">
           <p className="font-semibold">Elige una ruta con calma</p>
-          <p className="mt-1">Revisa municipio, destino, conductor disponible, referencia de abordaje y horario antes de reservar.</p>
-          <p className="mt-1">Si viajas varios dias, usa reserva semanal para pagar el total en un solo movimiento y recibir boletos separados por fecha.</p>
+          <p className="mt-1">Revisa municipio, destino, conductor disponible, referencia de abordaje y horario antes de solicitar unirte.</p>
+          <p className="mt-1">Si viajas varios dias, usa solicitud semanal para recibir pases separados por fecha cuando el conductor acepte.</p>
         </div>
       )}
 
@@ -196,7 +196,7 @@ export default function SearchTripsPage() {
                       <div className="flex flex-wrap items-center gap-3">
                         {alreadyTaken && <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700">Ruta ya tomada</span>}
                         <Link href={`/dashboard/routes/${route.id}/take`} className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white">
-                          {alreadyTaken ? 'Editar datos de mi viaje' : 'Tomar ruta'}
+                          {alreadyTaken ? 'Editar mi disponibilidad' : 'Tomar ruta'}
                         </Link>
                       </div>
                     ) : (
@@ -214,7 +214,7 @@ export default function SearchTripsPage() {
       {!isPassenger && (
         <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
           <p className="font-semibold text-slate-900">Operacion recomendada</p>
-          <p className="mt-1">Mantener horarios claros, abordajes visibles y rutas consistentes facilita que pasajeros y conductores decidan mas rapido.</p>
+          <p className="mt-1">Mantener horarios claros, abordajes visibles y rutas consistentes facilita que usuarios y conductores decidan mas rapido.</p>
         </div>
       )}
     </section>

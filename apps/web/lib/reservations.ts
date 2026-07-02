@@ -1,4 +1,10 @@
 export type ReservationStatus =
+  | 'pending'
+  | 'accepted'
+  | 'rejected'
+  | 'cancelled_by_user'
+  | 'cancelled_by_driver'
+  | 'reported'
   | 'paid'
   | 'confirmed'
   | 'boarded'

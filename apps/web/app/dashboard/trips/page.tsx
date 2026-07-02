@@ -7,6 +7,7 @@ import { ContextHelpPanel } from '@/components/context-help-panel';
 import { SafetyActionsPanel } from '@/components/safety-actions-panel';
 import { apiRequest, getToken } from '@/lib/api';
 import { getTripStatusMeta } from '@/lib/status';
+import { Reservation } from '@/lib/reservations';
 import { DriverTrip } from '@/lib/trips';
 
 type TripAction = 'start' | 'finish' | 'cancel';
@@ -70,6 +71,7 @@ function groupTripsByDate(trips: DriverTrip[]): TripDateGroup[] {
 
 function TripsPageContent() {
   const [trips, setTrips] = useState<DriverTrip[]>([]);
+  const [requestsByTrip, setRequestsByTrip] = useState<Record<string, Reservation[]>>({});
   const [archivedTripIds, setArchivedTripIds] = useState<string[]>([]);
   const [showArchived, setShowArchived] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -115,8 +117,19 @@ function TripsPageContent() {
         }
       });
       setTrips(data);
+      const requestEntries = await Promise.all(
+        data.map(async (trip) => {
+          try {
+            const requests = await apiRequest<Reservation[]>(`/reservations/driver/trip/${trip.id}`, { headers: { Authorization: `Bearer ${token}` } });
+            return [trip.id, requests] as const;
+          } catch {
+            return [trip.id, []] as const;
+          }
+        })
+      );
+      setRequestsByTrip(Object.fromEntries(requestEntries));
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudieron cargar los viajes');
+      setError(requestError instanceof Error ? requestError.message : 'No se pudieron cargar tus rutas compartidas');
     } finally {
       setLoading(false);
     }
@@ -155,14 +168,14 @@ function TripsPageContent() {
         }
       });
       const successMap: Record<TripAction, string> = {
-        start: 'Viaje iniciado correctamente. Los pasajeros ya ven el aviso de abordaje en su panel.',
-        finish: 'Viaje finalizado correctamente. Ya puedes archivarlo para limpiar tu lista principal.',
-        cancel: 'Viaje cancelado correctamente. Ya puedes archivarlo para limpiar tu lista principal.'
+        start: 'Ruta iniciada correctamente. Los usuarios ya ven el aviso operativo en su panel.',
+        finish: 'Ruta finalizada correctamente. Ya puedes archivarla para limpiar tu lista principal.',
+        cancel: 'Ruta cancelada correctamente. Ya puedes archivarla para limpiar tu lista principal.'
       };
       setSuccess(successMap[action]);
       await loadTrips();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo actualizar el viaje');
+      setError(requestError instanceof Error ? requestError.message : 'No se pudo actualizar la ruta');
     } finally {
       setBusyAction(null);
     }
@@ -182,7 +195,7 @@ function TripsPageContent() {
     }
 
     if (trip.status !== 'scheduled') {
-      setError('Solo puedes validar boletos en viajes programados o en curso.');
+      setError('Solo puedes validar pases en rutas programadas o en curso.');
       return;
     }
 
@@ -199,29 +212,55 @@ function TripsPageContent() {
       });
       router.push(`/dashboard/trips/${trip.id}/boarding`);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo iniciar el viaje para validar boletos');
+      setError(requestError instanceof Error ? requestError.message : 'No se pudo iniciar la ruta para validar pases');
     } finally {
       setBusyAction(null);
     }
   }
   function archiveTrip(trip: DriverTrip) {
     if (!ARCHIVABLE_STATUSES.has(trip.status)) {
-      setError('Solo puedes archivar viajes finalizados o cancelados.');
+      setError('Solo puedes archivar rutas finalizadas o canceladas.');
       setSuccess(null);
       return;
     }
 
     persistArchivedTripIds([...archivedTripIds, trip.id]);
     setError(null);
-    setSuccess('Viaje archivado. Sigue disponible en la seccion Archivados.');
+    setSuccess('Ruta archivada. Sigue disponible en la seccion Archivados.');
   }
 
   function restoreTrip(trip: DriverTrip) {
     persistArchivedTripIds(archivedTripIds.filter((tripId) => tripId !== trip.id));
     setError(null);
-    setSuccess('Viaje restaurado a la lista principal.');
+    setSuccess('Ruta restaurada a la lista principal.');
   }
 
+  async function reviewRouteRequest(reservationId: string, action: 'accept' | 'reject') {
+    const token = getToken();
+    if (!token) {
+      setError('No hay sesion activa.');
+      return;
+    }
+
+    setBusyAction(`${reservationId}:${action}`);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      await apiRequest(`/reservations/${reservationId}/${action}`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      setSuccess(action === 'accept' ? 'Solicitud aceptada. El usuario ya puede ver su pase de ruta.' : 'Solicitud rechazada. El usuario vera el estado actualizado.');
+      await loadTrips();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'No se pudo actualizar la solicitud.');
+    } finally {
+      setBusyAction(null);
+    }
+  }
   function renderTripCard(trip: DriverTrip, isArchived = false) {
     const statusMeta = getTripStatusMeta(trip.status);
     const isStartBusy = busyAction === `${trip.id}:start`;
@@ -231,73 +270,102 @@ function TripsPageContent() {
     const canArchive = ARCHIVABLE_STATUSES.has(trip.status);
     const passengersExpected = trip.reservationSummary?.reservedSeats ?? 0;
     const ticketsToValidate = trip.reservationSummary?.reservationsCount ?? 0;
+    const tripRequests = requestsByTrip[trip.id] ?? [];
+    const pendingRequests = tripRequests.filter((reservation) => ['pending', 'confirmed'].includes(reservation.status));
+    const acceptedRequests = tripRequests.filter((reservation) => ['accepted', 'paid', 'boarded', 'completed'].includes(reservation.status));
 
     return (
       <article key={trip.id} className={`rounded-xl border p-5 shadow-sm ${isArchived ? 'border-slate-300 bg-slate-50' : 'border-slate-200 bg-white'}`}>
         <div className="flex items-start justify-between gap-2">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">{trip.route?.title || `${trip.route?.origin || 'Ruta'} -> ${trip.route?.destination || ''}`}</h2>
-            <p className="text-xs text-slate-500">Viaje # {trip.publicId ?? '-'}</p>
+            <p className="text-xs text-slate-500">Ruta # {trip.publicId ?? '-'}</p>
           </div>
           <span className={`rounded-full px-2 py-1 text-xs font-medium ${statusMeta.className}`}>{statusMeta.label}</span>
         </div>
         <div className="mt-3 rounded-2xl border border-sky-200 bg-sky-50 p-4">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-sky-700">Dia del viaje</p>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-sky-700">Dia de la ruta</p>
           <p className="mt-1 text-xl font-black leading-tight text-slate-950">{formatTripDateTitle(trip.tripDate)}</p>
           <p className="mt-1 text-sm font-semibold text-sky-900">Salida {formatTimeLabel(trip.departureTimeSnapshot)} - llegada {formatTimeLabel(trip.estimatedArrivalTimeSnapshot)}</p>
         </div>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-            <p className="text-xs font-bold uppercase text-slate-500">Pasajeros esperados</p>
+            <p className="text-xs font-bold uppercase text-slate-500">Usuarios esperados</p>
             <p className="mt-1 text-2xl font-black text-slate-950">{passengersExpected}</p>
           </div>
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-            <p className="text-xs font-bold uppercase text-slate-500">Boletos por validar</p>
+            <p className="text-xs font-bold uppercase text-slate-500">Pases por validar</p>
             <p className="mt-1 text-2xl font-black text-slate-950">{ticketsToValidate}</p>
           </div>
         </div>
-        <p className="mt-3 text-sm text-slate-700">Asientos configurados: {trip.availableSeatsSnapshot}</p>
-        <p className="text-sm text-slate-700">Asientos disponibles: {trip.reservationSummary?.remainingSeats ?? trip.availableSeatsSnapshot}</p>
-        <p className="text-sm text-slate-700">Precio: ${trip.pricePerSeatSnapshot.toFixed(2)} MXN</p>
-        <p className="text-sm text-slate-700">Referencia de abordaje: {trip.boardingReference ?? 'Sin definir'}</p>
-        {!isArchived && <p className="mt-2 rounded-md bg-amber-50 p-2 text-xs text-amber-800">Usa siempre una referencia visible y publica para proteger al pasajero y al conductor.</p>}
-
-        {trip.earningsSummary && (
-          <div className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
-            <p className="font-semibold">Ganancia del conductor (comision descontada)</p>
-            <p>Bruto cobrado: ${trip.earningsSummary.grossCollected.toFixed(2)} MXN</p>
-            <p>Comision app: ${trip.earningsSummary.appCommissionAmount.toFixed(2)} MXN</p>
-            <p>Reembolsos: ${trip.earningsSummary.refundedAmount.toFixed(2)} MXN</p>
-            <p className="font-semibold">Neto estimado a recibir: ${trip.earningsSummary.driverNetAfterRefunds.toFixed(2)} MXN</p>
-          </div>
+        {tripRequests.length > 0 && !isArchived && (
+          <section className="mt-3 rounded-xl border border-cyan-200 bg-cyan-50 p-3 text-sm text-cyan-950">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-700">Solicitudes de usuarios</p>
+                <p className="font-semibold text-slate-950">Pendientes: {pendingRequests.length} / Aceptadas: {acceptedRequests.length}</p>
+              </div>
+              <Link href={`/dashboard/trips/${trip.id}/boarding`} className="rounded-md border border-cyan-300 bg-white px-3 py-2 text-xs font-bold text-cyan-800">
+                Validar pases
+              </Link>
+            </div>
+            {pendingRequests.length > 0 && (
+              <div className="mt-3 space-y-2">
+                {pendingRequests.slice(0, 4).map((reservation) => {
+                  const acceptBusy = busyAction === `${reservation.id}:accept`;
+                  const rejectBusy = busyAction === `${reservation.id}:reject`;
+                  return (
+                    <article key={reservation.id} className="rounded-lg border border-white bg-white p-3 shadow-sm">
+                      <p className="font-bold text-slate-950">{reservation.passenger?.fullName ?? 'Usuario verificado'}</p>
+                      <p className="text-xs text-slate-600">Lugares solicitados: {reservation.totalSeats}</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <button type="button" disabled={acceptBusy || rejectBusy} onClick={() => void reviewRouteRequest(reservation.id, 'accept')} className="rounded-md bg-emerald-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">
+                          {acceptBusy ? 'Aceptando...' : 'Aceptar'}
+                        </button>
+                        <button type="button" disabled={acceptBusy || rejectBusy} onClick={() => void reviewRouteRequest(reservation.id, 'reject')} className="rounded-md border border-red-300 px-3 py-2 text-xs font-bold text-red-700 disabled:opacity-50">
+                          {rejectBusy ? 'Rechazando...' : 'Rechazar'}
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </section>
         )}
+        <p className="mt-3 text-sm text-slate-700">Lugares configurados: {trip.availableSeatsSnapshot}</p>
+        <p className="text-sm text-slate-700">Lugares disponibles: {trip.reservationSummary?.remainingSeats ?? trip.availableSeatsSnapshot}</p>
+        <p className="text-sm text-slate-700">Estimacion orientativa: ${trip.pricePerSeatSnapshot.toFixed(2)} MXN</p>
+        <p className="text-sm text-slate-700">Referencia de abordaje: {trip.boardingReference ?? 'Sin definir'}</p>
+        {!isArchived && <p className="mt-2 rounded-md bg-amber-50 p-2 text-xs text-amber-800">Usa siempre una referencia visible y publica para proteger al usuario y al conductor.</p>}
+
 
         <div className="mt-4 space-y-3">
           {!isArchived && trip.status === 'scheduled' && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-              <p className="font-bold">Este viaje aun no esta listo para validacion.</p>
-              <p className="mt-1">Cuando estes en el punto de abordaje, usa <strong>Iniciar y validar boletos</strong> para abrir la captura de codigos.</p>
+              <p className="font-bold">Esta ruta aun no esta lista para validacion.</p>
+              <p className="mt-1">Cuando estes en el punto de abordaje, usa <strong>Iniciar y validar pases</strong> para abrir la captura de codigos.</p>
             </div>
           )}
           {!isArchived && trip.status === 'started' && (
             <div className="space-y-3">
               <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
-                <p className="font-bold">Viaje en curso: ya puedes validar boletos.</p>
-                <p className="mt-1">Pide el <strong>codigo numerico de 6 digitos</strong> y valida unicamente boletos del dia y horario correspondiente.</p>
+                <p className="font-bold">Ruta en curso: ya puedes validar pases.</p>
+                <p className="mt-1">Pide el <strong>codigo numerico de 6 digitos</strong> y valida unicamente pases del dia y horario correspondiente.</p>
               </div>
               <SafetyActionsPanel
                 role="driver"
                 tripId={trip.id}
                 routeId={trip.routeId}
-                contextLabel={trip.route?.title ?? 'Viaje en curso'}
+                contextLabel={trip.route?.title ?? 'Ruta en curso'}
                 compact
               />
             </div>
           )}
           {!isArchived && canArchive && (
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
-              <p className="font-bold text-slate-950">Este viaje ya puede archivarse.</p>
-              <p className="mt-1">Archivarlo solo lo oculta de la lista principal; no borra reservas, pagos ni liquidaciones.</p>
+              <p className="font-bold text-slate-950">Esta ruta ya puede archivarse.</p>
+              <p className="mt-1">Archivarla solo la oculta de la lista principal; no borra solicitudes, pases ni reportes.</p>
             </div>
           )}
 
@@ -305,16 +373,16 @@ function TripsPageContent() {
             {!isArchived && trip.status === 'scheduled' && (
               <>
                 <button type="button" disabled={isStartBoardingBusy} onClick={() => startAndValidate(trip)} className="rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-wait disabled:bg-slate-300 disabled:text-slate-700">
-                  {isStartBoardingBusy ? 'Abriendo validacion...' : 'Iniciar y validar boletos'}
+                  {isStartBoardingBusy ? 'Abriendo validacion...' : 'Iniciar y validar pases'}
                 </button>
                 <button type="button" disabled={isStartBusy || isStartBoardingBusy} onClick={() => changeStatus(trip, 'start')} className="rounded-md border border-emerald-300 px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm disabled:opacity-50">
-                  {isStartBusy ? 'Iniciando...' : 'Solo iniciar viaje'}
+                  {isStartBusy ? 'Iniciando...' : 'Solo iniciar ruta'}
                 </button>
               </>
             )}
             {!isArchived && trip.status === 'started' && (
               <Link href={`/dashboard/trips/${trip.id}/boarding`} className="rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">
-                Validar boletos
+                Validar pases
               </Link>
             )}
             {!isArchived && trip.status === 'started' && (
@@ -329,7 +397,7 @@ function TripsPageContent() {
             )}
             {!isArchived && canArchive && (
               <button type="button" onClick={() => archiveTrip(trip)} className="rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700">
-                Archivar viaje
+                Archivar ruta
               </button>
             )}
             {isArchived && (
@@ -348,10 +416,10 @@ function TripsPageContent() {
       <section key={group.key} className={`space-y-3 rounded-xl border p-4 ${isArchived ? 'border-slate-200 bg-slate-100' : 'border-sky-200 bg-sky-50'}`}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-sky-700">Viajes por dia</p>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-sky-700">Rutas por dia</p>
             <h2 className="text-lg font-black text-slate-950">{group.title}</h2>
           </div>
-          <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-700">{group.trips.length} viaje(s)</span>
+          <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-700">{group.trips.length} ruta(s)</span>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           {group.trips.map((trip) => renderTripCard(trip, isArchived))}
@@ -361,7 +429,7 @@ function TripsPageContent() {
   }
 
   if (loading) {
-    return <p className="text-slate-700">Cargando viajes...</p>;
+    return <p className="text-slate-700">Cargando rutas...</p>;
   }
 
   return (
@@ -370,15 +438,15 @@ function TripsPageContent() {
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h1 className="text-2xl font-semibold text-slate-900">Mis viajes</h1>
-              <p className="text-sm text-slate-600">Opera en orden: <strong>1) iniciar viaje</strong>, <strong>2) validar boletos</strong>, <strong>3) finalizar salida</strong>.</p>
+              <h1 className="text-2xl font-semibold text-slate-900">Mis rutas compartidas</h1>
+              <p className="text-sm text-slate-600">Opera en orden: <strong>1) iniciar ruta</strong>, <strong>2) validar pases</strong>, <strong>3) finalizar salida</strong>.</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={() => setShowArchived((current) => !current)} className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">
                 {showArchived ? 'Ocultar archivados' : `Ver archivados (${archivedTrips.length})`}
               </button>
-              <Link href="/dashboard/routes" className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">Rutas asignadas</Link>
-              <Link href="/dashboard/routes" className="rounded-md bg-brand-500 px-4 py-2 text-sm font-medium text-white">Tomar ruta</Link>
+              <Link href="/dashboard/routes" className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">Rutas publicadas</Link>
+              <Link href="/dashboard/routes" className="rounded-md bg-brand-500 px-4 py-2 text-sm font-medium text-white">Publicar ruta</Link>
             </div>
           </div>
 
@@ -406,35 +474,35 @@ function TripsPageContent() {
           )}
           {success && <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 font-semibold text-emerald-800 shadow-sm">{success}</p>}
           <div className="rounded-xl border border-cyan-300 bg-cyan-50 p-4 text-sm text-cyan-950 shadow-sm">
-            <p className="text-base font-bold text-cyan-950">Reglas obligatorias para operar el viaje</p>
+            <p className="text-base font-bold text-cyan-950">Reglas obligatorias para operar la ruta</p>
             <div className="mt-3 grid gap-3 md:grid-cols-3">
               <div className="rounded-lg bg-white p-3 shadow-sm">
-                <p className="font-bold text-slate-950">1. Iniciar viaje</p>
-                <p className="mt-1 text-xs text-slate-700">Cuando estes en el punto de abordaje, presiona <strong>Iniciar viaje</strong>.</p>
+                <p className="font-bold text-slate-950">1. Iniciar ruta</p>
+                <p className="mt-1 text-xs text-slate-700">Cuando estes en el punto de abordaje, presiona <strong>Iniciar ruta</strong>.</p>
               </div>
               <div className="rounded-lg bg-white p-3 shadow-sm">
-                <p className="font-bold text-slate-950">2. Validar boletos</p>
-                <p className="mt-1 text-xs text-slate-700">Despues de iniciar, entra a <strong>Validar boletos</strong> y captura el codigo de 6 digitos.</p>
+                <p className="font-bold text-slate-950">2. Validar pases</p>
+                <p className="mt-1 text-xs text-slate-700">Despues de iniciar, entra a <strong>Validar pases</strong> y captura el codigo de 6 digitos.</p>
               </div>
               <div className="rounded-lg bg-white p-3 shadow-sm">
                 <p className="font-bold text-slate-950">3. Finalizar salida</p>
-                <p className="mt-1 text-xs text-slate-700">Al terminar el traslado, presiona <strong>Finalizar</strong> para cerrar la operacion.</p>
+                <p className="mt-1 text-xs text-slate-700">Al terminar la ruta, presiona <strong>Finalizar</strong> para cerrar la operacion.</p>
               </div>
             </div>
           </div>
 
           {takenRouteName && !error && (
             <p className="rounded-md bg-cyan-50 p-3 text-cyan-800">
-              Ruta tomada: <strong>{takenRouteName}</strong>. Ya puedes iniciar tu viaje desde este panel.
+              Ruta tomada: <strong>{takenRouteName}</strong>. Ya puedes iniciar tu ruta desde este panel.
             </p>
           )}
 
           {trips.length === 0 ? (
-            <p className="rounded-xl border border-slate-200 bg-white p-6 text-slate-700">Aun no tienes viajes programados. Ve a Rutas para tomar una y crear tu viaje automaticamente.</p>
+            <p className="rounded-xl border border-slate-200 bg-white p-6 text-slate-700">Aun no tienes rutas programadas. Ve a Rutas para tomar una y crear tu ruta automaticamente.</p>
           ) : activeTrips.length === 0 ? (
             <div className="rounded-xl border border-slate-200 bg-white p-6 text-slate-700">
-              <p className="font-semibold text-slate-900">No tienes viajes activos o pendientes en la lista principal.</p>
-              <p className="mt-1 text-sm">Los viajes finalizados o cancelados pasan al historial operativo y tambien pueden archivarse.</p>
+              <p className="font-semibold text-slate-900">No tienes rutas activas o pendientes en la lista principal.</p>
+              <p className="mt-1 text-sm">Las rutas finalizadas o canceladas pasan al historial operativo y tambien pueden archivarse.</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -445,11 +513,11 @@ function TripsPageContent() {
           <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Historial operativo</p>
-              <h2 className="text-lg font-semibold text-slate-950">Viajes terminados o cancelados</h2>
-              <p className="text-sm text-slate-600">Estos viajes ya no saturan la lista principal. Archivarlos solo limpia tu vista.</p>
+              <h2 className="text-lg font-semibold text-slate-950">Rutas terminadas o canceladas</h2>
+              <p className="text-sm text-slate-600">Estas rutas ya no saturan la lista principal. Archivarlos solo limpia tu vista.</p>
             </div>
             {historyTrips.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">Aun no hay viajes terminados o cancelados.</p>
+              <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">Aun no hay rutas terminadas o canceladas.</p>
             ) : (
               <div className="space-y-4">{groupedHistoryTrips.map((group) => renderTripGroup(group))}</div>
             )}
@@ -460,14 +528,14 @@ function TripsPageContent() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-xs font-bold uppercase text-slate-500">Archivados</p>
-                  <h2 className="text-lg font-semibold text-slate-900">Viajes cerrados fuera de la lista principal</h2>
+                  <h2 className="text-lg font-semibold text-slate-900">Rutas cerradas fuera de la lista principal</h2>
                 </div>
                 <button type="button" onClick={() => setShowArchived(false)} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700">
                   Cerrar archivados
                 </button>
               </div>
               {archivedTrips.length === 0 ? (
-                <p className="rounded-lg border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-600">Todavia no hay viajes archivados.</p>
+                <p className="rounded-lg border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-600">Todavia no hay rutas archivadas.</p>
               ) : (
                 <div className="space-y-4">
                   {groupedArchivedTrips.map((group) => renderTripGroup(group, true))}
@@ -481,14 +549,14 @@ function TripsPageContent() {
           title="Que hacer"
           subtitle="Operacion diaria del conductor"
           points={[
-            'Sigue los pasos para operar tu viaje con claridad.',
+            'Sigue los pasos para operar tu ruta con claridad.',
             'Verifica siempre el punto de encuentro antes de iniciar.',
-            'Valida el abordaje usando el codigo numerico del pasajero.',
-            'Archiva viajes finalizados o cancelados para mantener limpia tu lista principal.'
+            'Valida el abordaje usando el codigo numerico del usuario.',
+            'Archiva rutas finalizadas o canceladas para mantener limpia tu lista principal.'
           ]}
-          nextStep="Inicia viaje, valida abordajes y archiva viajes cerrados."
+          nextStep="Inicia ruta, valida pases y archiva rutas cerradas."
           ctaHref="/dashboard/routes"
-          ctaLabel="Tomar ruta"
+          ctaLabel="Publicar ruta"
         />
       </div>
     </section>
@@ -497,7 +565,7 @@ function TripsPageContent() {
 
 export default function TripsPage() {
   return (
-    <Suspense fallback={<p className="text-slate-700">Cargando viajes...</p>}>
+    <Suspense fallback={<p className="text-slate-700">Cargando rutas...</p>}>
       <TripsPageContent />
     </Suspense>
   );

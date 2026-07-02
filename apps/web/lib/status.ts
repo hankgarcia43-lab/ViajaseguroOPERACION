@@ -26,7 +26,13 @@ const tripStatusMap: Record<string, StatusMeta> = {
 };
 
 const reservationStatusMap: Record<string, StatusMeta> = {
-  confirmed: { label: 'Confirmada', className: 'bg-blue-100 text-blue-700' },
+  pending: { label: 'Solicitud pendiente', className: 'bg-amber-100 text-amber-700' },
+  accepted: { label: 'Solicitud aceptada', className: 'bg-emerald-100 text-emerald-700' },
+  rejected: { label: 'Solicitud rechazada', className: 'bg-red-100 text-red-700' },
+  cancelled_by_user: { label: 'Cancelada por usuario', className: 'bg-red-100 text-red-700' },
+  cancelled_by_driver: { label: 'Cancelada por conductor', className: 'bg-red-100 text-red-700' },
+  reported: { label: 'Reportada', className: 'bg-rose-100 text-rose-700' },
+  confirmed: { label: 'Confirmada heredada', className: 'bg-blue-100 text-blue-700' },
   paid: { label: 'Pagada', className: 'bg-emerald-100 text-emerald-700' },
   boarded: { label: 'Abordada', className: 'bg-indigo-100 text-indigo-700' },
   completed: { label: 'Completada', className: 'bg-slate-200 text-slate-700' },
@@ -85,4 +91,3 @@ export function getVerificationStatusMeta(status: string | null | undefined) {
 export function getVehicleStatusMeta(status: string | null | undefined) {
   return getMeta(verificationStatusMap, status);
 }
-

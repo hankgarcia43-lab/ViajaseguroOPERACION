@@ -85,18 +85,18 @@ export default function AdminDashboardPage() {
   }, []);
 
   const cards = useMemo<SummaryCard[]>(() => [
-    { label: 'Usuarios totales', value: peopleSummary?.total ?? 0, href: '/dashboard/admin/people', helper: `${peopleSummary?.drivers ?? 0} conductores / ${peopleSummary?.passengers ?? 0} pasajeros` },
+    { label: 'Usuarios totales', value: peopleSummary?.total ?? 0, href: '/dashboard/admin/people', helper: `${peopleSummary?.drivers ?? 0} conductores / ${peopleSummary?.passengers ?? 0} usuarios` },
     { label: 'Suspendidos', value: peopleSummary?.suspended ?? 0, href: '/dashboard/admin/people', helper: 'Cuentas bloqueadas por admin' },
     { label: 'Verificaciones pendientes', value: pendingVerifications.length, href: '/dashboard/admin/verifications', helper: 'Usuarios esperando revision' },
     { label: 'Vehiculos pendientes', value: pendingVehicles.length, href: '/dashboard/admin/vehicles', helper: 'Conductores bloqueados por vehiculo' },
-    { label: 'Tarifa por km activa', value: farePolicy ? `$${farePolicy.ratePerKm.toFixed(2)}` : 'Sin definir', href: '/dashboard/admin/fare-policy', helper: farePolicy ? `Modo: ${farePolicy.mode === 'fixed_per_km' ? 'fija' : 'maxima'} por km` : 'Configura politica comercial' },
-    { label: 'Pagos registrados', value: payments.length, href: '/dashboard/admin/payments', helper: 'Seguimiento economico del MVP' },
+    { label: 'Estimacion por km activa', value: farePolicy ? `$${farePolicy.ratePerKm.toFixed(2)}` : 'Sin definir', href: '/dashboard/admin/fare-policy', helper: farePolicy ? `Modo: ${farePolicy.mode === 'fixed_per_km' ? 'fija' : 'maxima'} por km` : 'Configura referencia orientativa' },
+    { label: 'Pagos registrados', value: payments.length, href: '/dashboard/admin/payments', helper: 'Membresias y servicios digitales' },
     { label: 'Refunds', value: refunds.length, href: '/dashboard/admin/refunds', helper: 'Reembolsos manuales e internos' },
-    { label: 'Liquidaciones', value: payouts.length, href: '/dashboard/admin/weekly-payouts', helper: 'Payouts internos generados' },
+    { label: 'Archivo legacy', value: payouts.length, href: '/dashboard/admin/weekly-payouts', helper: 'Modulo historico desactivado' },
     { label: 'Rutas piloto', value: routesCount, href: '/dashboard/admin/routes', helper: 'Rutas especificas creadas por administracion' },
     { label: 'Soporte abierto', value: incidents.filter((item) => item.status === 'open').length, href: '/dashboard/admin/incidents', helper: 'Comentarios, reportes y alertas' },
     { label: 'Viajes', value: trips.length, href: '/dashboard/admin/trips', helper: 'Operacion de salidas reales' },
-    { label: 'Reservas', value: reservations.length, href: '/dashboard/admin/reservations', helper: 'Seguimiento de ocupacion y pagos' }
+    { label: 'Solicitudes', value: reservations.length, href: '/dashboard/admin/reservations', helper: 'Seguimiento de ocupacion y pagos' }
   ] , [payments.length, payouts.length, pendingVerifications.length, pendingVehicles.length, refunds.length, reservations.length, routesCount, trips.length, incidents, farePolicy, peopleSummary]);
 
   if (loading) {
@@ -107,7 +107,7 @@ export default function AdminDashboardPage() {
     <section className="space-y-6">
       <header className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h1 className="text-2xl font-semibold text-slate-900">Dashboard admin</h1>
-        <p className="mt-2 text-sm text-slate-600">Centro operativo para revisar verificaciones, politica comercial, vehiculos, economia interna y estado del sistema.</p>
+        <p className="mt-2 text-sm text-slate-600">Centro operativo para revisar personas, verificaciones, rutas compartidas, solicitudes, seguridad y pagos de plataforma.</p>
       </header>
       {error && <p className="rounded-md bg-red-50 p-3 text-red-700">{error}</p>}
 
@@ -116,7 +116,7 @@ export default function AdminDashboardPage() {
         <div className="mt-3 grid gap-3 text-sm md:grid-cols-3">
           <p><span className="font-semibold">Rutas:</span> crea solo rutas reales con municipio, poblado libre, referencia de abordaje y horario confirmado.</p>
           <p><span className="font-semibold">Personas:</span> revisa documentos, suspende cuentas de riesgo y destaca conductores confiables.</p>
-          <p><span className="font-semibold">Pagos:</span> valida comprobantes antes de habilitar boleto y codigo de abordaje.</p>
+          <p><span className="font-semibold">Pagos:</span> usa Mercado Pago solo para membresias, verificaciones o servicios digitales.</p>
         </div>
       </section>
 
@@ -180,7 +180,7 @@ export default function AdminDashboardPage() {
               return (
                 <div key={reservation.id} className="rounded-xl border border-slate-200 p-4">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="font-medium text-slate-900">Reserva {reservation.id.slice(0, 8)}</p>
+                    <p className="font-medium text-slate-900">Solicitud {reservation.id.slice(0, 8)}</p>
                     <span className={`rounded-full px-2 py-1 text-xs font-medium ${status.className}`}>{status.label}</span>
                   </div>
                   <p className="mt-1 text-sm text-slate-600">{reservation.trip?.route?.origin} {'->'} {reservation.trip?.route?.destination}</p>
@@ -188,7 +188,7 @@ export default function AdminDashboardPage() {
                 </div>
               );
             })}
-            {trips.length === 0 && reservations.length === 0 && <p className="text-sm text-slate-600">Todavia no hay viajes ni reservas para inspeccionar.</p>}
+            {trips.length === 0 && reservations.length === 0 && <p className="text-sm text-slate-600">Todavia no hay viajes ni solicitudes para inspeccionar.</p>}
           </div>
         </section>
       </div>
@@ -207,15 +207,3 @@ export default function AdminDashboardPage() {
     </section>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-

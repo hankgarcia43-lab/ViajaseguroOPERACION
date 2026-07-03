@@ -4,6 +4,7 @@ import { FarePolicyService } from '../fare-policy/fare-policy.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RouteOffersService } from '../route-offers/route-offers.service';
 import { UserDocumentsService } from '../user-documents/user-documents.service';
+import { UsersService } from '../users/users.service';
 import { VehiclesService } from '../vehicles/vehicles.service';
 import { CreateReservationByOfferDto } from './dto/create-reservation-by-offer.dto';
 import { CreateReservationDto } from './dto/create-reservation.dto';
@@ -84,10 +85,12 @@ export class ReservationsService {
     private readonly userDocumentsService: UserDocumentsService,
     private readonly vehiclesService: VehiclesService,
     private readonly routeOffersService: RouteOffersService,
-    private readonly farePolicyService: FarePolicyService
+    private readonly farePolicyService: FarePolicyService,
+    private readonly usersService: UsersService
   ) {}
 
   async create(passengerUserId: string, dto: CreateReservationDto) {
+    await this.usersService.ensurePremiumAccess(passengerUserId, 'enviar solicitudes de ruta');
     const passenger = await this.ensureVerifiedPassenger(passengerUserId);
 
     const companionCount = dto.companionCount ?? dto.totalSeats - 1;
@@ -264,6 +267,7 @@ export class ReservationsService {
   }
 
   async createByOffer(passengerUserId: string, dto: CreateReservationByOfferDto) {
+    await this.usersService.ensurePremiumAccess(passengerUserId, 'solicitar unirte a rutas');
     const passenger = await this.ensureVerifiedPassenger(passengerUserId);
     const offer = await this.routeOffersService.findOfferOrThrow(dto.offerId);
 

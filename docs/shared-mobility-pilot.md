@@ -81,3 +81,26 @@ ALLOWED_DESTINATIONS=indios-verdes,pantitlan,buenavista,ciudad-azteca
 ```
 
 La UI debe comunicar: VIAJA SEGURO se encuentra en piloto cerrado con acceso limitado a zonas y miembros autorizados.
+## Flujo nuevo: ruta solicitada por usuario
+
+1. Usuario entra a `Necesito una ruta` y publica origen, destino, dias, horario y lugares necesarios.
+2. La solicitud se guarda en `requested_routes` con estado `open`.
+3. Conductores verificados y con acceso digital vigente pueden verla en `Rutas solicitadas`.
+4. El conductor responde con horario, punto de abordaje, referencia visual, cupos y aportacion sugerida en efectivo.
+5. El usuario acepta o rechaza la propuesta desde su panel.
+6. Si acepta, la ruta solicitada queda `confirmed` y la propuesta `accepted_by_user`.
+
+Texto operativo obligatorio: la aportacion sugerida es en efectivo, acordada directamente entre usuario y conductor. VIAJASEGURO no cobra traslados ni administra pagos entre las partes.
+
+## Trial y suscripcion
+
+- Todo usuario nuevo recibe `TRIAL_DAYS=15` por defecto.
+- El backend expone `subscription` y `access` en `/api/auth/me`.
+- Al vencer trial o suscripcion, el usuario puede iniciar sesion y ver informacion, pero el backend bloquea nuevas solicitudes/publicaciones premium.
+- Durante el piloto, Mercado Pago funciona con link fijo para membresias, verificaciones o servicios digitales.
+- Admin puede activar manualmente una suscripcion piloto por 30 dias desde `Admin > Personas` despues de verificar el pago.
+
+Migraciones agregadas:
+
+- `20260702000000_user_trial_subscription`
+- `20260702001000_requested_routes`

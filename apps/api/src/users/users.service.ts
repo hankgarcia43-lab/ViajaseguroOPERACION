@@ -15,7 +15,17 @@ export class UsersService {
   }
 
   async createUser(data: Prisma.UserCreateInput) {
-    return this.prisma.user.create({ data });
+    const now = new Date();
+    const trialEndsAt = this.addDays(now, this.getTrialDays());
+
+    return this.prisma.user.create({
+      data: {
+        trialStartedAt: now,
+        trialEndsAt,
+        subscriptionStatus: 'trial',
+        ...data
+      } as Prisma.UserCreateInput
+    });
   }
 
   async updateVerificationStatus(userId: string, status: 'pending' | 'approved' | 'rejected' | 'suspended') {
@@ -49,6 +59,8 @@ export class UsersService {
       verificationStatus: this.mapStatus(user.verificationStatus),
       operationalStatus: this.mapOperationalStatus((user as any).operationalStatus),
       recognitionLevel: this.mapRecognitionLevel((user as any).recognitionLevel),
+      subscription: this.mapSubscriptionSnapshot(user),
+      access: this.mapAccessSnapshot(user),
       adminNotes: (user as any).adminNotes ?? null,
       emergencyContactName: user.emergencyContactName,
       emergencyContactPhone: user.emergencyContactPhone,
@@ -92,7 +104,10 @@ export class UsersService {
       active,
       suspended,
       excellent,
-      pendingVerifications
+      pendingVerifications,
+      trialUsers: await user.count({ where: { subscriptionStatus: 'trial' } }),
+      activeSubscriptions: await user.count({ where: { subscriptionStatus: 'active' } }),
+      expiredSubscriptions: await user.count({ where: { subscriptionStatus: 'expired' } })
     };
   }
 
@@ -179,6 +194,39 @@ export class UsersService {
     return this.mapAdminPerson(updated);
   }
 
+  async activateSubscriptionForAdmin(adminUserId: string, userId: string, notes?: string) {
+    await this.ensureAdminActionAllowed(adminUserId, userId, 'activar suscripcion');
+    const current = await this.findAdminPersonOrThrow(userId);
+    const now = new Date();
+    const updated = await (this.prisma as any).user.update({
+      where: { id: userId },
+      data: {
+        subscriptionStatus: 'active',
+        planType: 'pilot_monthly',
+        subscriptionExpiresAt: this.addDays(now, 30),
+        adminNotes: this.appendAdminNote(current.adminNotes, notes, 'Suscripcion piloto activada por admin por 30 dias')
+      },
+      include: this.adminPeopleInclude()
+    });
+
+    return this.mapAdminPerson(updated);
+  }
+
+  async expireSubscriptionForAdmin(adminUserId: string, userId: string, notes?: string) {
+    await this.ensureAdminActionAllowed(adminUserId, userId, 'vencer suscripcion');
+    const current = await this.findAdminPersonOrThrow(userId);
+    const updated = await (this.prisma as any).user.update({
+      where: { id: userId },
+      data: {
+        subscriptionStatus: 'expired',
+        subscriptionExpiresAt: new Date(),
+        adminNotes: this.appendAdminNote(current.adminNotes, notes, 'Suscripcion marcada como vencida por admin')
+      },
+      include: this.adminPeopleInclude()
+    });
+
+    return this.mapAdminPerson(updated);
+  }
   async deleteUserForAdmin(adminUserId: string, userId: string) {
     await this.ensureAdminActionAllowed(adminUserId, userId, 'eliminar');
     const target = await this.findAdminPersonOrThrow(userId);
@@ -193,6 +241,25 @@ export class UsersService {
 
     await (this.prisma as any).user.delete({ where: { id: userId } });
     return { userId, deleted: true, message: 'Usuario eliminado correctamente.' };
+  }
+  async ensurePremiumAccess(userId: string, actionLabel = 'usar funciones premium') {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+
+    if (this.mapRole(user.role) === 'admin') {
+      return user;
+    }
+
+    const access = this.mapAccessSnapshot(user);
+    if (access.canUsePremiumFeatures) {
+      return user;
+    }
+
+    throw new ForbiddenException(
+      `Tu prueba gratis termino. Activa tu suscripcion para ${actionLabel}. La suscripcion habilita funciones digitales de la comunidad; no paga traslados.`
+    );
   }
   validateRole(userRole: string, requiredRole: 'passenger' | 'driver' | 'admin') {
     if (this.mapRole(userRole) !== requiredRole) {
@@ -214,6 +281,55 @@ export class UsersService {
     return 'pending';
   }
 
+  private mapSubscriptionSnapshot(user: any) {
+    const now = new Date();
+    const trialStartedAt = user.trialStartedAt ?? user.createdAt ?? null;
+    const trialEndsAt = user.trialEndsAt ?? (user.createdAt ? this.addDays(new Date(user.createdAt), this.getTrialDays()) : null);
+    const subscriptionExpiresAt = user.subscriptionExpiresAt ?? null;
+    const rawStatus = String(user.subscriptionStatus || 'trial').toLowerCase();
+    const isActivePaid = rawStatus === 'active' && (!subscriptionExpiresAt || new Date(subscriptionExpiresAt).getTime() >= now.getTime());
+    const isTrialActive = rawStatus === 'trial' && trialEndsAt && new Date(trialEndsAt).getTime() >= now.getTime();
+    const effectiveStatus = isActivePaid ? 'active' : isTrialActive ? 'trial' : rawStatus === 'cancelled' || rawStatus === 'past_due' ? rawStatus : 'expired';
+    const trialDaysRemaining = trialEndsAt ? Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - now.getTime()) / 86400000)) : 0;
+
+    return {
+      status: effectiveStatus,
+      storedStatus: rawStatus,
+      planType: user.planType ?? null,
+      trialStartedAt,
+      trialEndsAt,
+      trialDaysRemaining,
+      subscriptionExpiresAt,
+      isTrialActive: Boolean(isTrialActive),
+      isActivePaid: Boolean(isActivePaid)
+    };
+  }
+
+  private mapAccessSnapshot(user: any) {
+    const subscription = this.mapSubscriptionSnapshot(user);
+    const role = this.mapRole(user.role || 'passenger');
+    const canUsePremiumFeatures = role === 'admin' || subscription.isTrialActive || subscription.isActivePaid;
+
+    return {
+      canUsePremiumFeatures,
+      canPublishRouteNeed: role === 'passenger' && canUsePremiumFeatures,
+      canRequestJoinRoute: role === 'passenger' && canUsePremiumFeatures,
+      canPublishDriverRoute: role === 'driver' && canUsePremiumFeatures,
+      canTakeRequestedRoute: role === 'driver' && canUsePremiumFeatures,
+      reason: canUsePremiumFeatures ? null : 'trial_or_subscription_required'
+    };
+  }
+
+  private getTrialDays() {
+    const value = Number.parseInt(process.env.TRIAL_DAYS || '15', 10);
+    return Number.isFinite(value) && value > 0 ? value : 15;
+  }
+
+  private addDays(date: Date, days: number) {
+    const result = new Date(date);
+    result.setUTCDate(result.getUTCDate() + days);
+    return result;
+  }
   private mapOperationalStatus(status: string | null | undefined): 'active' | 'suspended' {
     return String(status || '').toLowerCase() === 'suspended' ? 'suspended' : 'active';
   }
@@ -253,6 +369,7 @@ export class UsersService {
       verificationStatus: this.mapStatus(user.verificationStatus),
       operationalStatus: this.mapOperationalStatus(user.operationalStatus),
       recognitionLevel: this.mapRecognitionLevel(user.recognitionLevel),
+      subscription: this.mapSubscriptionSnapshot(user),
       adminNotes: user.adminNotes ?? null,
       emergencyContactName: user.emergencyContactName,
       emergencyContactPhone: user.emergencyContactPhone,
@@ -365,4 +482,3 @@ export class UsersService {
     return counts.filter((item) => item.count > 0).map((item) => item.label);
   }
 }
-

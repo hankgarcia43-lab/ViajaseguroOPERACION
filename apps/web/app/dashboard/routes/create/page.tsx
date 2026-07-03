@@ -268,10 +268,10 @@ export default function CreateRoutePage() {
           <div className="rounded-md border border-cyan-100 bg-cyan-50 p-3 text-sm text-cyan-950">
             <div className="grid gap-2 md:grid-cols-3">
               <p><span className="font-semibold">Km calculados:</span> {estimatedDistanceKm.toFixed(1)} km</p>
-              <p><span className="font-semibold">Tarifa/km:</span> ${activeRatePerKm.toFixed(2)} MXN</p>
+              <p><span className="font-semibold">Referencia/km:</span> ${activeRatePerKm.toFixed(2)} MXN</p>
               <p><span className="font-semibold">Precio sistema:</span> ${calculatedPricePerSeat.toFixed(2)} MXN</p>
             </div>
-            <p className="mt-1 text-xs">El sistema calcula el precio por asiento. El conductor no modifica el monto.</p>
+            <p className="mt-1 text-xs">El sistema calcula una aportacion sugerida orientativa. El conductor no modifica este monto y VIAJASEGURO no cobra traslados.</p>
           </div>
 
           <div className="space-y-2">

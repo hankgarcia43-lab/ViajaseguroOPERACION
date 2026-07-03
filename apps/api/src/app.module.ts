@@ -11,6 +11,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RefundsModule } from './refunds/refunds.module';
 import { ReservationsModule } from './reservations/reservations.module';
+import { RouteNeedsModule } from './route-needs/route-needs.module';
 import { RouteOffersModule } from './route-offers/route-offers.module';
 import { RoutesModule } from './routes/routes.module';
 import { TripsModule } from './trips/trips.module';
@@ -34,6 +35,7 @@ import { WeeklyPayoutsModule } from './weekly-payouts/weekly-payouts.module';
     FarePolicyModule,
     RoutesModule,
     RouteOffersModule,
+    RouteNeedsModule,
     TripsModule,
     ReservationsModule,
     PaymentsModule,

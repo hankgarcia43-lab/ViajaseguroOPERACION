@@ -83,7 +83,7 @@ export default function AdminPeoplePage() {
     await load({ q: q.trim(), role, status });
   }
 
-  async function runAction(person: AdminPerson, action: 'suspend' | 'activate' | 'promote' | 'standard') {
+  async function runAction(person: AdminPerson, action: 'suspend' | 'activate' | 'promote' | 'standard' | 'activate-subscription' | 'expire-subscription') {
     const token = getToken();
     if (!token) {
       setError('No hay sesion activa.');
@@ -94,7 +94,9 @@ export default function AdminPeoplePage() {
       suspend: 'suspender',
       activate: 'reactivar/aprobar',
       promote: 'destacar',
-      standard: 'quitar destacado'
+      standard: 'quitar destacado',
+      'activate-subscription': 'activar suscripcion piloto',
+      'expire-subscription': 'vencer suscripcion'
     }[action];
 
     const notes = window.prompt(`Nota opcional para ${actionLabel} a ${person.fullName}:`) ?? undefined;
@@ -260,7 +262,7 @@ function PersonDetail({
 }: {
   person: AdminPerson;
   busyAction: string | null;
-  onAction: (person: AdminPerson, action: 'suspend' | 'activate' | 'promote' | 'standard') => Promise<void>;
+  onAction: (person: AdminPerson, action: 'suspend' | 'activate' | 'promote' | 'standard' | 'activate-subscription' | 'expire-subscription') => Promise<void>;
   onDelete: (person: AdminPerson) => Promise<void>;
 }) {
   const verificationMeta = getVerificationStatusMeta(person.verificationStatus);
@@ -280,6 +282,11 @@ function PersonDetail({
             <span className={`rounded-full px-2 py-1 text-xs font-medium ${verificationMeta.className}`}>{verificationMeta.label}</span>
             <span className={`rounded-full px-2 py-1 text-xs font-medium ${person.operationalStatus === 'suspended' ? 'bg-zinc-200 text-zinc-800' : 'bg-emerald-100 text-emerald-700'}`}>{operationalLabel(person.operationalStatus)}</span>
             <span className={`rounded-full px-2 py-1 text-xs font-medium ${person.recognitionLevel === 'excellent' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'}`}>{recognitionLabel(person.recognitionLevel)}</span>
+            {person.subscription && (
+              <span className={`rounded-full px-2 py-1 text-xs font-medium ${person.subscription.isActivePaid ? 'bg-emerald-100 text-emerald-700' : person.subscription.isTrialActive ? 'bg-sky-100 text-sky-700' : 'bg-rose-100 text-rose-700'}`}>
+                {person.subscription.isActivePaid ? 'Suscripcion activa' : person.subscription.isTrialActive ? `Trial ${person.subscription.trialDaysRemaining}d` : 'Sin acceso premium'}
+              </span>
+            )}
           </div>
         </div>
 
@@ -299,6 +306,13 @@ function PersonDetail({
               {busyAction === `suspend:${person.id}` ? 'Suspendiendo...' : 'Suspender'}
             </button>
           )}
+
+          <button type="button" disabled={busyAction === `activate-subscription:${person.id}`} onClick={() => void onAction(person, 'activate-subscription')} className="rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 disabled:opacity-60">
+            {busyAction === `activate-subscription:${person.id}` ? 'Activando...' : 'Activar suscripcion 30d'}
+          </button>
+          <button type="button" disabled={busyAction === `expire-subscription:${person.id}`} onClick={() => void onAction(person, 'expire-subscription')} className="rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 disabled:opacity-60">
+            {busyAction === `expire-subscription:${person.id}` ? 'Actualizando...' : 'Vencer suscripcion'}
+          </button>
 
           {person.recognitionLevel === 'excellent' ? (
             <button type="button" disabled={busyAction === `standard:${person.id}`} onClick={() => void onAction(person, 'standard')} className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 disabled:opacity-60">

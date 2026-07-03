@@ -114,3 +114,13 @@ Resumen:
 ## Estado de base de datos
 
 El schema Prisma actual usa PostgreSQL y conserva campos historicos de reservas, pagos y liquidaciones del MVP anterior. Para este pivot no se hizo migracion destructiva: la capa de aplicacion deja de crear pagos de traslado nuevos y reinterpreta el flujo como solicitudes/pases. La deuda tecnica esta documentada en `docs/shared-mobility-pilot.md`.
+## Ruta solicitada por usuario y trial
+
+- Usuario: `Dashboard -> Necesito una ruta` publica origen, destino, dias, horario y lugares.
+- Conductor: `Dashboard -> Rutas solicitadas` responde con horario, punto de abordaje, referencia, cupos y aportacion sugerida en efectivo.
+- Usuario: acepta o rechaza la propuesta desde sus solicitudes.
+- Admin: `Dashboard admin -> Rutas solicitadas` supervisa necesidades y propuestas.
+- Todo usuario nuevo recibe prueba gratis de 15 dias (`TRIAL_DAYS=15`).
+- Admin puede activar suscripcion piloto por 30 dias desde `Admin -> Personas` despues de verificar un pago de plataforma.
+
+Mercado Pago se mantiene solo para membresias, verificaciones, suscripciones o servicios digitales. No se usa para cobrar rutas ni traslados.

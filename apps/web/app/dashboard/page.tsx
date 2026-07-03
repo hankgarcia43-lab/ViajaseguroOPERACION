@@ -17,6 +17,20 @@ interface MeResponse {
   email: string;
   role: 'passenger' | 'driver' | 'admin';
   verificationStatus: 'pending' | 'approved' | 'rejected' | 'suspended';
+  subscription?: {
+    status: string;
+    storedStatus: string;
+    planType: string | null;
+    trialDaysRemaining: number;
+    trialEndsAt: string | null;
+    subscriptionExpiresAt: string | null;
+    isTrialActive: boolean;
+    isActivePaid: boolean;
+  };
+  access?: {
+    canUsePremiumFeatures: boolean;
+    reason: string | null;
+  };
   driverProfile: { id: string; status: string } | null;
   passengerProfile: { id: string; status: string } | null;
 }
@@ -158,12 +172,26 @@ export default function DashboardPage() {
   if (!me) return null;
 
   const verificationMeta = getVerificationStatusMeta(me.verificationStatus);
+  const subscription = me.subscription;
+  const trialDaysRemaining = subscription?.trialDaysRemaining ?? 0;
+  const subscriptionStatusLabel = subscription?.isActivePaid
+    ? 'Suscripcion activa'
+    : subscription?.isTrialActive
+      ? `Prueba gratis: ${trialDaysRemaining} dia(s) restantes`
+      : 'Prueba vencida';
+  const subscriptionTone = subscription?.isActivePaid
+    ? 'border-emerald-200 bg-emerald-50 text-emerald-950'
+    : subscription?.isTrialActive && trialDaysRemaining <= 3
+      ? 'border-amber-200 bg-amber-50 text-amber-950'
+      : subscription?.isTrialActive
+        ? 'border-sky-200 bg-sky-50 text-sky-950'
+        : 'border-rose-200 bg-rose-50 text-rose-950';
 
   const roleCopy = {
     passenger: {
-      title: 'Encuentra una ruta compartida y solicita unirte con claridad',
-      subtitle: 'Elige corredor, revisa conductor, selecciona dias y conserva tus pases en el panel.',
-      chips: ['Punto publico y visible', 'Solicitud semanal disponible', 'Pase con datos de la ruta']
+      title: 'Encuentra rutas compartidas hacia tu trabajo, escuela o zona de destino',
+      subtitle: 'Publica la ruta que necesitas o solicita unirte a rutas de conductores verificados de tu zona.',
+      chips: ['Necesito una ruta', 'Buscar rutas disponibles', 'Coordinacion directa']
     },
     driver: {
       title: 'Publica rutas recurrentes y coordina con miembros verificados',
@@ -189,8 +217,8 @@ export default function DashboardPage() {
             'Cuando el conductor acepte se habilita tu pase.'
           ],
           nextStep: 'Ir a buscar rutas o revisar tus solicitudes.',
-          ctaHref: '/dashboard/search-trips',
-          ctaLabel: 'Buscar rutas'
+          ctaHref: '/dashboard/routes/request',
+          ctaLabel: 'Necesito una ruta'
         }
       : me.role === 'driver'
       ? {
@@ -262,6 +290,27 @@ export default function DashboardPage() {
     }
   }
 
+  const quickActions = me.role === 'passenger'
+    ? [
+        { href: '/dashboard/routes/request', label: 'Necesito una ruta', helper: 'Publica origen, destino, dias y horario.' },
+        { href: '/dashboard/search-trips', label: 'Buscar rutas disponibles', helper: 'Compara conductores y horarios.' },
+        { href: '/dashboard/routes/request', label: 'Mis solicitudes', helper: 'Responde propuestas de conductores.' },
+        { href: '/dashboard/my-payments', label: 'Mi suscripcion', helper: 'Activa acceso digital al terminar la prueba.' }
+      ]
+    : me.role === 'driver'
+      ? [
+          { href: '/dashboard/routes/create', label: 'Publicar ruta', helper: 'Da de alta tu ruta recurrente.' },
+          { href: '/dashboard/route-needs', label: 'Ver rutas solicitadas', helper: 'Toma necesidades compatibles.' },
+          { href: '/dashboard/trips', label: 'Mis rutas activas', helper: 'Inicia ruta y valida pases.' },
+          { href: '/dashboard/verification', label: 'Mi verificacion / plan', helper: 'Mantente aprobado para operar.' }
+        ]
+      : [
+          { href: '/dashboard/admin/verifications', label: 'Conductores pendientes', helper: 'Aprueba o rechaza documentos.' },
+          { href: '/dashboard/admin/routes', label: 'Rutas publicadas', helper: 'Pausa o ajusta rutas.' },
+          { href: '/dashboard/admin/people', label: 'Usuarios en piloto', helper: 'Suspende, reactiva o revisa registros.' },
+          { href: '/dashboard/admin/payments', label: 'Pagos plataforma', helper: 'Solo membresias y servicios digitales.' }
+        ];
+
   return (
     <section className="space-y-6">
       <header className="relative overflow-hidden rounded-[32px] bg-slate-950 p-8 text-white shadow-[0_30px_90px_-45px_rgba(7,17,31,0.85)] md:p-10">
@@ -284,6 +333,32 @@ export default function DashboardPage() {
           </div>
         </div>
       </header>
+
+      {me.role !== 'admin' && subscription && (
+        <section className={`rounded-2xl border p-4 shadow-sm ${subscriptionTone}`}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] opacity-70">Acceso digital VIAJASEGURO</p>
+              <h2 className="mt-1 text-lg font-black">{subscriptionStatusLabel}</h2>
+              <p className="mt-1 text-sm font-medium opacity-85">
+                La suscripcion habilita funciones digitales de la comunidad: publicar rutas, solicitar unirse y recibir respuestas. No representa el pago de un traslado.
+              </p>
+            </div>
+            <Link href="/dashboard/my-payments" className="rounded-md bg-slate-950 px-4 py-2 text-sm font-bold text-white hover:bg-slate-800">
+              Activar suscripcion
+            </Link>
+          </div>
+        </section>
+      )}
+
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {quickActions.map((action) => (
+          <Link key={action.href + action.label} href={action.href} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-sky-300 hover:shadow-md">
+            <p className="text-sm font-black text-slate-950">{action.label}</p>
+            <p className="mt-1 text-xs leading-5 text-slate-600">{action.helper}</p>
+          </Link>
+        ))}
+      </section>
 
       {statsError && me.role !== 'admin' && (
         <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900">No se pudieron cargar algunas estadisticas: {statsError}</p>
@@ -468,7 +543,7 @@ export default function DashboardPage() {
             <div className="grid gap-4 lg:grid-cols-3">
               <article className="vs-card">
                 <p className="vs-kicker">Buscar</p>
-                <h2 className="mt-3 text-xl font-semibold text-slate-950">Viaja con horario fijo y tarifa clara</h2>
+                <h2 className="mt-3 text-xl font-semibold text-slate-950">Encuentra ruta con horario claro y aportacion sugerida</h2>
                 <p className="mt-3 text-sm leading-6 text-slate-600">Consulta rutas disponibles, ocupacion y hora de salida antes de solicitar unirte.</p>
                 <div className="mt-5 flex flex-wrap gap-2"><Link href="/dashboard/search-trips" className="vs-button-accent">Buscar rutas</Link></div>
               </article>

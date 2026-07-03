@@ -42,6 +42,15 @@ export class AdminPeopleController {
     return this.usersService.setStandardUserForAdmin(user.sub, userId, dto.notes);
   }
 
+  @Patch(':userId/activate-subscription')
+  activateSubscription(@CurrentUser() user: { sub: string }, @Param('userId') userId: string, @Body() dto: AdminUserActionDto) {
+    return this.usersService.activateSubscriptionForAdmin(user.sub, userId, dto.notes);
+  }
+
+  @Patch(':userId/expire-subscription')
+  expireSubscription(@CurrentUser() user: { sub: string }, @Param('userId') userId: string, @Body() dto: AdminUserActionDto) {
+    return this.usersService.expireSubscriptionForAdmin(user.sub, userId, dto.notes);
+  }
   @Delete(':userId')
   remove(@CurrentUser() user: { sub: string }, @Param('userId') userId: string) {
     return this.usersService.deleteUserForAdmin(user.sub, userId);

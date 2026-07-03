@@ -3,6 +3,11 @@ import { MERCADO_PAGO_DIRECT_PAYMENT_LINK, MERCADO_PAGO_PAYMENT_REFERENCE } from
 
 const membershipPlans = [
   {
+    name: 'Prueba gratis 15 dias',
+    detail: 'Publica necesidades de ruta, busca rutas disponibles y solicita unirte durante el periodo de prueba.',
+    tone: 'border-cyan-200 bg-cyan-50 text-cyan-950'
+  },
+  {
     name: 'Usuario miembro',
     detail: 'Acceso para solicitar unirse a rutas compartidas durante el piloto cerrado.',
     tone: 'border-sky-200 bg-sky-50 text-sky-950'
@@ -47,7 +52,7 @@ export default function MyPaymentsPage() {
         </p>
       </article>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {membershipPlans.map((plan) => (
           <article key={plan.name} className={`rounded-2xl border p-5 shadow-sm ${plan.tone}`}>
             <h2 className="text-lg font-black text-slate-950">{plan.name}</h2>
@@ -60,7 +65,7 @@ export default function MyPaymentsPage() {
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">Link oficial</p>
         <h2 className="mt-2 text-xl font-bold text-slate-950">Mercado Pago VIAJA SEGURO</h2>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          Usa este link solo cuando el admin te indique activar una membresia, verificacion o servicio digital. Referencia sugerida: <span className="font-semibold text-slate-950">{MERCADO_PAGO_PAYMENT_REFERENCE}</span>.
+          Usa este link solo para activar una membresia, verificacion o servicio digital de VIAJASEGURO. No lo uses para pagar rutas, traslados ni aportaciones en efectivo. Referencia sugerida: <span className="font-semibold text-slate-950">{MERCADO_PAGO_PAYMENT_REFERENCE}</span>.
         </p>
         <a href={MERCADO_PAGO_DIRECT_PAYMENT_LINK} target="_blank" rel="noreferrer" className="mt-5 inline-flex rounded-2xl bg-sky-700 px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-sky-600">
           Activar membresia con Mercado Pago

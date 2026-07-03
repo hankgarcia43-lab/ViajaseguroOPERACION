@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { UsersService } from '../users/users.service';
 import { VehiclesService } from '../vehicles/vehicles.service';
 import { CreateRouteOfferDto } from './dto/create-route-offer.dto';
 import { UpdateRouteOfferDto } from './dto/update-route-offer.dto';
@@ -11,7 +12,7 @@ const OFFER_STATUS = {
 
 @Injectable()
 export class RouteOffersService {
-  constructor(private readonly prisma: PrismaService, private readonly vehiclesService: VehiclesService) {}
+  constructor(private readonly prisma: PrismaService, private readonly vehiclesService: VehiclesService, private readonly usersService: UsersService) {}
 
   async listBaseRoutes() {
     const routes = await this.routeDelegate().findMany({ where: { status: 'active' }, orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }] });
@@ -72,6 +73,7 @@ export class RouteOffersService {
       }));
   }
   async create(driverUserId: string, dto: CreateRouteOfferDto) {
+    await this.usersService.ensurePremiumAccess(driverUserId, 'publicar disponibilidad de ruta');
     await this.vehiclesService.ensureDriverCanOperate(driverUserId);
 
     const route = await this.routeDelegate().findUnique({ where: { id: dto.routeId } });

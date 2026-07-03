@@ -5,32 +5,27 @@ export type DashboardNavItem = {
 
 export const PASSENGER_DASHBOARD_NAV: DashboardNavItem[] = [
   { href: '/dashboard', label: 'Resumen' },
+  { href: '/dashboard/routes/request', label: 'Necesito una ruta' },
   { href: '/dashboard/search-trips', label: 'Buscar rutas' },
-  { href: '/dashboard/routes', label: 'Rutas publicadas' },
   { href: '/dashboard/my-reservations', label: 'Mis solicitudes' },
-  { href: '/dashboard/my-payments', label: 'Membresia' },
-  { href: '/dashboard/verification', label: 'Verificacion' },
-  { href: '/dashboard/incidents', label: 'Soporte' }
+  { href: '/dashboard/my-payments', label: 'Mi suscripcion' }
 ];
 
 export const DRIVER_DASHBOARD_NAV: DashboardNavItem[] = [
   { href: '/dashboard', label: 'Resumen' },
-  { href: '/dashboard/routes', label: 'Rutas' },
-  { href: '/dashboard/trips', label: 'Rutas compartidas' },
-  { href: '/dashboard/vehicle', label: 'Vehiculo' },
-  { href: '/dashboard/verification', label: 'Verificacion' },
-  { href: '/dashboard/driver/payouts', label: 'Actividad de ruta' },
-  { href: '/dashboard/incidents', label: 'Soporte' }
+  { href: '/dashboard/routes/create', label: 'Publicar ruta' },
+  { href: '/dashboard/route-needs', label: 'Rutas solicitadas' },
+  { href: '/dashboard/trips', label: 'Mis rutas activas' },
+  { href: '/dashboard/verification', label: 'Verificacion / plan' }
 ];
 
 export const ADMIN_DASHBOARD_NAV: DashboardNavItem[] = [
   { href: '/dashboard', label: 'Resumen' },
   { href: '/dashboard/admin', label: 'Panel admin' },
   { href: '/dashboard/admin/verifications', label: 'Verificaciones' },
-  { href: '/dashboard/admin/vehicles', label: 'Vehiculos' },
+  { href: '/dashboard/admin/people', label: 'Usuarios' },
   { href: '/dashboard/admin/routes', label: 'Rutas' },
   { href: '/dashboard/admin/payments', label: 'Pagos plataforma' },
-  { href: '/dashboard/admin/trips', label: 'Rutas compartidas' },
   { href: '/dashboard/admin/reservations', label: 'Solicitudes' },
-  { href: '/dashboard/admin/incidents', label: 'Soporte' }
+  { href: '/dashboard/admin/incidents', label: 'Reportes' }
 ];

@@ -61,6 +61,7 @@ DATABASE_URL=<Render PostgreSQL connection string>
 JWT_SECRET=<valor largo y aleatorio>
 JWT_EXPIRES_IN=7d
 CORS_ORIGIN=https://TU-FRONTEND.vercel.app
+FRONTEND_URL=https://TU-FRONTEND.vercel.app
 ADMIN_SUPERUSER_MODE=false
 AUTO_APPROVE_DRIVERS=false
 ENABLE_DEV_DRIVER_AUTO_APPROVE_BYPASS=false
@@ -76,11 +77,20 @@ ALLOWED_DESTINATIONS=indios-verdes,pantitlan,buenavista,ciudad-azteca
 MERCADOPAGO_PAYMENT_LINK=https://link.mercadopago.com.mx/viajaseguro2026
 MERCADOPAGO_ACCESS_TOKEN=
 MERCADOPAGO_WEBHOOK_SECRET=
+MERCADOPAGO_WEBHOOK_URL=https://TU-BACKEND-RENDER.onrender.com/api/webhooks/mercadopago
+MERCADOPAGO_SUBSCRIPTION_AMOUNT=99
+MERCADOPAGO_SUBSCRIPTION_DAYS=30
 MERCADOPAGO_USE_SANDBOX=false
 MANUAL_PAYMENT_PROCESSOR_LABEL=Mercado Pago
 MANUAL_PAYMENT_REFERENCE=VIAJA SEGURO
 ```
 
+
+### Suscripcion automatica con Mercado Pago
+
+Para activacion automatica, el usuario debe entrar a `Mi suscripcion` y usar el boton `Activar suscripcion`. Ese boton crea una preferencia de Mercado Pago con `external_reference` interno de suscripcion. Cuando Mercado Pago mande webhook `approved` a `MERCADOPAGO_WEBHOOK_URL`, la API actualiza `subscriptionStatus=active` y extiende `subscriptionExpiresAt`.
+
+El link fijo `NEXT_PUBLIC_MP_PAYMENT_LINK` queda como respaldo manual. Si se usa ese link, el admin debe activar la suscripcion desde `Admin > Personas` porque el link fijo no identifica de forma confiable al usuario dentro del webhook.
 ## Prisma y base de datos
 
 Comandos utiles:

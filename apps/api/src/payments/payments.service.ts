@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { createHmac, randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { UsersService } from '../users/users.service';
 import { ReviewPaymentDto } from './dto/review-payment.dto';
 import { SimulatePaymentDto } from './dto/simulate-payment.dto';
 
@@ -64,9 +65,12 @@ const PAYMENT_PROVIDER = {
   SIMULATED: 'simulated'
 } as const;
 
+const SUBSCRIPTION_REFERENCE_PREFIX = 'viajaseguro:subscription';
+const DEFAULT_SUBSCRIPTION_DAYS = 30;
+
 @Injectable()
 export class PaymentsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly usersService: UsersService) {}
   private throwTransportPaymentDisabled(): never {
     throw new ForbiddenException(
       'Los pagos por rutas compartidas estan desactivados. Mercado Pago se usa solo para membresias, verificaciones, suscripciones o servicios digitales de VIAJA SEGURO.'
@@ -219,6 +223,75 @@ export class PaymentsService {
     return this.findById(adminUserId, 'admin', payment.id);
   }
 
+  async createSubscriptionMercadoPagoCheckout(userId: string, role: string, dto: { planType?: string } = {}) {
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+
+    const mappedRole = this.usersService.mapRole(role || user.role);
+    if (mappedRole === 'admin') {
+      throw new ForbiddenException('Admin no requiere checkout de suscripcion');
+    }
+
+    const plan = this.resolveSubscriptionCheckoutPlan(mappedRole, dto.planType);
+    const accessToken = this.getMercadoPagoAccessToken();
+    const frontendBaseUrl = this.getFrontendBaseUrl();
+    const externalReference = this.buildSubscriptionExternalReference(user.id, plan.planType, plan.days);
+    const notificationUrl = process.env.MERCADOPAGO_WEBHOOK_URL?.trim();
+
+    const preference = await this.callMercadoPagoApi('/checkout/preferences', {
+      method: 'POST',
+      accessToken,
+      idempotencyKey: `subscription-${user.id}-${plan.planType}-${Date.now()}`,
+      body: {
+        items: [
+          {
+            id: plan.planType,
+            title: plan.title,
+            description: 'Suscripcion digital VIAJASEGURO. No corresponde al pago de traslados.',
+            category_id: 'services',
+            quantity: 1,
+            currency_id: 'MXN',
+            unit_price: plan.amount
+          }
+        ],
+        payer: {
+          name: user.fullName,
+          email: user.email
+        },
+        external_reference: externalReference,
+        notification_url: notificationUrl || undefined,
+        back_urls: {
+          success: `${frontendBaseUrl}/dashboard/my-payments?subscription=success`,
+          pending: `${frontendBaseUrl}/dashboard/my-payments?subscription=pending`,
+          failure: `${frontendBaseUrl}/dashboard/my-payments?subscription=failure`
+        },
+        auto_return: 'approved',
+        metadata: {
+          payment_type: 'platform_subscription',
+          user_id: user.id,
+          role: mappedRole,
+          plan_type: plan.planType,
+          subscription_days: plan.days
+        }
+      }
+    });
+
+    const checkoutUrl = this.resolveMercadoPagoPreferenceUrl(preference);
+    return {
+      checkoutUrl,
+      preferenceId: preference.id ?? null,
+      initPoint: preference.init_point ?? null,
+      sandboxInitPoint: preference.sandbox_init_point ?? null,
+      externalReference,
+      planType: plan.planType,
+      amount: plan.amount,
+      currency: 'MXN',
+      subscriptionDays: plan.days,
+      message: 'Mercado Pago solo activa una suscripcion digital de plataforma; no cobra rutas ni traslados.'
+    };
+  }
   async createMercadoPagoCheckout(userId: string, role: string, reservationId: string) {
     void userId;
     void role;
@@ -253,6 +326,11 @@ export class PaymentsService {
     const localPaymentId = String(mpPayment.external_reference ?? '').trim();
     if (!localPaymentId) {
       return { received: true, ignored: true, reason: 'missing-external-reference', mpPaymentId: dataId };
+    }
+
+    const subscriptionReference = this.parseSubscriptionExternalReference(localPaymentId);
+    if (subscriptionReference) {
+      return this.processSubscriptionMercadoPagoPayment(subscriptionReference, mpPayment, dataId);
     }
 
     const localPayment = await this.paymentDelegate().findUnique({
@@ -430,6 +508,118 @@ export class PaymentsService {
     });
   }
 
+  private resolveSubscriptionCheckoutPlan(role: 'passenger' | 'driver' | 'admin', requestedPlanType?: string) {
+    const defaultPlanType = role === 'driver' ? 'driver_monthly' : 'user_monthly';
+    const planType = this.normalizeSubscriptionPlanType(requestedPlanType || defaultPlanType, role);
+    const amount = this.getRequiredPositiveMoneyEnv('MERCADOPAGO_SUBSCRIPTION_AMOUNT');
+    const days = this.getPositiveIntegerEnv('MERCADOPAGO_SUBSCRIPTION_DAYS', DEFAULT_SUBSCRIPTION_DAYS);
+    const title = planType === 'driver_monthly' ? 'Plan conductor VIAJASEGURO' : 'Membresia usuario VIAJASEGURO';
+
+    return { planType, amount, days, title };
+  }
+
+  private normalizeSubscriptionPlanType(planType: string, role: 'passenger' | 'driver' | 'admin') {
+    const normalized = String(planType || '').trim().toLowerCase();
+    const passengerPlans = new Set(['user_monthly', 'passenger_basic_monthly', 'passenger_premium_monthly']);
+    const driverPlans = new Set(['driver_monthly']);
+
+    if (role === 'driver') {
+      return driverPlans.has(normalized) ? normalized : 'driver_monthly';
+    }
+
+    return passengerPlans.has(normalized) ? normalized : 'user_monthly';
+  }
+
+  private buildSubscriptionExternalReference(userId: string, planType: string, days: number) {
+    return `${SUBSCRIPTION_REFERENCE_PREFIX}:${userId}:${planType}:${days}`;
+  }
+
+  private parseSubscriptionExternalReference(reference: string) {
+    const parts = String(reference || '').split(':');
+    if (parts.length !== 5 || `${parts[0]}:${parts[1]}` !== SUBSCRIPTION_REFERENCE_PREFIX) {
+      return null;
+    }
+
+    const days = Number.parseInt(parts[4] ?? '', 10);
+    if (!parts[2] || !parts[3] || !Number.isFinite(days) || days <= 0) {
+      return null;
+    }
+
+    return {
+      userId: parts[2],
+      planType: parts[3],
+      days
+    };
+  }
+
+  private async processSubscriptionMercadoPagoPayment(
+    reference: { userId: string; planType: string; days: number },
+    mpPayment: any,
+    dataId: string
+  ) {
+    const mappedStatus = this.mapMercadoPagoStatus(String(mpPayment.status ?? 'pending'));
+    const mpPaymentId = String(mpPayment.id ?? dataId);
+
+    if (mappedStatus !== PAYMENT_STATUS.APPROVED) {
+      return {
+        received: true,
+        ignored: false,
+        subscription: true,
+        activated: false,
+        userId: reference.userId,
+        planType: reference.planType,
+        mappedStatus,
+        mpStatus: mpPayment.status ?? null,
+        mpPaymentId,
+        message: 'El pago de suscripcion aun no esta aprobado; no se activo acceso.'
+      };
+    }
+
+    const user = await this.usersService.activateSubscriptionFromProvider(reference.userId, {
+      planType: reference.planType,
+      days: reference.days,
+      provider: PAYMENT_PROVIDER.MERCADOPAGO,
+      providerReference: mpPaymentId,
+      rawStatus: String(mpPayment.status ?? 'approved')
+    });
+
+    return {
+      received: true,
+      ignored: false,
+      subscription: true,
+      activated: true,
+      userId: reference.userId,
+      planType: reference.planType,
+      subscriptionExpiresAt: user.subscription?.subscriptionExpiresAt ?? null,
+      mappedStatus,
+      mpStatus: mpPayment.status ?? null,
+      mpPaymentId
+    };
+  }
+
+  private getRequiredPositiveMoneyEnv(key: string) {
+    const raw = process.env[key];
+    const value = Number.parseFloat(String(raw ?? ''));
+    if (!Number.isFinite(value) || value <= 0) {
+      throw new InternalServerErrorException(`${key} debe configurarse con un monto mayor a 0 para checkout automatico de suscripcion`);
+    }
+
+    return Math.round(value * 100) / 100;
+  }
+
+  private getPositiveIntegerEnv(key: string, fallback: number) {
+    const value = Number.parseInt(String(process.env[key] ?? ''), 10);
+    return Number.isFinite(value) && value > 0 ? value : fallback;
+  }
+
+  private resolveMercadoPagoPreferenceUrl(preference: any) {
+    const sandboxMode = process.env.MERCADOPAGO_USE_SANDBOX === 'true' || process.env.NODE_ENV !== 'production';
+    if (sandboxMode && preference.sandbox_init_point) {
+      return preference.sandbox_init_point;
+    }
+
+    return preference.init_point ?? preference.sandbox_init_point ?? null;
+  }
   private verifyMercadoPagoWebhookSignatureIfConfigured(headers: Record<string, string | string[] | undefined>, dataId: string) {
     const secret = process.env.MERCADOPAGO_WEBHOOK_SECRET;
     if (!secret) {
@@ -500,9 +690,9 @@ export class PaymentsService {
   }
 
   private getFrontendBaseUrl() {
-    return (process.env.CORS_ORIGIN ?? 'http://localhost:3000').replace(/\/$/, '');
+    const configured = process.env.FRONTEND_URL || process.env.CORS_ORIGIN || 'http://localhost:3000';
+    return String(configured).split(',')[0].trim().replace(/\/$/, '');
   }
-
   private getManualPaymentConfig() {
     const methodLabel = 'Mercado Pago';
     const beneficiary = null;

@@ -227,6 +227,46 @@ export class UsersService {
 
     return this.mapAdminPerson(updated);
   }
+  async activateSubscriptionFromProvider(
+    userId: string,
+    options: { planType: string; days: number; provider: string; providerReference: string; rawStatus?: string | null }
+  ) {
+    const current = await (this.prisma as any).user.findUnique({ where: { id: userId } });
+    if (!current) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+
+    const providerReference = String(options.providerReference || '').trim();
+    const existingNotes = String(current.adminNotes ?? '');
+    if (providerReference && existingNotes.includes(`providerReference=${providerReference}`)) {
+      return this.getCurrentUserProfile(userId);
+    }
+
+    const days = Number.isFinite(options.days) && options.days > 0 ? Math.floor(options.days) : 30;
+    const now = new Date();
+    const currentExpiresAt = current.subscriptionExpiresAt ? new Date(current.subscriptionExpiresAt) : null;
+    const periodStart = current.subscriptionStatus === 'active' && currentExpiresAt && currentExpiresAt.getTime() > now.getTime() ? currentExpiresAt : now;
+    const subscriptionExpiresAt = this.addDays(periodStart, days);
+    const note = [
+      `plan=${options.planType}`,
+      `provider=${options.provider}`,
+      `providerReference=${providerReference || 'sin-referencia'}`,
+      options.rawStatus ? `status=${options.rawStatus}` : null,
+      `dias=${days}`
+    ].filter(Boolean).join('; ');
+
+    await (this.prisma as any).user.update({
+      where: { id: userId },
+      data: {
+        subscriptionStatus: 'active',
+        planType: options.planType,
+        subscriptionExpiresAt,
+        adminNotes: this.appendAdminNote(current.adminNotes, note, 'Suscripcion activada automaticamente')
+      }
+    });
+
+    return this.getCurrentUserProfile(userId);
+  }
   async deleteUserForAdmin(adminUserId: string, userId: string) {
     await this.ensureAdminActionAllowed(adminUserId, userId, 'eliminar');
     const target = await this.findAdminPersonOrThrow(userId);

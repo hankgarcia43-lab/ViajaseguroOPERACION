@@ -46,6 +46,11 @@ export class PaymentsController {
     return this.paymentsService.myPayments(user.sub, user.role, { includeArchived: includeArchived === 'true' });
   }
 
+  @Post('subscription/mercadopago-checkout')
+  @Roles('passenger', 'driver')
+  subscriptionMercadoPagoCheckout(@CurrentUser() user: { sub: string; role: string }, @Body() dto: { planType?: string }) {
+    return this.paymentsService.createSubscriptionMercadoPagoCheckout(user.sub, user.role, dto ?? {});
+  }
   @Get(':id')
   @Roles('passenger', 'admin')
   findById(@CurrentUser() user: { sub: string; role: string }, @Param('id') paymentId: string) {

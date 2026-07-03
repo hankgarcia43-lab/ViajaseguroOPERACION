@@ -3,7 +3,11 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { apiRequest, getToken } from '@/lib/api';
-import { MERCADO_PAGO_DIRECT_PAYMENT_LINK, MERCADO_PAGO_PAYMENT_REFERENCE } from '@/lib/payments';
+import {
+  MERCADO_PAGO_DIRECT_PAYMENT_LINK,
+  MERCADO_PAGO_PAYMENT_REFERENCE,
+  createMercadoPagoSubscriptionCheckout
+} from '@/lib/payments';
 
 interface MeResponse {
   fullName: string;
@@ -53,13 +57,16 @@ function formatDate(value?: string | null) {
 export default function MyPaymentsPage() {
   const [me, setMe] = useState<MeResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
+  const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
       const token = getToken();
       if (!token) {
-        setError('No hay sesion activa.');
+        setProfileError('No hay sesion activa.');
         setLoading(false);
         return;
       }
@@ -68,7 +75,7 @@ export default function MyPaymentsPage() {
         const data = await apiRequest<MeResponse>('/auth/me', { headers: { Authorization: `Bearer ${token}` } });
         setMe(data);
       } catch (requestError) {
-        setError(requestError instanceof Error ? requestError.message : 'No se pudo cargar tu suscripcion.');
+        setProfileError(requestError instanceof Error ? requestError.message : 'No se pudo cargar tu suscripcion.');
       } finally {
         setLoading(false);
       }
@@ -76,6 +83,38 @@ export default function MyPaymentsPage() {
 
     void load();
   }, []);
+
+  async function startSubscriptionCheckout() {
+    const token = getToken();
+    if (!token) {
+      setCheckoutError('No hay sesion activa. Inicia sesion nuevamente.');
+      return;
+    }
+
+    setCheckoutBusy(true);
+    setCheckoutMessage(null);
+    setCheckoutError(null);
+
+    try {
+      const planType = me?.role === 'driver' ? 'driver_monthly' : 'user_monthly';
+      const checkout = await createMercadoPagoSubscriptionCheckout(token, planType);
+      const checkoutUrl = checkout.checkoutUrl ?? checkout.initPoint ?? checkout.sandboxInitPoint;
+
+      if (!checkoutUrl) {
+        throw new Error('Mercado Pago no devolvio un link de checkout.');
+      }
+
+      window.open(checkoutUrl, '_blank', 'noopener,noreferrer');
+      setCheckoutMessage(
+        `Se abrio Mercado Pago para tu suscripcion ${checkout.planType}. Monto: $${checkout.amount.toFixed(2)} ${checkout.currency}. Cuando Mercado Pago confirme el pago, tu acceso se activa automaticamente.`
+      );
+    } catch (requestError) {
+      const message = requestError instanceof Error ? requestError.message : 'No se pudo crear el checkout automatico.';
+      setCheckoutError(`${message} Puedes usar el link manual y pedir activacion al admin.`);
+    } finally {
+      setCheckoutBusy(false);
+    }
+  }
 
   const subscription = me?.subscription;
   const isActive = Boolean(subscription?.isActivePaid);
@@ -107,8 +146,8 @@ export default function MyPaymentsPage() {
         </div>
       </div>
 
-      {loading ? <p className="text-sm text-slate-600">Cargando suscripcion...</p> : error ? (
-        <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>
+      {loading ? <p className="text-sm text-slate-600">Cargando suscripcion...</p> : profileError ? (
+        <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{profileError}</p>
       ) : (
         <article className={`rounded-2xl border p-5 shadow-sm ${statusTone}`}>
           <p className="text-xs font-bold uppercase tracking-[0.18em] opacity-70">Estado actual</p>
@@ -120,7 +159,7 @@ export default function MyPaymentsPage() {
           </div>
           {!me?.access?.canUsePremiumFeatures && (
             <p className="mt-3 rounded-xl border border-white/80 bg-white p-3 text-sm font-semibold text-rose-800">
-              Tu acceso premium esta bloqueado. Paga una membresia de plataforma y pide al admin activar tu suscripcion.
+              Tu acceso premium esta bloqueado. Activa una membresia de plataforma para volver a publicar o solicitar rutas.
             </p>
           )}
         </article>
@@ -129,7 +168,7 @@ export default function MyPaymentsPage() {
       <article className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-950 shadow-sm">
         <p className="font-bold">Importante para el piloto cerrado</p>
         <p className="mt-1">
-          Este link no debe usarse para pagar traslados. Cualquier apoyo economico relacionado con gasolina, casetas o mantenimiento se acuerda directamente entre miembros verificados, fuera de VIAJASEGURO.
+          Mercado Pago se usa solo para suscripciones, verificaciones o servicios digitales de VIAJASEGURO. No pagues traslados desde la app; cualquier aportacion de ruta se coordina directamente en efectivo entre miembros verificados.
         </p>
       </article>
 
@@ -143,17 +182,32 @@ export default function MyPaymentsPage() {
       </section>
 
       <article className="rounded-3xl border border-sky-200 bg-white p-6 shadow-sm">
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">Link oficial</p>
-        <h2 className="mt-2 text-xl font-bold text-slate-950">Mercado Pago VIAJASEGURO</h2>
-        <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm leading-6 text-slate-600">
-          <li>Abre el link oficial.</li>
-          <li>Ingresa el monto de tu membresia, verificacion o servicio digital indicado por admin.</li>
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">Checkout automatico</p>
+        <h2 className="mt-2 text-xl font-bold text-slate-950">Activar suscripcion con Mercado Pago</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          Este boton genera un checkout de suscripcion con referencia interna. Si Mercado Pago confirma el pago por webhook, tu suscripcion se activa automaticamente.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button
+            type="button"
+            disabled={checkoutBusy || loading || me?.role === 'admin'}
+            onClick={() => void startSubscriptionCheckout()}
+            className="rounded-2xl bg-sky-700 px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600"
+          >
+            {checkoutBusy ? 'Creando checkout...' : 'Activar suscripcion'}
+          </button>
+          <a href={MERCADO_PAGO_DIRECT_PAYMENT_LINK} target="_blank" rel="noreferrer" className="inline-flex rounded-2xl border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+            Usar link manual
+          </a>
+        </div>
+        {checkoutMessage && <p className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">{checkoutMessage}</p>}
+        {checkoutError && <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-900">{checkoutError}</p>}
+        <ol className="mt-5 list-decimal space-y-1 pl-5 text-sm leading-6 text-slate-600">
+          <li>Para activacion automatica, usa el boton de checkout.</li>
+          <li>Si usas el link manual, ingresa el monto indicado por admin.</li>
           <li>Usa la referencia: <span className="font-semibold text-slate-950">{MERCADO_PAGO_PAYMENT_REFERENCE}</span>.</li>
-          <li>Regresa a la app y espera que admin active tu suscripcion.</li>
+          <li>Regresa a la app y revisa tu estado de suscripcion.</li>
         </ol>
-        <a href={MERCADO_PAGO_DIRECT_PAYMENT_LINK} target="_blank" rel="noreferrer" className="mt-5 inline-flex rounded-2xl bg-sky-700 px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-sky-600">
-          Activar suscripcion con Mercado Pago
-        </a>
       </article>
     </section>
   );

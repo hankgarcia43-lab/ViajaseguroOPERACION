@@ -87,6 +87,8 @@ export default function AdminDashboardPage() {
   const cards = useMemo<SummaryCard[]>(() => [
     { label: 'Usuarios totales', value: peopleSummary?.total ?? 0, href: '/dashboard/admin/people', helper: `${peopleSummary?.drivers ?? 0} conductores / ${peopleSummary?.passengers ?? 0} usuarios` },
     { label: 'Suspendidos', value: peopleSummary?.suspended ?? 0, href: '/dashboard/admin/people', helper: 'Cuentas bloqueadas por admin' },
+    { label: 'Usuarios en prueba', value: peopleSummary?.trialUsers ?? 0, href: '/dashboard/admin/people', helper: 'Trial digital de 15 dias' },
+    { label: 'Suscripciones activas', value: peopleSummary?.activeSubscriptions ?? 0, href: '/dashboard/admin/payments', helper: 'Acceso digital vigente' },
     { label: 'Verificaciones pendientes', value: pendingVerifications.length, href: '/dashboard/admin/verifications', helper: 'Usuarios esperando revision' },
     { label: 'Vehiculos pendientes', value: pendingVehicles.length, href: '/dashboard/admin/vehicles', helper: 'Conductores bloqueados por vehiculo' },
     { label: 'Estimacion por km activa', value: farePolicy ? `$${farePolicy.ratePerKm.toFixed(2)}` : 'Sin definir', href: '/dashboard/admin/fare-policy', helper: farePolicy ? `Modo: ${farePolicy.mode === 'fixed_per_km' ? 'fija' : 'maxima'} por km` : 'Configura referencia orientativa' },
@@ -149,8 +151,8 @@ export default function AdminDashboardPage() {
             </div>
             <div className="rounded-xl border border-slate-200 p-4">
               <p className="text-sm font-semibold text-slate-900">Politica comercial</p>
-              <p className="mt-1 text-sm text-slate-600">{farePolicy ? `Tarifa ${farePolicy.mode === 'fixed_per_km' ? 'fija' : 'maxima'} de $${farePolicy.ratePerKm.toFixed(2)} ${farePolicy.currency} por km.` : 'Aun no existe una tarifa activa por kilometro.'}</p>
-              <Link href="/dashboard/admin/fare-policy" className="mt-3 inline-block text-sm text-brand-600 underline">Configurar tarifa por km</Link>
+              <p className="mt-1 text-sm text-slate-600">{farePolicy ? `Referencia ${farePolicy.mode === 'fixed_per_km' ? 'fija' : 'maxima'} de $${farePolicy.ratePerKm.toFixed(2)} ${farePolicy.currency} por km.` : 'Aun no existe una referencia activa por kilometro.'}</p>
+              <Link href="/dashboard/admin/fare-policy" className="mt-3 inline-block text-sm text-brand-600 underline">Configurar referencia por km</Link>
             </div>
           </div>
         </section>

@@ -74,6 +74,18 @@ export interface Payment {
     email: string;
   } | null;
 }
+export interface MercadoPagoSubscriptionCheckoutResponse {
+  checkoutUrl: string | null;
+  preferenceId: string | null;
+  initPoint: string | null;
+  sandboxInitPoint: string | null;
+  externalReference: string;
+  planType: string;
+  amount: number;
+  currency: string;
+  subscriptionDays: number;
+  message: string;
+}
 export interface MercadoPagoCheckoutResponse {
   payment: Payment;
   checkoutUrl: string;
@@ -96,5 +108,14 @@ export async function createMercadoPagoCheckout(reservationId: string, token: st
     headers: {
       Authorization: `Bearer ${token}`
     }
+  });
+}
+export async function createMercadoPagoSubscriptionCheckout(token: string, planType?: string) {
+  return apiRequest<MercadoPagoSubscriptionCheckoutResponse>('/payments/subscription/mercadopago-checkout', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ planType })
   });
 }

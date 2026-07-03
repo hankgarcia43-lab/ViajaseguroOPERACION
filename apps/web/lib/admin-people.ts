@@ -14,6 +14,9 @@ export interface AdminPeopleSummary {
   suspended: number;
   excellent: number;
   pendingVerifications: number;
+  trialUsers?: number;
+  activeSubscriptions?: number;
+  expiredSubscriptions?: number;
 }
 
 export interface AdminPersonDocument {
@@ -51,6 +54,15 @@ export interface AdminPerson {
   verificationStatus: VerificationStatus;
   operationalStatus: AdminOperationalStatus;
   recognitionLevel: AdminRecognitionLevel;
+  subscription?: {
+    status: string;
+    planType: string | null;
+    trialDaysRemaining: number;
+    trialEndsAt: string | null;
+    subscriptionExpiresAt: string | null;
+    isTrialActive: boolean;
+    isActivePaid: boolean;
+  };
   adminNotes: string | null;
   emergencyContactName: string | null;
   emergencyContactPhone: string | null;
@@ -87,7 +99,7 @@ export function fetchAdminPeople(token: string, filters: { q?: string; role?: st
   });
 }
 
-export function runAdminPersonAction(token: string, userId: string, action: 'suspend' | 'activate' | 'promote' | 'standard', notes?: string) {
+export function runAdminPersonAction(token: string, userId: string, action: 'suspend' | 'activate' | 'promote' | 'standard' | 'activate-subscription' | 'expire-subscription', notes?: string) {
   return apiRequest<AdminPerson>(`/admin/people/${userId}/${action}`, {
     method: 'PATCH',
     headers: { Authorization: `Bearer ${token}` },

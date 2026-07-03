@@ -2,6 +2,7 @@ import { ForbiddenException, Injectable, NotFoundException, ServiceUnavailableEx
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { FarePolicyService } from '../fare-policy/fare-policy.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { UsersService } from '../users/users.service';
 import { VehiclesService } from '../vehicles/vehicles.service';
 import { AdminCreateRouteDto } from './dto/admin-create-route.dto';
 import { CreateRouteDto, RouteStatusDto, WeekdayDto } from './dto/create-route.dto';
@@ -12,9 +13,15 @@ import { estimateRouteDistanceKm } from './route-distance-estimator';
 
 @Injectable()
 export class RoutesService {
-  constructor(private readonly prisma: PrismaService, private readonly vehiclesService: VehiclesService, private readonly farePolicyService: FarePolicyService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly vehiclesService: VehiclesService,
+    private readonly farePolicyService: FarePolicyService,
+    private readonly usersService: UsersService
+  ) {}
 
   async create(userId: string, dto: CreateRouteDto) {
+    await this.usersService.ensurePremiumAccess(userId, 'publicar rutas compartidas');
     await this.ensureApprovedDriver(userId);
     const route = await this.createRouteRecord(userId, dto, false);
     const initialTrip = await this.createInitialTripForRoute(route);
@@ -22,6 +29,7 @@ export class RoutesService {
   }
 
   async createPublic(userId: string, dto: CreateRouteDto) {
+    await this.usersService.ensurePremiumAccess(userId, 'publicar rutas compartidas');
     await this.ensureUserCanPublishPublicRoute(userId);
     const route = await this.createRouteRecord(userId, dto, true);
     return this.mapRoute(route, true);
@@ -29,6 +37,7 @@ export class RoutesService {
 
   async createForAdminOrDriver(userId: string, dto: AdminCreateRouteDto) {
     const user = await this.ensureRoutePublisher(userId);
+    await this.usersService.ensurePremiumAccess(user.id, 'publicar rutas compartidas');
     const route = await this.createRouteRecord(
       user.id,
       {
@@ -125,6 +134,7 @@ export class RoutesService {
   }
 
   async takeViaje(driverUserId: string, routeId: string, dto: TakeViajeDto) {
+    await this.usersService.ensurePremiumAccess(driverUserId, 'tomar rutas solicitadas');
     await this.ensureApprovedDriver(driverUserId);
     const route = await this.findRouteByIdOrThrow(routeId, true);
     const nextTripDate = this.findNextTripDate(this.parseWeekdays(route.weekdaysText));
@@ -190,4 +200,3 @@ export class RoutesService {
   private tripDelegate() { return (this.prisma as any).trip; }
   private async execute<T>(operation: () => Promise<T>, attempts = 3): Promise<T> { for (let i = 1; i <= attempts; i += 1) { try { return await operation(); } catch (e) { const timeout = e instanceof PrismaClientKnownRequestError && e.code === 'P1008'; if (!timeout || i === attempts) throw timeout ? new ServiceUnavailableException('La base de datos local esta ocupada temporalmente. Intenta de nuevo en unos segundos.') : e; await new Promise((r) => setTimeout(r, 250 * i)); } } throw new ServiceUnavailableException('No se pudo completar la operacion sobre rutas'); }
 }
-

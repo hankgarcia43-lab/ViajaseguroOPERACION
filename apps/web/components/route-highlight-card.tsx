@@ -141,9 +141,9 @@ export function RouteHighlightCard({
         </div>
 
         <div className={`flex min-w-0 flex-col justify-center p-4 text-center ${classes.price}`}>
-          <p className="text-xs font-bold uppercase opacity-80">Precio por asiento</p>
+          <p className="text-xs font-bold uppercase opacity-80">Aportacion sugerida</p>
           <p className="mt-2 whitespace-nowrap text-2xl font-black 2xl:text-3xl">${pricePerSeat.toFixed(2)}</p>
-          <p className="text-xs font-semibold opacity-90">MXN</p>
+          <p className="text-xs font-semibold opacity-90">MXN en efectivo</p><p className="mt-2 text-[11px] font-medium leading-snug opacity-80">Monto orientativo, no tarifa obligatoria.</p>
         </div>
       </div>
     </div>

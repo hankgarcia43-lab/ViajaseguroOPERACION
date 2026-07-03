@@ -143,7 +143,7 @@ export default function EditRoutePage() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Editar ruta</h1>
-          <p className="text-sm text-slate-600">Ajusta horarios y datos operativos. El precio por asiento lo calcula el sistema segun km y tarifa activa.</p>
+          <p className="text-sm text-slate-600">Ajusta horarios y datos operativos. La aportacion sugerida la calcula el sistema segun km y referencia activa. No es tarifa obligatoria.</p>
         </div>
         <Link href="/dashboard/routes" className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">
           Volver a mis rutas
@@ -151,14 +151,14 @@ export default function EditRoutePage() {
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm text-sm text-slate-700">
-        <p className="font-semibold text-slate-900">Politica de tarifa activa</p>
+        <p className="font-semibold text-slate-900">Referencia activa por km</p>
         {farePolicy ? (
           <>
             <p className="mt-2">{farePolicyModeLabel(farePolicy.mode)}: ${farePolicy.ratePerKm.toFixed(2)} {farePolicy.currency} por km.</p>
             {farePolicy.notes && <p className="mt-1 text-xs text-slate-500">Nota admin: {farePolicy.notes}</p>}
           </>
         ) : (
-          <p className="mt-2 text-red-700">No hay una tarifa activa. Consulta al admin antes de editar precios.</p>
+          <p className="mt-2 text-red-700">No hay una referencia activa por km. Consulta al admin antes de publicar o editar aportaciones sugeridas.</p>
         )}
       </div>
 
@@ -218,10 +218,10 @@ export default function EditRoutePage() {
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-            <p className="font-semibold text-slate-900">Resumen de tarifa</p>
+            <p className="font-semibold text-slate-900">Resumen de aportacion sugerida</p>
             <p className="mt-2">Distancia estimada: {estimatedDistanceKm ? `${estimatedDistanceKm.toFixed(2)} km` : '-'}</p>
-            <p className="mt-2">Precio por asiento calculado: {systemPricePreview === null ? '-' : `${systemPricePreview.toFixed(2)} MXN`}</p>
-            <p className="mt-1 text-xs text-slate-500">Formula: km estimados x tarifa por km activa. El conductor no puede modificar este monto.</p>
+            <p className="mt-2">Aportacion sugerida calculada: {systemPricePreview === null ? '-' : `${systemPricePreview.toFixed(2)} MXN`}</p>
+            <p className="mt-1 text-xs text-slate-500">Formula interna: km estimados x referencia por km activa. El conductor no puede modificar este monto y VIAJASEGURO no cobra el traslado.</p>
           </div>
         </div>
 
@@ -234,6 +234,3 @@ export default function EditRoutePage() {
     </section>
   );
 }
-
-
-

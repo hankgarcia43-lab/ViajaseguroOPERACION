@@ -8,38 +8,45 @@ datasource db {
 }
 
 model User {
-  id                    String   @id @default(uuid())
-  fullName              String   @map("full_name")
+  id                    String    @id @default(uuid())
+  fullName              String    @map("full_name")
   phone                 String
-  email                 String   @unique
-  passwordHash          String   @map("password_hash")
-  role                  String   @default("passenger")
-  verificationStatus    String   @default("pending") @map("verification_status")
-  operationalStatus     String   @default("active") @map("operational_status")
-  recognitionLevel      String   @default("standard") @map("recognition_level")
-  adminNotes            String?  @map("admin_notes")
-  emergencyContactName  String?  @map("emergency_contact_name")
-  emergencyContactPhone String?  @map("emergency_contact_phone")
-  createdAt             DateTime @default(now()) @map("created_at")
-  updatedAt             DateTime @updatedAt @map("updated_at")
+  email                 String    @unique
+  passwordHash          String    @map("password_hash")
+  role                  String    @default("passenger")
+  verificationStatus    String    @default("pending") @map("verification_status")
+  operationalStatus     String    @default("active") @map("operational_status")
+  recognitionLevel      String    @default("standard") @map("recognition_level")
+  trialStartedAt        DateTime? @map("trial_started_at")
+  trialEndsAt           DateTime? @map("trial_ends_at")
+  subscriptionStatus    String    @default("trial") @map("subscription_status")
+  planType              String?   @map("plan_type")
+  subscriptionExpiresAt DateTime? @map("subscription_expires_at")
+  adminNotes            String?   @map("admin_notes")
+  emergencyContactName  String?   @map("emergency_contact_name")
+  emergencyContactPhone String?   @map("emergency_contact_phone")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
 
-  driverProfile       DriverProfile?
-  passengerProfile    PassengerProfile?
-  routes              Route[]
-  trips               Trip[]
-  reservations        Reservation[]
-  chatMessagesSent    TripChatMessage[] @relation("TripChatSender")
-  chatMessagesReceived TripChatMessage[] @relation("TripChatReceiver")
-  userDocuments       UserDocument[]
-  vehicle             Vehicle?
-  refundsHandled      Refund[]          @relation("RefundAdminUser")
-  weeklyPayouts       WeeklyPayout[]    @relation("WeeklyPayoutDriver")
-  reviewedPayments    Payment[]         @relation("PaymentReviewedByAdmin")
-  archivedPayments    Payment[]         @relation("PaymentArchivedByAdmin")
-  createdFarePolicies FarePolicy[]      @relation("FarePolicyCreatedByAdmin")
-  routeOffers         RouteOffer[]
-  incidentsReported   IncidentReport[]  @relation("IncidentReporter")
-  incidentsReviewed   IncidentReport[]  @relation("IncidentReviewer")
+  driverProfile        DriverProfile?
+  passengerProfile     PassengerProfile?
+  routes               Route[]
+  trips                Trip[]
+  reservations         Reservation[]
+  chatMessagesSent     TripChatMessage[]     @relation("TripChatSender")
+  chatMessagesReceived TripChatMessage[]     @relation("TripChatReceiver")
+  userDocuments        UserDocument[]
+  vehicle              Vehicle?
+  refundsHandled       Refund[]              @relation("RefundAdminUser")
+  weeklyPayouts        WeeklyPayout[]        @relation("WeeklyPayoutDriver")
+  reviewedPayments     Payment[]             @relation("PaymentReviewedByAdmin")
+  archivedPayments     Payment[]             @relation("PaymentArchivedByAdmin")
+  createdFarePolicies  FarePolicy[]          @relation("FarePolicyCreatedByAdmin")
+  routeOffers          RouteOffer[]
+  requestedRoutes      RequestedRoute[]      @relation("RequestedRouteUser")
+  driverRouteProposals DriverRouteProposal[] @relation("DriverRouteProposalDriver")
+  incidentsReported    IncidentReport[]      @relation("IncidentReporter")
+  incidentsReviewed    IncidentReport[]      @relation("IncidentReviewer")
 
   @@map("users")
 }
@@ -146,9 +153,9 @@ model Trip {
   createdAt                    DateTime @default(now()) @map("created_at")
   updatedAt                    DateTime @updatedAt @map("updated_at")
 
-  route        Route         @relation(fields: [routeId], references: [id], onDelete: Cascade)
-  routeOffer   RouteOffer?   @relation(fields: [routeOfferId], references: [id], onDelete: SetNull)
-  driver       User          @relation(fields: [driverUserId], references: [id], onDelete: Cascade)
+  route        Route             @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  routeOffer   RouteOffer?       @relation(fields: [routeOfferId], references: [id], onDelete: SetNull)
+  driver       User              @relation(fields: [driverUserId], references: [id], onDelete: Cascade)
   reservations Reservation[]
   chatMessages TripChatMessage[]
 
@@ -161,27 +168,27 @@ model Trip {
 }
 
 model Reservation {
-  id              String   @id @default(uuid())
-  publicId        Int?     @unique @map("public_id")
-  tripId          String   @map("trip_id")
-  routeOfferId    String?  @map("route_offer_id")
-  weeklyReservationGroupId String? @map("weekly_reservation_group_id")
-  isWeeklyPaymentPrimary Boolean @default(false) @map("is_weekly_payment_primary")
-  passengerUserId String   @map("passenger_user_id")
-  totalSeats      Int      @map("total_seats")
-  companionCount  Int      @map("companion_count")
-  totalAmount     Float    @map("total_amount")
-  numericCode     String   @unique @map("numeric_code")
-  qrToken         String   @unique @map("qr_token")
-  status          String   @default("confirmed")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  id                       String   @id @default(uuid())
+  publicId                 Int?     @unique @map("public_id")
+  tripId                   String   @map("trip_id")
+  routeOfferId             String?  @map("route_offer_id")
+  weeklyReservationGroupId String?  @map("weekly_reservation_group_id")
+  isWeeklyPaymentPrimary   Boolean  @default(false) @map("is_weekly_payment_primary")
+  passengerUserId          String   @map("passenger_user_id")
+  totalSeats               Int      @map("total_seats")
+  companionCount           Int      @map("companion_count")
+  totalAmount              Float    @map("total_amount")
+  numericCode              String   @unique @map("numeric_code")
+  qrToken                  String   @unique @map("qr_token")
+  status                   String   @default("confirmed")
+  createdAt                DateTime @default(now()) @map("created_at")
+  updatedAt                DateTime @updatedAt @map("updated_at")
 
-  trip       Trip        @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  routeOffer RouteOffer? @relation(fields: [routeOfferId], references: [id], onDelete: SetNull)
-  passenger  User        @relation(fields: [passengerUserId], references: [id], onDelete: Cascade)
-  payment    Payment?
-  refunds    Refund[]
+  trip         Trip              @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  routeOffer   RouteOffer?       @relation(fields: [routeOfferId], references: [id], onDelete: SetNull)
+  passenger    User              @relation(fields: [passengerUserId], references: [id], onDelete: Cascade)
+  payment      Payment?
+  refunds      Refund[]
   chatMessages TripChatMessage[]
 
   @@index([tripId])
@@ -196,30 +203,30 @@ model Reservation {
 }
 
 model Payment {
-  id                    String    @id @default(uuid())
-  reservationId         String    @unique @map("reservation_id")
-  weeklyReservationGroupId String? @map("weekly_reservation_group_id")
-  amount                Float
-  status                String    @default("pending")
-  provider              String    @default("manual_transfer")
-  providerReference     String?   @map("provider_reference")
-  providerPreferenceId  String?   @map("provider_preference_id")
-  checkoutUrl           String?   @map("checkout_url")
-  initPoint             String?   @map("init_point")
-  sandboxInitPoint      String?   @map("sandbox_init_point")
-  paymentMethodLabel    String?   @map("payment_method_label")
-  paymentInstructions   String?   @map("payment_instructions")
-  proofFileName         String?   @map("proof_file_name")
-  proofFilePath         String?   @map("proof_file_path")
-  reviewedByAdminUserId String?   @map("reviewed_by_admin_user_id")
-  reviewedAt            DateTime? @map("reviewed_at")
-  reviewNotes           String?   @map("review_notes")
-  archivedAt            DateTime? @map("archived_at")
-  archivedByAdminUserId String?   @map("archived_by_admin_user_id")
-  appCommissionAmount   Float     @map("app_commission_amount")
-  driverNetAmount       Float     @map("driver_net_amount")
-  createdAt             DateTime  @default(now()) @map("created_at")
-  updatedAt             DateTime  @updatedAt @map("updated_at")
+  id                       String    @id @default(uuid())
+  reservationId            String    @unique @map("reservation_id")
+  weeklyReservationGroupId String?   @map("weekly_reservation_group_id")
+  amount                   Float
+  status                   String    @default("pending")
+  provider                 String    @default("manual_transfer")
+  providerReference        String?   @map("provider_reference")
+  providerPreferenceId     String?   @map("provider_preference_id")
+  checkoutUrl              String?   @map("checkout_url")
+  initPoint                String?   @map("init_point")
+  sandboxInitPoint         String?   @map("sandbox_init_point")
+  paymentMethodLabel       String?   @map("payment_method_label")
+  paymentInstructions      String?   @map("payment_instructions")
+  proofFileName            String?   @map("proof_file_name")
+  proofFilePath            String?   @map("proof_file_path")
+  reviewedByAdminUserId    String?   @map("reviewed_by_admin_user_id")
+  reviewedAt               DateTime? @map("reviewed_at")
+  reviewNotes              String?   @map("review_notes")
+  archivedAt               DateTime? @map("archived_at")
+  archivedByAdminUserId    String?   @map("archived_by_admin_user_id")
+  appCommissionAmount      Float     @map("app_commission_amount")
+  driverNetAmount          Float     @map("driver_net_amount")
+  createdAt                DateTime  @default(now()) @map("created_at")
+  updatedAt                DateTime  @updatedAt @map("updated_at")
 
   reservation     Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
   refund          Refund?
@@ -340,6 +347,53 @@ model VehicleDocument {
   @@map("vehicle_documents")
 }
 
+model RequestedRoute {
+  id              String    @id @default(uuid())
+  userId          String    @map("user_id")
+  originText      String    @map("origin_text")
+  destinationText String    @map("destination_text")
+  desiredDate     DateTime? @map("desired_date")
+  recurrenceDays  String?   @map("recurrence_days")
+  desiredTime     String    @map("desired_time")
+  seatsNeeded     Int       @map("seats_needed")
+  message         String?
+  status          String    @default("open")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  user      User                  @relation("RequestedRouteUser", fields: [userId], references: [id], onDelete: Cascade)
+  proposals DriverRouteProposal[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("requested_routes")
+}
+
+model DriverRouteProposal {
+  id                        String   @id @default(uuid())
+  requestedRouteId          String   @map("requested_route_id")
+  driverId                  String   @map("driver_id")
+  proposedTime              String   @map("proposed_time")
+  boardingPoint             String   @map("boarding_point")
+  boardingReference         String   @map("boarding_reference")
+  suggestedCashContribution Float    @map("suggested_cash_contribution")
+  availableSeats            Int      @map("available_seats")
+  messageToUser             String?  @map("message_to_user")
+  status                    String   @default("pending_user_response")
+  createdAt                 DateTime @default(now()) @map("created_at")
+  updatedAt                 DateTime @updatedAt @map("updated_at")
+
+  requestedRoute RequestedRoute @relation(fields: [requestedRouteId], references: [id], onDelete: Cascade)
+  driver         User           @relation("DriverRouteProposalDriver", fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@index([requestedRouteId])
+  @@index([driverId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("driver_route_proposals")
+}
+
 model EntityCounter {
   entity    String   @id
   value     Int      @default(0)
@@ -362,8 +416,8 @@ model RouteOffer {
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
-  route        Route         @relation(fields: [routeId], references: [id], onDelete: Cascade)
-  driver       User          @relation(fields: [driverUserId], references: [id], onDelete: Cascade)
+  route        Route             @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  driver       User              @relation(fields: [driverUserId], references: [id], onDelete: Cascade)
   trips        Trip[]
   reservations Reservation[]
   chatMessages TripChatMessage[]
@@ -399,6 +453,7 @@ model TripChatMessage {
   @@index([createdAt])
   @@map("trip_chat_messages")
 }
+
 model IncidentReport {
   id             String    @id @default(uuid())
   reporterUserId String    @map("reporter_user_id")

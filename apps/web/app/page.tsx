@@ -1,83 +1,74 @@
 import Link from 'next/link';
 
-const communityPoints = [
-  'Conductores verificados publican rutas recurrentes que ya realizan.',
-  'Usuarios solicitan unirse y coordinan con el conductor aceptado.',
-  'La estimacion de costo es solo orientativa para gastos compartidos.'
-];
-
-const quickSteps = [
-  'Busca rutas',
-  'Solicita unirte',
-  'Espera aceptacion',
-  'Verifica datos',
-  'Usa tu pase'
+const steps = [
+  'Publica o busca una ruta.',
+  'Coordina con un conductor verificado.',
+  'Sigue usando VIAJASEGURO con tu suscripcion.'
 ];
 
 export default function HomePage() {
   return (
-    <section className="space-y-10">
-      <article className="relative overflow-hidden rounded-[30px] border border-slate-800 bg-[#07111f] px-6 py-7 text-white shadow-[0_25px_70px_-35px_rgba(6,10,24,0.9)] md:px-10 md:py-10">
-        <div className="relative">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-sky-600 shadow-[0_12px_30px_-14px_rgba(14,165,233,0.9)]">
-                <span className="text-lg font-black">VS</span>
+    <section className="space-y-8">
+      <article className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_24px_70px_-45px_rgba(15,23,42,0.7)]">
+        <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_420px]">
+          <div className="p-6 md:p-10">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="grid h-10 w-10 place-items-center rounded-xl bg-slate-950 text-white">
+                  <span className="text-lg font-black">VS</span>
+                </div>
+                <p className="text-2xl font-semibold tracking-tight text-slate-950">VIAJASEGURO</p>
               </div>
-              <p className="text-2xl font-semibold tracking-tight">ViajaSeguro</p>
+              <Link href="/login" className="text-sm font-bold text-slate-700 hover:text-slate-950">Iniciar sesion</Link>
             </div>
-            <Link href="/login" className="text-sm font-medium text-slate-100 hover:text-white">
-              Iniciar sesion
-            </Link>
-          </div>
 
-          <div className="mx-auto mt-14 max-w-3xl text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-sky-200">Piloto cerrado de movilidad compartida</p>
-            <h1 className="mt-3 text-4xl font-semibold leading-tight md:text-6xl">Comunidad de rutas compartidas</h1>
-            <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-slate-200">
-              VIAJA SEGURO facilita contacto y coordinacion entre miembros verificados que comparten trayectos recurrentes entre EdoMex y CDMX.
-            </p>
+            <div className="mt-12 max-w-3xl">
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-sky-700">Comunidad digital de movilidad compartida</p>
+              <h1 className="mt-3 text-4xl font-black leading-tight text-slate-950 md:text-6xl">
+                Encuentra rutas compartidas hacia tu trabajo, escuela o zona de destino
+              </h1>
+              <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-600">
+                Publica la ruta que necesitas o unete a rutas de conductores verificados de tu zona. VIAJASEGURO facilita la conexion y coordinacion; no cobra traslados ni administra pagos entre las partes.
+              </p>
 
-            <div className="mx-auto mt-8 grid max-w-xl gap-3 sm:grid-cols-2">
-              <Link href="/register/passenger" className="inline-flex items-center justify-center rounded-2xl bg-sky-600 px-5 py-3.5 text-base font-semibold text-white shadow-[0_16px_40px_-20px_rgba(14,165,233,0.9)] transition hover:bg-sky-500">
-                Solicitar acceso
-              </Link>
-              <Link href="/register/driver" className="inline-flex items-center justify-center rounded-2xl border border-white/25 bg-white/5 px-5 py-3.5 text-base font-semibold text-slate-100 transition hover:bg-white/10">
-                Publicar mi ruta
-              </Link>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Link href="/register/passenger" className="rounded-2xl bg-sky-700 px-5 py-3 text-sm font-black text-white shadow-lg transition hover:bg-sky-800">Necesito una ruta</Link>
+                <Link href="/register/driver" className="rounded-2xl bg-emerald-700 px-5 py-3 text-sm font-black text-white shadow-lg transition hover:bg-emerald-800">Soy conductor</Link>
+                <Link href="/login" className="rounded-2xl border border-slate-300 px-5 py-3 text-sm font-black text-slate-800 transition hover:bg-slate-50">Ver rutas disponibles</Link>
+              </div>
             </div>
           </div>
 
-          <div className="mx-auto mt-10 max-w-4xl">
-            <div className="grid gap-2 sm:grid-cols-5">
-              {quickSteps.map((step, index) => (
-                <div key={step} className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-center text-xs font-medium text-slate-100">
-                  <span className="mr-1 text-sky-300">{index + 1}.</span>
-                  {step}
+          <div className="border-t border-slate-200 bg-slate-950 p-6 text-white lg:border-l lg:border-t-0 md:p-8">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-sky-200">Como funciona</p>
+            <div className="mt-5 space-y-4">
+              {steps.map((step, index) => (
+                <div key={step} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <p className="text-sm font-black text-sky-200">Paso {index + 1}</p>
+                  <p className="mt-1 text-lg font-bold text-white">{step}</p>
                 </div>
               ))}
+            </div>
+            <div className="mt-6 rounded-2xl border border-amber-300/40 bg-amber-300/10 p-4 text-sm leading-6 text-amber-50">
+              La aportacion economica del trayecto, si existe, se acuerda directamente en efectivo entre usuario y conductor. VIAJASEGURO no cobra, procesa ni garantiza pagos por traslados.
             </div>
           </div>
         </div>
       </article>
 
-      <section className="vs-card">
-        <h2 className="text-3xl font-semibold tracking-tight text-slate-950">Rutas recurrentes, coordinacion clara y verificacion</h2>
-        <p className="mt-2 text-sm leading-6 text-slate-600">
-          Las rutas publicadas corresponden a trayectos recurrentes que los conductores declaran realizar por cuenta propia. VIAJA SEGURO facilita el contacto y la coordinacion entre miembros verificados de la comunidad.
-        </p>
-
-        <div className="mt-5 grid gap-3 sm:grid-cols-3">
-          {communityPoints.map((item) => (
-            <div key={item} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700">
-              {item}
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-6 rounded-2xl border border-amber-300/80 bg-amber-50 px-4 py-3 text-xs leading-6 text-amber-900">
-          <span className="font-semibold">Aviso:</span> VIAJA SEGURO no fija tarifas de transporte, no cobra traslados y no administra pagos entre usuarios y conductores. Los pagos a la plataforma son solo para membresias, verificaciones o servicios digitales.
-        </div>
+      <section className="grid gap-4 md:grid-cols-3">
+        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-black text-slate-950">15 dias de prueba</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600">Todo usuario nuevo puede probar la comunidad antes de activar suscripcion.</p>
+        </article>
+        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-black text-slate-950">Conductores verificados</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600">Antes de abordar, verifica conductor, vehiculo y placas. Si algo no coincide, no abordes y reportalo.</p>
+        </article>
+        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-black text-slate-950">Suscripcion digital</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600">La suscripcion habilita funciones digitales como publicar rutas, solicitar unirse y recibir respuestas. No representa el pago de un traslado.</p>
+        </article>
       </section>
     </section>
   );

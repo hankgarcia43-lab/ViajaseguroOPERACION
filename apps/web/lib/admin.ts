@@ -31,6 +31,11 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     description: 'Crear rutas compartidas del piloto'
   },
   {
+    href: '/dashboard/admin/route-needs',
+    label: 'Rutas solicitadas',
+    description: 'Necesidades publicadas por usuarios'
+  },
+  {
     href: '/dashboard/admin/fare-policy',
     label: 'Estimacion por km',
     description: 'Referencia orientativa para rutas'

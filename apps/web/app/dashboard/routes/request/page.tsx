@@ -6,6 +6,16 @@ import { apiRequest, getToken } from '@/lib/api';
 import { DriverRouteProposal, RequestedRoute, WEEKDAY_OPTIONS, formatWeekdays, getProposalStatusLabel, getRequestedRouteStatusLabel } from '@/lib/route-needs';
 
 const CASH_NOTICE = 'El monto mostrado es una aportacion sugerida en efectivo acordada directamente entre usuario y conductor. VIAJASEGURO no cobra traslados, no fija tarifas obligatorias y no administra pagos entre las partes.';
+function buildWhatsAppUrl(phone?: string | null) {
+  const digits = String(phone ?? '').replace(/\D/g, '');
+  if (digits.length < 10) return null;
+  const normalized = digits.length === 10 ? `52${digits}` : digits;
+  return `https://wa.me/${normalized}`;
+}
+
+function acceptedProposalForNeed(need: RequestedRoute) {
+  return need.proposals.find((proposal) => proposal.status === 'accepted_by_user') ?? null;
+}
 
 export default function RequestRoutePage() {
   const [originText, setOriginText] = useState('');
@@ -184,7 +194,10 @@ export default function RequestRoutePage() {
 
           {loading ? <p className="text-sm text-slate-600">Cargando solicitudes...</p> : needs.length === 0 ? (
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">Aun no has publicado necesidades de ruta.</div>
-          ) : needs.map((need) => (
+          ) : needs.map((need) => {
+            const acceptedProposal = acceptedProposalForNeed(need);
+            const whatsappUrl = buildWhatsAppUrl(acceptedProposal?.driver?.phone);
+            return (
             <article key={need.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -194,6 +207,52 @@ export default function RequestRoutePage() {
                   {need.message && <p className="mt-2 text-sm text-slate-700">{need.message}</p>}
                 </div>
               </div>
+
+              {acceptedProposal && (
+                <section className="mt-4 rounded-2xl border border-emerald-300 bg-emerald-50 p-4 text-emerald-950 shadow-sm">
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">Coordinacion confirmada</p>
+                  <h4 className="mt-1 text-lg font-black text-slate-950">Revisa estos datos antes de abordar</h4>
+                  <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    <div className="rounded-xl bg-white p-3 shadow-sm">
+                      <p className="text-xs font-bold uppercase text-slate-500">Conductor verificado</p>
+                      <p className="mt-1 font-black text-slate-950">{acceptedProposal.driver?.fullName ?? 'Conductor'}</p>
+                      <p className="text-xs text-slate-600">Estado: {acceptedProposal.driver?.verificationStatus ?? 'approved'}</p>
+                    </div>
+                    <div className="rounded-xl bg-white p-3 shadow-sm">
+                      <p className="text-xs font-bold uppercase text-slate-500">Vehiculo y placas</p>
+                      <p className="mt-1 font-black text-slate-950">{acceptedProposal.driver?.vehicle ? `${acceptedProposal.driver.vehicle.brand} ${acceptedProposal.driver.vehicle.model}` : 'Vehiculo por confirmar'}</p>
+                      <p className="text-xs text-slate-600">Placas: {acceptedProposal.driver?.vehicle?.plates ?? 'Por confirmar'}</p>
+                    </div>
+                    <div className="rounded-xl bg-white p-3 shadow-sm">
+                      <p className="text-xs font-bold uppercase text-slate-500">Horario y dias</p>
+                      <p className="mt-1 font-black text-slate-950">{acceptedProposal.proposedTime}</p>
+                      <p className="text-xs text-slate-600">{formatWeekdays(need.recurrenceDays)}</p>
+                    </div>
+                    <div className="rounded-xl bg-white p-3 shadow-sm">
+                      <p className="text-xs font-bold uppercase text-slate-500">Punto de abordaje</p>
+                      <p className="mt-1 font-black text-slate-950">{acceptedProposal.boardingPoint}</p>
+                      <p className="text-xs text-slate-600">{acceptedProposal.boardingReference}</p>
+                    </div>
+                    <div className="rounded-xl bg-white p-3 shadow-sm">
+                      <p className="text-xs font-bold uppercase text-slate-500">Aportacion sugerida</p>
+                      <p className="mt-1 font-black text-slate-950">${acceptedProposal.suggestedCashContribution.toFixed(2)} MXN efectivo</p>
+                      <p className="text-xs text-slate-600">No es tarifa obligatoria.</p>
+                    </div>
+                    <div className="rounded-xl bg-white p-3 shadow-sm">
+                      <p className="text-xs font-bold uppercase text-slate-500">Contacto</p>
+                      {whatsappUrl ? (
+                        <a href={whatsappUrl} target="_blank" rel="noreferrer" className="mt-1 inline-flex rounded-md bg-emerald-700 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-800">Abrir WhatsApp</a>
+                      ) : (
+                        <p className="mt-1 text-sm font-semibold text-slate-700">Usa el correo registrado: {acceptedProposal.driver?.email ?? 'No disponible'}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                    <p className="rounded-xl border border-emerald-200 bg-white p-3 text-xs font-semibold text-slate-700">Antes de abordar, verifica que el conductor, vehiculo y placas coincidan con la informacion mostrada en VIAJASEGURO. No abordes si algun dato no coincide.</p>
+                    <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-900">El pago del trayecto, si existe, se acuerda directamente en efectivo entre usuario y conductor. VIAJASEGURO no procesa ni garantiza ese pago.</p>
+                  </div>
+                </section>
+              )}
 
               <div className="mt-4 space-y-3">
                 {need.proposals.length === 0 ? (
@@ -224,7 +283,8 @@ export default function RequestRoutePage() {
                 ))}
               </div>
             </article>
-          ))}
+            );
+          })}
         </section>
       </div>
     </section>

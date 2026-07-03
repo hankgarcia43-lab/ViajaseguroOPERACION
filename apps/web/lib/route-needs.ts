@@ -16,6 +16,7 @@ export interface DriverRouteProposal {
     id: string;
     fullName: string;
     email: string;
+    phone?: string | null;
     verificationStatus: string;
     vehicle: {
       id: string;

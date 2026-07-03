@@ -1,5 +1,24 @@
+'use client';
+
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { apiRequest, getToken } from '@/lib/api';
 import { MERCADO_PAGO_DIRECT_PAYMENT_LINK, MERCADO_PAGO_PAYMENT_REFERENCE } from '@/lib/payments';
+
+interface MeResponse {
+  fullName: string;
+  role: 'passenger' | 'driver' | 'admin';
+  subscription?: {
+    status: string;
+    planType: string | null;
+    trialDaysRemaining: number;
+    trialEndsAt: string | null;
+    subscriptionExpiresAt: string | null;
+    isTrialActive: boolean;
+    isActivePaid: boolean;
+  };
+  access?: { canUsePremiumFeatures: boolean; reason: string | null };
+}
 
 const membershipPlans = [
   {
@@ -24,31 +43,93 @@ const membershipPlans = [
   }
 ];
 
+function formatDate(value?: string | null) {
+  if (!value) return 'Sin fecha';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Sin fecha';
+  return new Intl.DateTimeFormat('es-MX', { dateStyle: 'long' }).format(date);
+}
+
 export default function MyPaymentsPage() {
+  const [me, setMe] = useState<MeResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function load() {
+      const token = getToken();
+      if (!token) {
+        setError('No hay sesion activa.');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const data = await apiRequest<MeResponse>('/auth/me', { headers: { Authorization: `Bearer ${token}` } });
+        setMe(data);
+      } catch (requestError) {
+        setError(requestError instanceof Error ? requestError.message : 'No se pudo cargar tu suscripcion.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void load();
+  }, []);
+
+  const subscription = me?.subscription;
+  const isActive = Boolean(subscription?.isActivePaid);
+  const isTrial = Boolean(subscription?.isTrialActive);
+  const statusLabel = isActive
+    ? 'Suscripcion activa'
+    : isTrial
+      ? `Prueba gratis: ${subscription?.trialDaysRemaining ?? 0} dia(s) restantes`
+      : 'Prueba vencida o sin suscripcion activa';
+  const statusTone = isActive
+    ? 'border-emerald-200 bg-emerald-50 text-emerald-950'
+    : isTrial
+      ? 'border-sky-200 bg-sky-50 text-sky-950'
+      : 'border-rose-200 bg-rose-50 text-rose-950';
+
   return (
     <section className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-sky-700">Pagos de plataforma</p>
-          <h1 className="text-2xl font-semibold text-slate-900">Membresia y servicios VIAJA SEGURO</h1>
+          <h1 className="text-2xl font-semibold text-slate-900">Mi suscripcion VIAJASEGURO</h1>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
-            Los pagos realizados a VIAJA SEGURO corresponden unicamente a membresias, verificaciones, suscripciones o servicios digitales de la plataforma. VIAJA SEGURO no cobra rutas ni realiza pagos a conductores.
+            La suscripcion habilita funciones digitales de la comunidad, como publicar rutas, solicitar unirse y recibir respuestas. No representa el pago de un traslado.
           </p>
         </div>
         <div className="flex gap-2">
-          <Link href="/dashboard/my-reservations" className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">
-            Mis solicitudes
-          </Link>
-          <Link href="/dashboard/routes" className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">
-            Buscar rutas
-          </Link>
+          <Link href="/dashboard/routes/request" className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">Necesito una ruta</Link>
+          <Link href="/dashboard/search-trips" className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">Buscar rutas</Link>
         </div>
       </div>
+
+      {loading ? <p className="text-sm text-slate-600">Cargando suscripcion...</p> : error ? (
+        <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>
+      ) : (
+        <article className={`rounded-2xl border p-5 shadow-sm ${statusTone}`}>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] opacity-70">Estado actual</p>
+          <h2 className="mt-1 text-2xl font-black">{statusLabel}</h2>
+          <div className="mt-3 grid gap-3 text-sm md:grid-cols-3">
+            <p><span className="font-bold">Plan:</span> {subscription?.planType ?? 'Piloto / trial'}</p>
+            <p><span className="font-bold">Fin de prueba:</span> {formatDate(subscription?.trialEndsAt)}</p>
+            <p><span className="font-bold">Fin de suscripcion:</span> {formatDate(subscription?.subscriptionExpiresAt)}</p>
+          </div>
+          {!me?.access?.canUsePremiumFeatures && (
+            <p className="mt-3 rounded-xl border border-white/80 bg-white p-3 text-sm font-semibold text-rose-800">
+              Tu acceso premium esta bloqueado. Paga una membresia de plataforma y pide al admin activar tu suscripcion.
+            </p>
+          )}
+        </article>
+      )}
 
       <article className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-950 shadow-sm">
         <p className="font-bold">Importante para el piloto cerrado</p>
         <p className="mt-1">
-          Este link no debe usarse para pagar traslados. Cualquier apoyo economico relacionado con gasolina, casetas o mantenimiento se acuerda directamente entre miembros verificados, fuera de VIAJA SEGURO.
+          Este link no debe usarse para pagar traslados. Cualquier apoyo economico relacionado con gasolina, casetas o mantenimiento se acuerda directamente entre miembros verificados, fuera de VIAJASEGURO.
         </p>
       </article>
 
@@ -63,12 +144,15 @@ export default function MyPaymentsPage() {
 
       <article className="rounded-3xl border border-sky-200 bg-white p-6 shadow-sm">
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">Link oficial</p>
-        <h2 className="mt-2 text-xl font-bold text-slate-950">Mercado Pago VIAJA SEGURO</h2>
-        <p className="mt-2 text-sm leading-6 text-slate-600">
-          Usa este link solo para activar una membresia, verificacion o servicio digital de VIAJASEGURO. No lo uses para pagar rutas, traslados ni aportaciones en efectivo. Referencia sugerida: <span className="font-semibold text-slate-950">{MERCADO_PAGO_PAYMENT_REFERENCE}</span>.
-        </p>
+        <h2 className="mt-2 text-xl font-bold text-slate-950">Mercado Pago VIAJASEGURO</h2>
+        <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm leading-6 text-slate-600">
+          <li>Abre el link oficial.</li>
+          <li>Ingresa el monto de tu membresia, verificacion o servicio digital indicado por admin.</li>
+          <li>Usa la referencia: <span className="font-semibold text-slate-950">{MERCADO_PAGO_PAYMENT_REFERENCE}</span>.</li>
+          <li>Regresa a la app y espera que admin active tu suscripcion.</li>
+        </ol>
         <a href={MERCADO_PAGO_DIRECT_PAYMENT_LINK} target="_blank" rel="noreferrer" className="mt-5 inline-flex rounded-2xl bg-sky-700 px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-sky-600">
-          Activar membresia con Mercado Pago
+          Activar suscripcion con Mercado Pago
         </a>
       </article>
     </section>

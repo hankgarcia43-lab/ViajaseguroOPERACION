@@ -214,6 +214,7 @@ export class RouteNeedsService {
           id: true,
           fullName: true,
           email: true,
+          phone: true,
           verificationStatus: true,
           vehicle: true
         }
@@ -258,6 +259,7 @@ export class RouteNeedsService {
             id: proposal.driver.id,
             fullName: proposal.driver.fullName,
             email: proposal.driver.email,
+            phone: proposal.driver.phone ?? null,
             verificationStatus: proposal.driver.verificationStatus,
             vehicle: vehicle
               ? {

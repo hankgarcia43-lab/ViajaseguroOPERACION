@@ -1,4 +1,4 @@
-﻿CREATE TABLE IF NOT EXISTS "requested_routes" (
+CREATE TABLE IF NOT EXISTS "requested_routes" (
   "id" TEXT NOT NULL,
   "user_id" TEXT NOT NULL,
   "origin_text" TEXT NOT NULL,

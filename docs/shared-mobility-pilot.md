@@ -92,11 +92,11 @@ La UI debe comunicar: VIAJA SEGURO se encuentra en piloto cerrado con acceso lim
 
 Texto operativo obligatorio: la aportacion sugerida es en efectivo, acordada directamente entre usuario y conductor. VIAJASEGURO no cobra traslados ni administra pagos entre las partes.
 
-## Trial y suscripcion
+## Trial y acceso
 
-- Todo usuario nuevo recibe `TRIAL_DAYS=15` por defecto.
+- Todo usuario nuevo recibe `TRIAL_DAYS=7` por defecto.
 - El backend expone `subscription` y `access` en `/api/auth/me`.
-- Al vencer trial o suscripcion, el usuario puede iniciar sesion y ver informacion, pero el backend bloquea nuevas solicitudes/publicaciones premium.
+- Al vencer trial o acceso, el usuario puede iniciar sesion y ver informacion, pero el backend bloquea nuevas solicitudes/publicaciones premium.
 - Durante el piloto, Mercado Pago funciona con link fijo para membresias, verificaciones o servicios digitales.
 - Admin puede activar manualmente una suscripcion piloto por 30 dias desde `Admin > Personas` despues de verificar el pago.
 

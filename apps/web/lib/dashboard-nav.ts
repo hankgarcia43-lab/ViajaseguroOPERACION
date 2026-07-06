@@ -8,7 +8,7 @@ export const PASSENGER_DASHBOARD_NAV: DashboardNavItem[] = [
   { href: '/dashboard/routes/request', label: 'Necesito una ruta' },
   { href: '/dashboard/search-trips', label: 'Buscar rutas' },
   { href: '/dashboard/my-reservations', label: 'Mis solicitudes' },
-  { href: '/dashboard/my-payments', label: 'Mi suscripcion' }
+  { href: '/dashboard/my-payments', label: 'Mi acceso' }
 ];
 
 export const DRIVER_DASHBOARD_NAV: DashboardNavItem[] = [
@@ -25,7 +25,7 @@ export const ADMIN_DASHBOARD_NAV: DashboardNavItem[] = [
   { href: '/dashboard/admin/verifications', label: 'Verificaciones' },
   { href: '/dashboard/admin/people', label: 'Usuarios' },
   { href: '/dashboard/admin/routes', label: 'Rutas' },
-  { href: '/dashboard/admin/payments', label: 'Pagos plataforma' },
+  { href: '/dashboard/admin/payments', label: 'Accesos internos' },
   { href: '/dashboard/admin/reservations', label: 'Solicitudes' },
   { href: '/dashboard/admin/incidents', label: 'Reportes' }
 ];

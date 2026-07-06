@@ -6,7 +6,6 @@ import { apiRequest, getToken } from '@/lib/api';
 import { ADMIN_NAV_ITEMS } from '@/lib/admin';
 import { AdminPeopleSummary, fetchAdminPeopleSummary } from '@/lib/admin-people';
 import { FarePolicy } from '@/lib/fare-policy';
-import { Payment } from '@/lib/payments';
 import { Refund } from '@/lib/refunds';
 import { Reservation } from '@/lib/reservations';
 import { DriverTrip } from '@/lib/trips';
@@ -26,7 +25,6 @@ type SummaryCard = {
 export default function AdminDashboardPage() {
   const [pendingVerifications, setPendingVerifications] = useState<PendingVerificationSummary[]>([]);
   const [pendingVehicles, setPendingVehicles] = useState<PendingVehicleSummary[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
   const [refunds, setRefunds] = useState<Refund[]>([]);
   const [payouts, setPayouts] = useState<WeeklyPayout[]>([]);
   const [trips, setTrips] = useState<DriverTrip[]>([]);
@@ -49,10 +47,9 @@ export default function AdminDashboardPage() {
 
       try {
         const headers = { Authorization: `Bearer ${token}` };
-        const [verificationData, vehicleData, paymentData, refundData, payoutData, tripData, reservationData, routeData, incidentData, farePolicyData, peopleSummaryData] = await Promise.all([
+        const [verificationData, vehicleData, refundData, payoutData, tripData, reservationData, routeData, incidentData, farePolicyData, peopleSummaryData] = await Promise.all([
           apiRequest<PendingVerificationSummary[]>('/admin/verifications/pending', { headers }),
           apiRequest<PendingVehicleSummary[]>('/admin/vehicles/pending', { headers }),
-          apiRequest<Payment[]>('/payments', { headers }),
           apiRequest<Refund[]>('/refunds', { headers }),
           apiRequest<WeeklyPayout[]>('/weekly-payouts', { headers }),
           apiRequest<DriverTrip[]>('/trips/admin/all', { headers }),
@@ -65,7 +62,6 @@ export default function AdminDashboardPage() {
 
         setPendingVerifications(verificationData);
         setPendingVehicles(vehicleData);
-        setPayments(paymentData);
         setRefunds(refundData);
         setPayouts(payoutData);
         setTrips(tripData);
@@ -87,19 +83,18 @@ export default function AdminDashboardPage() {
   const cards = useMemo<SummaryCard[]>(() => [
     { label: 'Usuarios totales', value: peopleSummary?.total ?? 0, href: '/dashboard/admin/people', helper: `${peopleSummary?.drivers ?? 0} conductores / ${peopleSummary?.passengers ?? 0} usuarios` },
     { label: 'Suspendidos', value: peopleSummary?.suspended ?? 0, href: '/dashboard/admin/people', helper: 'Cuentas bloqueadas por admin' },
-    { label: 'Usuarios en prueba', value: peopleSummary?.trialUsers ?? 0, href: '/dashboard/admin/people', helper: 'Trial digital de 15 dias' },
-    { label: 'Suscripciones activas', value: peopleSummary?.activeSubscriptions ?? 0, href: '/dashboard/admin/payments', helper: 'Acceso digital vigente' },
+    { label: 'Usuarios en prueba', value: peopleSummary?.trialUsers ?? 0, href: '/dashboard/admin/people', helper: 'Prueba digital de 7 dias' },
+    { label: 'Accesos activos', value: peopleSummary?.activeSubscriptions ?? 0, href: '/dashboard/admin/payments', helper: 'Acceso digital vigente' },
     { label: 'Verificaciones pendientes', value: pendingVerifications.length, href: '/dashboard/admin/verifications', helper: 'Usuarios esperando revision' },
     { label: 'Vehiculos pendientes', value: pendingVehicles.length, href: '/dashboard/admin/vehicles', helper: 'Conductores bloqueados por vehiculo' },
     { label: 'Estimacion por km activa', value: farePolicy ? `$${farePolicy.ratePerKm.toFixed(2)}` : 'Sin definir', href: '/dashboard/admin/fare-policy', helper: farePolicy ? `Modo: ${farePolicy.mode === 'fixed_per_km' ? 'fija' : 'maxima'} por km` : 'Configura referencia orientativa' },
-    { label: 'Pagos registrados', value: payments.length, href: '/dashboard/admin/payments', helper: 'Membresias y servicios digitales' },
     { label: 'Refunds', value: refunds.length, href: '/dashboard/admin/refunds', helper: 'Reembolsos manuales e internos' },
     { label: 'Archivo legacy', value: payouts.length, href: '/dashboard/admin/weekly-payouts', helper: 'Modulo historico desactivado' },
     { label: 'Rutas piloto', value: routesCount, href: '/dashboard/admin/routes', helper: 'Rutas especificas creadas por administracion' },
     { label: 'Soporte abierto', value: incidents.filter((item) => item.status === 'open').length, href: '/dashboard/admin/incidents', helper: 'Comentarios, reportes y alertas' },
     { label: 'Viajes', value: trips.length, href: '/dashboard/admin/trips', helper: 'Operacion de salidas reales' },
     { label: 'Solicitudes', value: reservations.length, href: '/dashboard/admin/reservations', helper: 'Seguimiento de ocupacion y pagos' }
-  ] , [payments.length, payouts.length, pendingVerifications.length, pendingVehicles.length, refunds.length, reservations.length, routesCount, trips.length, incidents, farePolicy, peopleSummary]);
+  ] , [payouts.length, pendingVerifications.length, pendingVehicles.length, refunds.length, reservations.length, routesCount, trips.length, incidents, farePolicy, peopleSummary]);
 
   if (loading) {
     return <p className="text-slate-700">Cargando resumen admin...</p>;
@@ -109,7 +104,7 @@ export default function AdminDashboardPage() {
     <section className="space-y-6">
       <header className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h1 className="text-2xl font-semibold text-slate-900">Dashboard admin</h1>
-        <p className="mt-2 text-sm text-slate-600">Centro operativo para revisar personas, verificaciones, rutas compartidas, solicitudes, seguridad y pagos de plataforma.</p>
+        <p className="mt-2 text-sm text-slate-600">Centro operativo para revisar personas, verificaciones, rutas compartidas, solicitudes y seguridad del piloto.</p>
       </header>
       {error && <p className="rounded-md bg-red-50 p-3 text-red-700">{error}</p>}
 
@@ -118,7 +113,7 @@ export default function AdminDashboardPage() {
         <div className="mt-3 grid gap-3 text-sm md:grid-cols-3">
           <p><span className="font-semibold">Rutas:</span> crea solo rutas reales con municipio, poblado libre, referencia de abordaje y horario confirmado.</p>
           <p><span className="font-semibold">Personas:</span> revisa documentos, suspende cuentas de riesgo y destaca conductores confiables.</p>
-          <p><span className="font-semibold">Pagos:</span> usa Mercado Pago solo para membresias, verificaciones o servicios digitales.</p>
+          <p><span className="font-semibold">Seguridad:</span> prioriza personas verificadas, puntos visibles y seguimiento de incidentes.</p>
         </div>
       </section>
 

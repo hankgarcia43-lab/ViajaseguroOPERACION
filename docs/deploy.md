@@ -86,11 +86,11 @@ MANUAL_PAYMENT_REFERENCE=VIAJA SEGURO
 ```
 
 
-### Suscripcion automatica con Mercado Pago
+### Acceso automatico con Mercado Pago
 
-Para activacion automatica, el usuario debe entrar a `Mi suscripcion` y usar el boton `Activar suscripcion`. Ese boton crea una preferencia de Mercado Pago con `external_reference` interno de suscripcion. Cuando Mercado Pago mande webhook `approved` a `MERCADOPAGO_WEBHOOK_URL`, la API actualiza `subscriptionStatus=active` y extiende `subscriptionExpiresAt`.
+Para activacion automatica, el usuario debe entrar a `Mi acceso` y usar el boton `Activar acceso`. Ese boton crea una preferencia de Mercado Pago con `external_reference` interno de acceso. Cuando Mercado Pago mande webhook `approved` a `MERCADOPAGO_WEBHOOK_URL`, la API actualiza `subscriptionStatus=active` y extiende `subscriptionExpiresAt`.
 
-El link fijo `NEXT_PUBLIC_MP_PAYMENT_LINK` queda como respaldo manual. Si se usa ese link, el admin debe activar la suscripcion desde `Admin > Personas` porque el link fijo no identifica de forma confiable al usuario dentro del webhook.
+El link fijo `NEXT_PUBLIC_MP_PAYMENT_LINK` queda como respaldo manual. Si se usa ese link, el admin debe activar el acceso desde `Admin > Personas` porque el link fijo no identifica de forma confiable al usuario dentro del webhook.
 ## Prisma y base de datos
 
 Comandos utiles:

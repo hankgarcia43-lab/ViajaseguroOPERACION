@@ -8,7 +8,8 @@ import { apiRequest, buildApiAssetUrl, getToken } from '@/lib/api';
 import { APP_COMPANY_NAME } from '@/lib/app-config';
 import { getVerificationStatusMeta } from '@/lib/status';
 import { Incident } from '@/lib/incidents';
-import { Payment } from '@/lib/payments';
+
+
 import { Reservation } from '@/lib/reservations';
 import { DriverTrip } from '@/lib/trips';
 
@@ -101,7 +102,8 @@ function StatCard({ label, value, helper, tone = 'slate' }: { label: string; val
 export default function DashboardPage() {
   const [me, setMe] = useState<MeResponse | null>(null);
   const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
+
+
   const [driverTrips, setDriverTrips] = useState<DriverTrip[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -124,19 +126,18 @@ export default function DashboardPage() {
         setMe(data);
         setStatsError(null);
         setReservations([]);
-        setPayments([]);
+
+
         setDriverTrips([]);
         setIncidents([]);
 
         try {
           if (data.role === 'passenger') {
-            const [reservationData, paymentData, incidentData] = await Promise.all([
+            const [reservationData, incidentData] = await Promise.all([
               apiRequest<Reservation[]>('/reservations/my-reservations', { headers }),
-              apiRequest<Payment[]>('/payments/my-payments?includeArchived=true', { headers }),
               apiRequest<Incident[]>('/incidents/my', { headers })
             ]);
             setReservations(reservationData);
-            setPayments(paymentData);
             setIncidents(incidentData);
           }
 
@@ -175,7 +176,7 @@ export default function DashboardPage() {
   const subscription = me.subscription;
   const trialDaysRemaining = subscription?.trialDaysRemaining ?? 0;
   const subscriptionStatusLabel = subscription?.isActivePaid
-    ? 'Suscripcion activa'
+    ? 'Acceso activo'
     : subscription?.isTrialActive
       ? `Prueba gratis: ${trialDaysRemaining} dia(s) restantes`
       : 'Prueba vencida';
@@ -200,7 +201,7 @@ export default function DashboardPage() {
     },
     admin: {
       title: 'Control total para una operacion ordenada',
-      subtitle: `Administra rutas, verificaciones, membresias y solicitudes desde un tablero central de ${APP_COMPANY_NAME}.`,
+      subtitle: `Administra rutas, verificaciones, seguridad y solicitudes desde un tablero central de ${APP_COMPANY_NAME}.`,
       chips: ['Mayor control', 'Aprobaciones seguras', 'Operacion demostrable']
     }
   }[me.role];
@@ -239,7 +240,7 @@ export default function DashboardPage() {
           points: [
             'Crea solo rutas piloto reales y elimina o pausa las que no se operen.',
             'Aprueba verificaciones de usuario y vehiculo.',
-            'Supervisa membresias de plataforma y solicitudes.',
+            'Supervisa solicitudes, personas verificadas e incidentes.',
             'Revisa personas registradas antes de promover o suspender cuentas.',
             'Mantiene control de rutas, documentos e incidentes.'
           ],
@@ -252,7 +253,7 @@ export default function DashboardPage() {
   const passengerInCourse = reservations.filter(isReservationInCourse).length;
   const passengerFinished = reservations.filter(isReservationHistory).length;
   const passengerPaid = reservations.filter(isReservationPaid).length;
-  const passengerInReview = payments.filter((payment) => payment.status === 'submitted').length;
+  const passengerPending = reservations.filter((reservation) => reservation.status === 'confirmed').length;
   const passengerUsedTickets = reservations.filter((reservation) => reservation.status === 'boarded' || reservation.status === 'completed').length;
   const driverUpcoming = driverTrips.filter((trip) => trip.status === 'scheduled').length;
   const driverInCourse = driverTrips.filter((trip) => trip.status === 'started').length;
@@ -295,26 +296,25 @@ export default function DashboardPage() {
         { href: '/dashboard/routes/request', label: 'Necesito una ruta', helper: 'Publica origen, destino, dias y horario.' },
         { href: '/dashboard/search-trips', label: 'Buscar rutas disponibles', helper: 'Compara conductores y horarios.' },
         { href: '/dashboard/routes/request', label: 'Mis solicitudes', helper: 'Responde propuestas de conductores.' },
-        { href: '/dashboard/my-payments', label: 'Mi suscripcion', helper: 'Activa acceso digital al terminar la prueba.' }
+        { href: '/dashboard/verification', label: 'Seguridad y verificacion', helper: 'Manten tu identidad lista antes de abordar.' }
       ]
     : me.role === 'driver'
       ? [
           { href: '/dashboard/routes/create', label: 'Publicar ruta', helper: 'Da de alta tu ruta recurrente.' },
           { href: '/dashboard/route-needs', label: 'Ver rutas solicitadas', helper: 'Toma necesidades compatibles.' },
           { href: '/dashboard/trips', label: 'Mis rutas activas', helper: 'Inicia ruta y valida pases.' },
-          { href: '/dashboard/verification', label: 'Mi verificacion / plan', helper: 'Mantente aprobado para operar.' }
+          { href: '/dashboard/verification', label: 'Mi verificacion', helper: 'Mantente aprobado para operar.' }
         ]
       : [
           { href: '/dashboard/admin/verifications', label: 'Conductores pendientes', helper: 'Aprueba o rechaza documentos.' },
           { href: '/dashboard/admin/routes', label: 'Rutas publicadas', helper: 'Pausa o ajusta rutas.' },
           { href: '/dashboard/admin/people', label: 'Usuarios en piloto', helper: 'Suspende, reactiva o revisa registros.' },
-          { href: '/dashboard/admin/payments', label: 'Pagos plataforma', helper: 'Solo membresias y servicios digitales.' }
+          { href: '/dashboard/admin/incidents', label: 'Seguridad e incidentes', helper: 'Revisa reportes y alertas.' }
         ];
 
   return (
     <section className="space-y-6">
       <header className="relative overflow-hidden rounded-[32px] bg-slate-950 p-8 text-white shadow-[0_30px_90px_-45px_rgba(7,17,31,0.85)] md:p-10">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(21,184,166,0.25),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.08),transparent_25%)]" />
         <div className="relative space-y-5">
           <span className="inline-flex rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-cyan-100">Panel {me.role}</span>
           <div>
@@ -338,14 +338,14 @@ export default function DashboardPage() {
         <section className={`rounded-2xl border p-4 shadow-sm ${subscriptionTone}`}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.18em] opacity-70">Acceso digital VIAJASEGURO</p>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] opacity-70">Prueba y acceso VIAJASEGURO</p>
               <h2 className="mt-1 text-lg font-black">{subscriptionStatusLabel}</h2>
               <p className="mt-1 text-sm font-medium opacity-85">
-                La suscripcion habilita funciones digitales de la comunidad: publicar rutas, solicitar unirse y recibir respuestas. No representa el pago de un traslado.
+                Usa tu prueba para publicar, buscar y coordinar rutas con referencias claras y reglas de seguridad antes de abordar.
               </p>
             </div>
             <Link href="/dashboard/my-payments" className="rounded-md bg-slate-950 px-4 py-2 text-sm font-bold text-white hover:bg-slate-800">
-              Activar suscripcion
+              Ver acceso
             </Link>
           </div>
         </section>
@@ -478,7 +478,7 @@ export default function DashboardPage() {
             <StatCard label="Rutas en curso" value={passengerInCourse} tone="emerald" />
             <StatCard label="Rutas terminadas" value={passengerFinished} tone="slate" />
             <StatCard label="Solicitudes aceptadas" value={passengerPaid} tone="emerald" />
-            <StatCard label="Solicitudes en revision" value={passengerInReview} tone="amber" />
+            <StatCard label="Solicitudes pendientes" value={passengerPending} tone="amber" />
             <StatCard label="Pases usados" value={passengerUsedTickets} tone="slate" />
             <StatCard label="Historial de rutas" value={passengerFinished} helper="Terminados o archivados" tone="slate" />
             <StatCard label="Alertas/reportes" value={incidents.length} helper="Enviados por tu cuenta" tone="rose" />
@@ -543,8 +543,8 @@ export default function DashboardPage() {
             <div className="grid gap-4 lg:grid-cols-3">
               <article className="vs-card">
                 <p className="vs-kicker">Buscar</p>
-                <h2 className="mt-3 text-xl font-semibold text-slate-950">Encuentra ruta con horario claro y aportacion sugerida</h2>
-                <p className="mt-3 text-sm leading-6 text-slate-600">Consulta rutas disponibles, ocupacion y hora de salida antes de solicitar unirte.</p>
+                <h2 className="mt-3 text-xl font-semibold text-slate-950">Encuentra ruta con horario claro</h2>
+                <p className="mt-3 text-sm leading-6 text-slate-600">Consulta rutas disponibles, ocupacion, punto de encuentro y hora de salida antes de solicitar unirte.</p>
                 <div className="mt-5 flex flex-wrap gap-2"><Link href="/dashboard/search-trips" className="vs-button-accent">Buscar rutas</Link></div>
               </article>
               <article className="vs-card">
@@ -553,7 +553,8 @@ export default function DashboardPage() {
                 <p className="mt-3 text-sm leading-6 text-slate-600">Revisa pase, estado de solicitud y codigo de abordaje.</p>
                 <div className="mt-5 flex flex-wrap gap-2">
                   <Link href="/dashboard/my-reservations" className="vs-button-secondary">Mis solicitudes</Link>
-                  <Link href="/dashboard/my-payments" className="vs-button-secondary">Membresia</Link>
+
+
                 </div>
               </article>
               <article className="vs-card">
@@ -569,10 +570,11 @@ export default function DashboardPage() {
             <article className="vs-card">
               <p className="vs-kicker">Centro de control</p>
               <h2 className="mt-3 text-2xl font-semibold text-slate-950">Panel operativo del MVP</h2>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">Publica rutas, autoriza cuentas, revisa membresias y supervisa solicitudes desde un solo lugar.</p>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">Publica rutas, autoriza cuentas, revisa seguridad y supervisa solicitudes desde un solo lugar.</p>
               <div className="mt-5 flex flex-wrap gap-2">
                 <Link href="/dashboard/admin" className="vs-button-accent">Abrir panel admin</Link>
-                <Link href="/dashboard/admin/payments" className="vs-button-secondary">Pagos plataforma</Link>
+
+
                 <Link href="/dashboard/admin/verifications" className="vs-button-secondary">Verificaciones</Link>
               </div>
             </article>

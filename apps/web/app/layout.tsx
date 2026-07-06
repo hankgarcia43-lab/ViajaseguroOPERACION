@@ -5,7 +5,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Viaja Seguro',
-  description: 'Transporte programado con horarios claros, pago validado y abordaje ordenado.'
+  description: 'Comunidad de rutas compartidas con personas verificadas, puntos visibles y coordinacion segura.'
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

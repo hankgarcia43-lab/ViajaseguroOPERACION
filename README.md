@@ -10,7 +10,7 @@ VIAJA SEGURO es un MVP operativo para coordinar rutas compartidas recurrentes en
 - Base de datos: Prisma con datasource PostgreSQL.
 - Auth: JWT con roles `passenger`, `driver` y `admin`.
 - Modelo piloto: solicitudes de usuarios, aceptacion del conductor y pase/codigo de abordaje.
-- Pagos: Mercado Pago solo para membresias, verificaciones, suscripciones o servicios digitales de la plataforma.
+- Pagos: Mercado Pago solo para accesos, verificaciones o servicios digitales de la plataforma.
 - E2E: Playwright en `tests/e2e`.
 
 ## Estructura
@@ -38,7 +38,7 @@ tests/e2e/    Pruebas Playwright
 
 ## Regla legal y operativa
 
-VIAJA SEGURO no debe procesar pagos de viajes, reservas, comisiones por trayecto, liquidaciones a conductores ni cuentas bancarias de usuarios. El link de Mercado Pago se usa solo para servicios de plataforma como membresias, verificaciones, suscripciones o servicios digitales.
+VIAJA SEGURO no debe procesar pagos de viajes, reservas, comisiones por trayecto, liquidaciones a conductores ni cuentas bancarias de usuarios. El link de Mercado Pago se usa solo para servicios de plataforma como accesos, verificaciones o servicios digitales.
 
 ## Desarrollo local
 
@@ -120,7 +120,7 @@ El schema Prisma actual usa PostgreSQL y conserva campos historicos de reservas,
 - Conductor: `Dashboard -> Rutas solicitadas` responde con horario, punto de abordaje, referencia, cupos y aportacion sugerida en efectivo.
 - Usuario: acepta o rechaza la propuesta desde sus solicitudes.
 - Admin: `Dashboard admin -> Rutas solicitadas` supervisa necesidades y propuestas.
-- Todo usuario nuevo recibe prueba gratis de 15 dias (`TRIAL_DAYS=15`).
-- Admin puede activar suscripcion piloto por 30 dias desde `Admin -> Personas` despues de verificar un pago de plataforma.
+- Todo usuario nuevo recibe prueba gratis de 7 dias (`TRIAL_DAYS=7`).
+- Admin puede activar acceso piloto por 30 dias desde `Admin -> Personas` despues de verificar un pago de plataforma.
 
-Mercado Pago se mantiene solo para membresias, verificaciones, suscripciones o servicios digitales. No se usa para cobrar rutas ni traslados.
+Mercado Pago se mantiene solo para accesos, verificaciones o servicios digitales. No se usa para cobrar rutas ni traslados.

@@ -7,25 +7,43 @@ export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findByEmail(email: string) {
-    return this.prisma.user.findUnique({ where: { email } });
+    return this.prisma.user.findUnique({
+      where: { email },
+      select: this.coreUserSelect()
+    });
   }
 
   async findById(id: string) {
-    return this.prisma.user.findUnique({ where: { id } });
+    return this.prisma.user.findUnique({
+      where: { id },
+      select: this.coreUserSelect()
+    });
   }
 
   async createUser(data: Prisma.UserCreateInput) {
     const now = new Date();
     const trialEndsAt = this.addDays(now, this.getTrialDays());
 
-    return this.prisma.user.create({
-      data: {
-        trialStartedAt: now,
-        trialEndsAt,
-        subscriptionStatus: 'trial',
-        ...data
-      } as Prisma.UserCreateInput
-    });
+    try {
+      return await this.prisma.user.create({
+        data: {
+          trialStartedAt: now,
+          trialEndsAt,
+          subscriptionStatus: 'trial',
+          ...data
+        } as Prisma.UserCreateInput,
+        select: this.coreUserSelect()
+      });
+    } catch (error) {
+      if (!this.isMissingSubscriptionColumnError(error)) {
+        throw error;
+      }
+
+      return this.prisma.user.create({
+        data,
+        select: this.coreUserSelect()
+      });
+    }
   }
 
   async updateVerificationStatus(userId: string, status: 'pending' | 'approved' | 'rejected' | 'suspended') {
@@ -40,7 +58,8 @@ export class UsersService {
   async getCurrentUserProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: {
+      select: {
+        ...this.coreUserSelect(),
         driverProfile: true,
         passengerProfile: true
       }
@@ -49,6 +68,9 @@ export class UsersService {
     if (!user) {
       throw new NotFoundException('Usuario no encontrado');
     }
+
+    const subscriptionFields = await this.loadSubscriptionFieldsForUser(user.id, user.createdAt);
+    const profileUser = { ...user, ...subscriptionFields };
 
     return {
       id: user.id,
@@ -59,8 +81,8 @@ export class UsersService {
       verificationStatus: this.mapStatus(user.verificationStatus),
       operationalStatus: this.mapOperationalStatus((user as any).operationalStatus),
       recognitionLevel: this.mapRecognitionLevel((user as any).recognitionLevel),
-      subscription: this.mapSubscriptionSnapshot(user),
-      access: this.mapAccessSnapshot(user),
+      subscription: this.mapSubscriptionSnapshot(profileUser),
+      access: this.mapAccessSnapshot(profileUser),
       adminNotes: (user as any).adminNotes ?? null,
       emergencyContactName: user.emergencyContactName,
       emergencyContactPhone: user.emergencyContactPhone,
@@ -96,6 +118,8 @@ export class UsersService {
       user.count({ where: { verificationStatus: 'pending' } })
     ]);
 
+    const subscriptionCounts = await this.getSafeSubscriptionCounts();
+
     return {
       total,
       passengers,
@@ -105,9 +129,7 @@ export class UsersService {
       suspended,
       excellent,
       pendingVerifications,
-      trialUsers: await user.count({ where: { subscriptionStatus: 'trial' } }),
-      activeSubscriptions: await user.count({ where: { subscriptionStatus: 'active' } }),
-      expiredSubscriptions: await user.count({ where: { subscriptionStatus: 'expired' } })
+      ...subscriptionCounts
     };
   }
 
@@ -283,22 +305,30 @@ export class UsersService {
     return { userId, deleted: true, message: 'Usuario eliminado correctamente.' };
   }
   async ensurePremiumAccess(userId: string, actionLabel = 'usar funciones premium') {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: this.coreUserSelect()
+    });
     if (!user) {
       throw new NotFoundException('Usuario no encontrado');
     }
 
+    const userWithSubscription = {
+      ...user,
+      ...(await this.loadSubscriptionFieldsForUser(user.id, user.createdAt))
+    };
+
     if (this.mapRole(user.role) === 'admin') {
-      return user;
+      return userWithSubscription;
     }
 
-    const access = this.mapAccessSnapshot(user);
+    const access = this.mapAccessSnapshot(userWithSubscription);
     if (access.canUsePremiumFeatures) {
-      return user;
+      return userWithSubscription;
     }
 
     throw new ForbiddenException(
-      `Tu prueba gratis termino. Activa tu suscripcion para ${actionLabel}. La suscripcion habilita funciones digitales de la comunidad; no paga traslados.`
+      `Tu prueba gratis termino. Activa tu acceso para ${actionLabel}. El acceso habilita funciones digitales de la comunidad; no paga traslados.`
     );
   }
   validateRole(userRole: string, requiredRole: 'passenger' | 'driver' | 'admin') {
@@ -321,6 +351,83 @@ export class UsersService {
     return 'pending';
   }
 
+  private coreUserSelect(): Prisma.UserSelect {
+    return {
+      id: true,
+      fullName: true,
+      phone: true,
+      email: true,
+      passwordHash: true,
+      role: true,
+      verificationStatus: true,
+      operationalStatus: true,
+      recognitionLevel: true,
+      adminNotes: true,
+      emergencyContactName: true,
+      emergencyContactPhone: true,
+      createdAt: true,
+      updatedAt: true
+    };
+  }
+
+  private async loadSubscriptionFieldsForUser(userId: string, createdAt: Date) {
+    try {
+      const rows = await this.prisma.$queryRaw<Array<{
+        trialStartedAt: Date | null;
+        trialEndsAt: Date | null;
+        subscriptionStatus: string | null;
+        planType: string | null;
+        subscriptionExpiresAt: Date | null;
+      }>>`
+        SELECT
+          "trial_started_at" AS "trialStartedAt",
+          "trial_ends_at" AS "trialEndsAt",
+          "subscription_status" AS "subscriptionStatus",
+          "plan_type" AS "planType",
+          "subscription_expires_at" AS "subscriptionExpiresAt"
+        FROM "users"
+        WHERE "id" = ${userId}
+        LIMIT 1
+      `;
+
+      if (rows[0]) {
+        return rows[0];
+      }
+    } catch {
+      // Mantiene login y /auth/me disponibles si produccion aun no termina migraciones de acceso.
+    }
+
+    const trialStartedAt = createdAt;
+    return {
+      trialStartedAt,
+      trialEndsAt: this.addDays(new Date(createdAt), this.getTrialDays()),
+      subscriptionStatus: 'trial',
+      planType: null,
+      subscriptionExpiresAt: null
+    };
+  }
+
+  private async getSafeSubscriptionCounts() {
+    const user = (this.prisma as any).user;
+    try {
+      const [trialUsers, activeSubscriptions, expiredSubscriptions] = await Promise.all([
+        user.count({ where: { subscriptionStatus: 'trial' } }),
+        user.count({ where: { subscriptionStatus: 'active' } }),
+        user.count({ where: { subscriptionStatus: 'expired' } })
+      ]);
+
+      return { trialUsers, activeSubscriptions, expiredSubscriptions };
+    } catch {
+      return { trialUsers: 0, activeSubscriptions: 0, expiredSubscriptions: 0 };
+    }
+  }
+
+  private isMissingSubscriptionColumnError(error: unknown) {
+    const code = String((error as any)?.code ?? '');
+    const message = String((error as any)?.message ?? '').toLowerCase();
+    const subscriptionColumns = ['trial_started_at', 'trial_ends_at', 'subscription_status', 'plan_type', 'subscription_expires_at'];
+    return code === 'P2022' || subscriptionColumns.some((column) => message.includes(column));
+  }
   private mapSubscriptionSnapshot(user: any) {
     const now = new Date();
     const trialStartedAt = user.trialStartedAt ?? user.createdAt ?? null;
@@ -361,8 +468,8 @@ export class UsersService {
   }
 
   private getTrialDays() {
-    const value = Number.parseInt(process.env.TRIAL_DAYS || '15', 10);
-    return Number.isFinite(value) && value > 0 ? value : 15;
+    const value = Number.parseInt(process.env.TRIAL_DAYS || '7', 10);
+    return Number.isFinite(value) && value > 0 ? value : 7;
   }
 
   private addDays(date: Date, days: number) {

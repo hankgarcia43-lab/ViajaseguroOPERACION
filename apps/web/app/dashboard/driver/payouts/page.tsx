@@ -15,7 +15,7 @@ export default function DriverPayoutsPage() {
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">Actividad de ruta</p>
           <h1 className="text-2xl font-semibold text-slate-900">Resumen operativo del conductor</h1>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
-            VIAJA SEGURO no administra ganancias, comisiones ni pagos a conductores por rutas compartidas. Este espacio se mantiene como panel operativo para revisar actividad y preparar mejoras de estadisticas.
+            Revisa tu actividad, solicitudes y rutas cerradas sin saturar el panel principal. La informacion administrativa se mantiene separada para no confundir a usuarios.
           </p>
         </div>
         <div className="flex gap-2">
@@ -28,10 +28,10 @@ export default function DriverPayoutsPage() {
         </div>
       </div>
 
-      <article className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-950 shadow-sm">
-        <p className="font-bold">Sin pagos de traslado en plataforma</p>
+      <article className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm leading-6 text-slate-700 shadow-sm">
+        <p className="font-bold text-slate-950">Nota administrativa discreta</p>
         <p className="mt-1">
-          El conductor puede compartir gastos directamente con usuarios de su ruta cuando ambas partes lo acuerden. VIAJA SEGURO solo facilita contacto, verificacion, coordinacion y seguridad operativa dentro del piloto.
+          VIAJASEGURO no administra pagos de traslados ni promete ganancias. Cualquier aportacion de ruta, si existe, se acuerda directamente entre miembros verificados. Las reglas internas de planes, porcentajes o servicios digitales se comunican por administracion y no aparecen en el flujo principal del usuario.
         </p>
       </article>
 

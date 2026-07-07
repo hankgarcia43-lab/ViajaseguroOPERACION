@@ -56,16 +56,9 @@ export function AuthForm({ mode }: AuthFormProps) {
   const copy = COPY[mode];
 
   const submitLabel = useMemo(() => {
-    if (loading) {
-      return 'Procesando...';
-    }
-
-    if (isLogin) {
-      return copy.button;
-    }
-
+    if (loading) return 'Procesando...';
     return copy.button;
-  }, [copy.button, isLogin, loading]);
+  }, [copy.button, loading]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -79,6 +72,12 @@ export function AuthForm({ mode }: AuthFormProps) {
     };
 
     if (!isLogin) {
+      if (formData.get('legalAccepted') !== 'on') {
+        setError('Debes aceptar el Aviso Inicial, los Terminos y Condiciones y las reglas de seguridad para registrarte.');
+        setLoading(false);
+        return;
+      }
+
       payload.fullName = String(formData.get('fullName') ?? '').trim();
       payload.phone = String(formData.get('phone') ?? '').trim();
       payload.emergencyContactName = String(formData.get('emergencyContactName') ?? '').trim();
@@ -132,6 +131,20 @@ export function AuthForm({ mode }: AuthFormProps) {
           </ul>
         </div>
 
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left text-sm leading-6 text-amber-950">
+          <p className="font-semibold">Aviso de confidencialidad y seguridad</p>
+          <p className="mt-1">
+            La informacion de rutas, usuarios, conductores, vehiculos, placas, referencias y documentos es confidencial y solo debe usarse para coordinacion segura dentro de VIAJASEGURO.
+          </p>
+          <p className="mt-2">
+            VIAJASEGURO no presta servicio de transporte, no cobra traslados y no administra pagos entre usuarios y conductores.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Link href="/legal/aviso-inicial" className="font-semibold text-amber-900 underline">Aviso inicial</Link>
+            <Link href="/legal/terminos-condiciones" className="font-semibold text-amber-900 underline">Terminos y condiciones</Link>
+          </div>
+        </div>
+
         <form className="space-y-4" onSubmit={onSubmit}>
           {!isLogin && (
             <div className="grid gap-4 md:grid-cols-2">
@@ -163,6 +176,21 @@ export function AuthForm({ mode }: AuthFormProps) {
             Contrasena
             <input required type="password" minLength={8} name="password" className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-4 py-3" />
           </label>
+
+          {!isLogin && (
+            <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-700">
+              <input required type="checkbox" name="legalAccepted" className="mt-1 h-4 w-4 rounded border-slate-300" />
+              <span>
+                Acepto el <Link href="/legal/aviso-inicial" className="font-semibold text-indigo-700 underline">Aviso Inicial</Link>, los <Link href="/legal/terminos-condiciones" className="font-semibold text-indigo-700 underline">Terminos y Condiciones</Link>, las reglas de seguridad, la confidencialidad de la informacion y que VIAJASEGURO no cobra ni presta traslados.
+              </span>
+            </label>
+          )}
+
+          {isLogin && (
+            <p className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs leading-6 text-slate-600">
+              Al iniciar sesion declaras que aceptas el Aviso Inicial, los Terminos y Condiciones y el uso confidencial de la informacion mostrada en VIAJASEGURO.
+            </p>
+          )}
 
           {error && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
 

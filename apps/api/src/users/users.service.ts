@@ -217,16 +217,17 @@ export class UsersService {
   }
 
   async activateSubscriptionForAdmin(adminUserId: string, userId: string, notes?: string) {
-    await this.ensureAdminActionAllowed(adminUserId, userId, 'activar suscripcion');
+    await this.ensureAdminActionAllowed(adminUserId, userId, 'activar plan pagado');
     const current = await this.findAdminPersonOrThrow(userId);
     const now = new Date();
+    const accessDays = this.getAccessDays();
     const updated = await (this.prisma as any).user.update({
       where: { id: userId },
       data: {
         subscriptionStatus: 'active',
-        planType: 'pilot_monthly',
-        subscriptionExpiresAt: this.addDays(now, 30),
-        adminNotes: this.appendAdminNote(current.adminNotes, notes, 'Suscripcion piloto activada por admin por 30 dias')
+        planType: 'pilot_weekly',
+        subscriptionExpiresAt: this.addDays(now, accessDays),
+        adminNotes: this.appendAdminNote(current.adminNotes, notes, `Plan semanal activado por admin por ${accessDays} dias`)
       },
       include: this.adminPeopleInclude()
     });
@@ -235,14 +236,14 @@ export class UsersService {
   }
 
   async expireSubscriptionForAdmin(adminUserId: string, userId: string, notes?: string) {
-    await this.ensureAdminActionAllowed(adminUserId, userId, 'vencer suscripcion');
+    await this.ensureAdminActionAllowed(adminUserId, userId, 'vencer plan');
     const current = await this.findAdminPersonOrThrow(userId);
     const updated = await (this.prisma as any).user.update({
       where: { id: userId },
       data: {
         subscriptionStatus: 'expired',
         subscriptionExpiresAt: new Date(),
-        adminNotes: this.appendAdminNote(current.adminNotes, notes, 'Suscripcion marcada como vencida por admin')
+        adminNotes: this.appendAdminNote(current.adminNotes, notes, 'Plan marcado como vencido por admin')
       },
       include: this.adminPeopleInclude()
     });
@@ -283,7 +284,7 @@ export class UsersService {
         subscriptionStatus: 'active',
         planType: options.planType,
         subscriptionExpiresAt,
-        adminNotes: this.appendAdminNote(current.adminNotes, note, 'Suscripcion activada automaticamente')
+        adminNotes: this.appendAdminNote(current.adminNotes, note, 'Plan activado automaticamente')
       }
     });
 
@@ -469,6 +470,11 @@ export class UsersService {
 
   private getTrialDays() {
     const value = Number.parseInt(process.env.TRIAL_DAYS || '7', 10);
+    return Number.isFinite(value) && value > 0 ? value : 7;
+  }
+
+  private getAccessDays() {
+    const value = Number.parseInt(process.env.MERCADOPAGO_SUBSCRIPTION_DAYS || '7', 10);
     return Number.isFinite(value) && value > 0 ? value : 7;
   }
 

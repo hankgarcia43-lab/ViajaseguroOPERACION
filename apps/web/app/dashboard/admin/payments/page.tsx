@@ -171,9 +171,9 @@ export default function AdminPaymentsPage() {
   return (
     <section className="space-y-4">
       <header className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h1 className="text-2xl font-semibold text-slate-900">Admin - Pagos</h1>
+        <h1 className="text-2xl font-semibold text-slate-900">Admin - Planes pagados</h1>
         <p className="mt-2 text-sm text-slate-600">
-          Revisa pagos de plataforma: membresias, verificaciones, suscripciones o servicios digitales.
+          Revisa pagos de plataforma para planes semanales, verificaciones o servicios digitales.
         </p>
       </header>
 {error && <p className="rounded-md bg-red-50 p-3 text-red-700">{error}</p>}
@@ -181,7 +181,7 @@ export default function AdminPaymentsPage() {
 
       <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <p className="text-sm font-semibold text-slate-900">Pendientes por revisar: {pendingReview.length}</p>
-        <p className="mt-1 text-sm text-slate-600">Pagos aprobados archivados: {payments.filter((payment) => payment.archivedAt).length}</p>
+        <p className="mt-1 text-sm text-slate-600">Registros aprobados archivados: {payments.filter((payment) => payment.archivedAt).length}</p>
         <p className="mt-1 text-sm text-slate-600">
           No uses esta pantalla para cobrar rutas compartidas. Los registros heredados se conservan solo para auditoria administrativa.
         </p>

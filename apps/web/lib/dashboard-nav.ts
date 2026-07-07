@@ -25,7 +25,7 @@ export const ADMIN_DASHBOARD_NAV: DashboardNavItem[] = [
   { href: '/dashboard/admin/verifications', label: 'Verificaciones' },
   { href: '/dashboard/admin/people', label: 'Usuarios' },
   { href: '/dashboard/admin/routes', label: 'Rutas' },
-  { href: '/dashboard/admin/payments', label: 'Accesos internos' },
+  { href: '/dashboard/admin/payments', label: 'Planes pagados' },
   { href: '/dashboard/admin/reservations', label: 'Solicitudes' },
   { href: '/dashboard/admin/incidents', label: 'Reportes' }
 ];

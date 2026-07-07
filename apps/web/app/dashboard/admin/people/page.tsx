@@ -95,8 +95,8 @@ export default function AdminPeoplePage() {
       activate: 'reactivar/aprobar',
       promote: 'destacar',
       standard: 'quitar destacado',
-      'activate-subscription': 'activar suscripcion piloto',
-      'expire-subscription': 'vencer suscripcion'
+      'activate-subscription': 'activar plan pagado',
+      'expire-subscription': 'vencer plan'
     }[action];
 
     const notes = window.prompt(`Nota opcional para ${actionLabel} a ${person.fullName}:`) ?? undefined;
@@ -284,7 +284,7 @@ function PersonDetail({
             <span className={`rounded-full px-2 py-1 text-xs font-medium ${person.recognitionLevel === 'excellent' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'}`}>{recognitionLabel(person.recognitionLevel)}</span>
             {person.subscription && (
               <span className={`rounded-full px-2 py-1 text-xs font-medium ${person.subscription.isActivePaid ? 'bg-emerald-100 text-emerald-700' : person.subscription.isTrialActive ? 'bg-sky-100 text-sky-700' : 'bg-rose-100 text-rose-700'}`}>
-                {person.subscription.isActivePaid ? 'Suscripcion activa' : person.subscription.isTrialActive ? `Trial ${person.subscription.trialDaysRemaining}d` : 'Sin acceso premium'}
+                {person.subscription.isActivePaid ? 'Plan activo' : person.subscription.isTrialActive ? `Trial ${person.subscription.trialDaysRemaining}d` : 'Sin acceso premium'}
               </span>
             )}
           </div>
@@ -308,10 +308,10 @@ function PersonDetail({
           )}
 
           <button type="button" disabled={busyAction === `activate-subscription:${person.id}`} onClick={() => void onAction(person, 'activate-subscription')} className="rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 disabled:opacity-60">
-            {busyAction === `activate-subscription:${person.id}` ? 'Activando...' : 'Activar suscripcion 30d'}
+            {busyAction === `activate-subscription:${person.id}` ? 'Activando...' : 'Activar plan pagado 7d'}
           </button>
           <button type="button" disabled={busyAction === `expire-subscription:${person.id}`} onClick={() => void onAction(person, 'expire-subscription')} className="rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 disabled:opacity-60">
-            {busyAction === `expire-subscription:${person.id}` ? 'Actualizando...' : 'Vencer suscripcion'}
+            {busyAction === `expire-subscription:${person.id}` ? 'Actualizando...' : 'Vencer plan'}
           </button>
 
           {person.recognitionLevel === 'excellent' ? (

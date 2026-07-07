@@ -8,27 +8,37 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   {
     href: '/dashboard/admin',
     label: 'Resumen',
-    description: 'Vista central del panel admin'
+    description: 'Vista central de operacion, soporte y estadisticas'
   },
   {
     href: '/dashboard/admin/people',
     label: 'Personas',
-    description: 'Usuarios, conductores, documentos y estado operativo'
+    description: 'Usuarios, conductores, plan activo y estado operativo'
   },
   {
     href: '/dashboard/admin/verifications',
-    label: 'Verificaciones',
-    description: 'Usuarios pendientes y documentos'
+    label: 'Documentos',
+    description: 'Validacion de identidad y documentos pendientes'
   },
   {
     href: '/dashboard/admin/vehicles',
     label: 'Vehiculos',
-    description: 'Vehiculos pendientes y evidencias'
+    description: 'Evidencias y vehiculos de conductores'
+  },
+  {
+    href: '/dashboard/admin/payments',
+    label: 'Planes pagados',
+    description: 'Pagos de plan semanal, verificaciones y servicios digitales'
+  },
+  {
+    href: '/dashboard/admin/incidents',
+    label: 'Soporte',
+    description: 'Comentarios, sugerencias, reportes y alertas'
   },
   {
     href: '/dashboard/admin/routes',
     label: 'Rutas',
-    description: 'Crear rutas compartidas del piloto'
+    description: 'Crear y administrar rutas compartidas del piloto'
   },
   {
     href: '/dashboard/admin/route-needs',
@@ -37,37 +47,17 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   },
   {
     href: '/dashboard/admin/fare-policy',
-    label: 'Estimacion por km',
-    description: 'Referencia orientativa para rutas'
-  },
-  {
-    href: '/dashboard/admin/payments',
-    label: 'Pagos plataforma',
-    description: 'Membresias, verificaciones y servicios digitales'
-  },
-  {
-    href: '/dashboard/admin/refunds',
-    label: 'Reembolsos legacy',
-    description: 'Historial administrativo heredado'
-  },
-  {
-    href: '/dashboard/admin/weekly-payouts',
-    label: 'Archivo legacy',
-    description: 'Liquidaciones desactivadas para piloto'
+    label: 'Tarifa por km',
+    description: 'Referencia orientativa para calculo de rutas'
   },
   {
     href: '/dashboard/admin/trips',
-    label: 'Rutas activas',
+    label: 'Viajes',
     description: 'Vista operativa de salidas compartidas'
   },
   {
     href: '/dashboard/admin/reservations',
     label: 'Solicitudes',
-    description: 'Vista operativa de solicitudes de usuarios'
-  },
-  {
-    href: '/dashboard/admin/incidents',
-    label: 'Soporte',
-    description: 'Comentarios, reportes y alertas'
+    description: 'Solicitudes, pases y actividad de usuarios'
   }
 ];

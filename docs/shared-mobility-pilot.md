@@ -10,9 +10,9 @@ La plataforma facilita contacto, verificacion, pases de ruta, reportes e inciden
 
 Mercado Pago queda limitado a pagos de plataforma:
 
-- membresias de usuario,
+- planes semanales de usuario,
 - verificacion de conductor,
-- suscripciones o planes de publicacion,
+- planes semanales o servicios de publicacion,
 - rutas destacadas o servicios digitales futuros.
 
 No se debe usar Mercado Pago para pagar rutas compartidas, reservas, boletos, comisiones por trayecto, liquidaciones o pagos a conductores.
@@ -97,8 +97,8 @@ Texto operativo obligatorio: la aportacion sugerida es en efectivo, acordada dir
 - Todo usuario nuevo recibe `TRIAL_DAYS=7` por defecto.
 - El backend expone `subscription` y `access` en `/api/auth/me`.
 - Al vencer trial o acceso, el usuario puede iniciar sesion y ver informacion, pero el backend bloquea nuevas solicitudes/publicaciones premium.
-- Durante el piloto, Mercado Pago funciona con link fijo para membresias, verificaciones o servicios digitales.
-- Admin puede activar manualmente una suscripcion piloto por 30 dias desde `Admin > Personas` despues de verificar el pago.
+- Durante el piloto, Mercado Pago funciona con link fijo para planes semanales, verificaciones o servicios digitales.
+- Admin puede activar manualmente un plan semanal por 7 dias desde `Admin > Personas` despues de verificar el pago.
 
 Migraciones agregadas:
 

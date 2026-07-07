@@ -66,14 +66,14 @@ const PAYMENT_PROVIDER = {
 } as const;
 
 const SUBSCRIPTION_REFERENCE_PREFIX = 'viajaseguro:subscription';
-const DEFAULT_SUBSCRIPTION_DAYS = 30;
+const DEFAULT_SUBSCRIPTION_DAYS = 7;
 
 @Injectable()
 export class PaymentsService {
   constructor(private readonly prisma: PrismaService, private readonly usersService: UsersService) {}
   private throwTransportPaymentDisabled(): never {
     throw new ForbiddenException(
-      'Los pagos por rutas compartidas estan desactivados. Mercado Pago se usa solo para membresias, verificaciones, suscripciones o servicios digitales de VIAJA SEGURO.'
+      'Los pagos por rutas compartidas estan desactivados. Mercado Pago se usa solo para planes semanales, verificaciones o servicios digitales de VIAJA SEGURO.'
     );
   }
 
@@ -231,7 +231,7 @@ export class PaymentsService {
 
     const mappedRole = this.usersService.mapRole(role || user.role);
     if (mappedRole === 'admin') {
-      throw new ForbiddenException('Admin no requiere checkout de suscripcion');
+      throw new ForbiddenException('Admin no requiere checkout de plan');
     }
 
     const plan = this.resolveSubscriptionCheckoutPlan(mappedRole, dto.planType);
@@ -249,7 +249,7 @@ export class PaymentsService {
           {
             id: plan.planType,
             title: plan.title,
-            description: 'Suscripcion digital VIAJASEGURO. No corresponde al pago de traslados.',
+            description: 'Plan digital VIAJASEGURO. No corresponde al pago de traslados.',
             category_id: 'services',
             quantity: 1,
             currency_id: 'MXN',
@@ -289,7 +289,7 @@ export class PaymentsService {
       amount: plan.amount,
       currency: 'MXN',
       subscriptionDays: plan.days,
-      message: 'Mercado Pago solo activa una suscripcion digital de plataforma; no cobra rutas ni traslados.'
+      message: 'Mercado Pago solo activa un plan digital de plataforma; no cobra rutas ni traslados.'
     };
   }
   async createMercadoPagoCheckout(userId: string, role: string, reservationId: string) {
@@ -509,25 +509,25 @@ export class PaymentsService {
   }
 
   private resolveSubscriptionCheckoutPlan(role: 'passenger' | 'driver' | 'admin', requestedPlanType?: string) {
-    const defaultPlanType = role === 'driver' ? 'driver_monthly' : 'user_monthly';
+    const defaultPlanType = 'pilot_weekly';
     const planType = this.normalizeSubscriptionPlanType(requestedPlanType || defaultPlanType, role);
     const amount = this.getRequiredPositiveMoneyEnv('MERCADOPAGO_SUBSCRIPTION_AMOUNT');
     const days = this.getPositiveIntegerEnv('MERCADOPAGO_SUBSCRIPTION_DAYS', DEFAULT_SUBSCRIPTION_DAYS);
-    const title = planType === 'driver_monthly' ? 'Plan conductor VIAJASEGURO' : 'Membresia usuario VIAJASEGURO';
+    const title = planType.includes('driver') ? 'Plan semanal conductor VIAJASEGURO' : 'Plan semanal VIAJASEGURO';
 
     return { planType, amount, days, title };
   }
 
   private normalizeSubscriptionPlanType(planType: string, role: 'passenger' | 'driver' | 'admin') {
     const normalized = String(planType || '').trim().toLowerCase();
-    const passengerPlans = new Set(['user_monthly', 'passenger_basic_monthly', 'passenger_premium_monthly']);
-    const driverPlans = new Set(['driver_monthly']);
+    const passengerPlans = new Set(['pilot_weekly', 'user_weekly', 'user_monthly', 'passenger_basic_monthly', 'passenger_premium_monthly']);
+    const driverPlans = new Set(['pilot_weekly', 'driver_weekly', 'driver_monthly']);
 
     if (role === 'driver') {
-      return driverPlans.has(normalized) ? normalized : 'driver_monthly';
+      return driverPlans.has(normalized) ? normalized : 'pilot_weekly';
     }
 
-    return passengerPlans.has(normalized) ? normalized : 'user_monthly';
+    return passengerPlans.has(normalized) ? normalized : 'pilot_weekly';
   }
 
   private buildSubscriptionExternalReference(userId: string, planType: string, days: number) {
@@ -571,7 +571,7 @@ export class PaymentsService {
         mappedStatus,
         mpStatus: mpPayment.status ?? null,
         mpPaymentId,
-        message: 'El pago de suscripcion aun no esta aprobado; no se activo acceso.'
+        message: 'El pago de plan aun no esta aprobado; no se activo acceso.'
       };
     }
 
@@ -601,7 +601,7 @@ export class PaymentsService {
     const raw = process.env[key];
     const value = Number.parseFloat(String(raw ?? ''));
     if (!Number.isFinite(value) || value <= 0) {
-      throw new InternalServerErrorException(`${key} debe configurarse con un monto mayor a 0 para checkout automatico de suscripcion`);
+      throw new InternalServerErrorException(`${key} debe configurarse con un monto mayor a 0 para checkout automatico de plan`);
     }
 
     return Math.round(value * 100) / 100;
@@ -700,7 +700,7 @@ export class PaymentsService {
     const businessAccount = null;
     const instructions =
       [
-        'Abre el link oficial de Mercado Pago desde VIAJA SEGURO solo para membresias, verificaciones o servicios digitales.',
+        'Abre el link oficial de Mercado Pago desde VIAJA SEGURO solo para planes semanales, verificaciones o servicios digitales.',
         'No realices pagos de traslado dentro de la plataforma.',
         `Referencia: ${reference}`,
         'VIAJA SEGURO no fija tarifas de transporte ni realiza pagos a conductores.'
@@ -935,7 +935,7 @@ export class PaymentsService {
       paymentReference: config.reference,
       paymentBusinessAccount: null,
       paymentProcessorLabel: config.processorLabel,
-      paymentProcessingMessage: `Los pagos a VIAJA SEGURO corresponden solo a membresias, verificaciones o servicios digitales; no a traslados.`,
+      paymentProcessingMessage: `Los pagos a VIAJA SEGURO corresponden solo a planes semanales, verificaciones o servicios digitales; no a traslados.`,
       paymentInstructions: payment.paymentInstructions ?? config.instructions,
       proofFileName: payment.proofFileName,
       proofFilePath: payment.proofFilePath,

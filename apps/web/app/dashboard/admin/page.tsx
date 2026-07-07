@@ -6,12 +6,10 @@ import { apiRequest, getToken } from '@/lib/api';
 import { ADMIN_NAV_ITEMS } from '@/lib/admin';
 import { AdminPeopleSummary, fetchAdminPeopleSummary } from '@/lib/admin-people';
 import { FarePolicy } from '@/lib/fare-policy';
-import { Refund } from '@/lib/refunds';
 import { Reservation } from '@/lib/reservations';
 import { DriverTrip } from '@/lib/trips';
 import { PendingVerificationSummary } from '@/lib/user-documents';
 import { PendingVehicleSummary } from '@/lib/vehicles';
-import { WeeklyPayout } from '@/lib/weekly-payouts';
 import { Incident } from '@/lib/incidents';
 import { getPaymentStatusMeta, getReservationStatusMeta, getTripStatusMeta } from '@/lib/status';
 
@@ -20,13 +18,55 @@ type SummaryCard = {
   value: number | string;
   href: string;
   helper: string;
+  tone?: 'slate' | 'emerald' | 'sky' | 'amber' | 'rose';
 };
+
+const adminResponsibilities = [
+  {
+    title: 'Validar documentos',
+    detail: 'Revisa identidad, evidencias y vehiculos antes de aprobar usuarios o conductores.',
+    href: '/dashboard/admin/verifications',
+    label: 'Abrir verificaciones'
+  },
+  {
+    title: 'Activar plan pagado',
+    detail: 'Cuando el pago este confirmado, activa el plan semanal desde Personas.',
+    href: '/dashboard/admin/people',
+    label: 'Ver personas'
+  },
+  {
+    title: 'Soporte tecnico',
+    detail: 'Atiende reportes, alertas, dudas de uso y situaciones que bloqueen la operacion.',
+    href: '/dashboard/admin/incidents',
+    label: 'Abrir soporte'
+  },
+  {
+    title: 'Comentarios y sugerencias',
+    detail: 'Lee retroalimentacion para ajustar rutas, flujo de reserva y comunicacion del piloto.',
+    href: '/dashboard/admin/incidents',
+    label: 'Leer reportes'
+  },
+  {
+    title: 'Datos y estadisticas',
+    detail: 'Monitorea usuarios, conductores, rutas, solicitudes, actividad y crecimiento semanal.',
+    href: '/dashboard/admin',
+    label: 'Ver resumen'
+  }
+];
+
+function toneClass(tone: SummaryCard['tone'] = 'slate') {
+  return {
+    slate: 'border-slate-200 bg-white text-slate-950',
+    emerald: 'border-emerald-200 bg-emerald-50 text-emerald-950',
+    sky: 'border-sky-200 bg-sky-50 text-sky-950',
+    amber: 'border-amber-200 bg-amber-50 text-amber-950',
+    rose: 'border-rose-200 bg-rose-50 text-rose-950'
+  }[tone];
+}
 
 export default function AdminDashboardPage() {
   const [pendingVerifications, setPendingVerifications] = useState<PendingVerificationSummary[]>([]);
   const [pendingVehicles, setPendingVehicles] = useState<PendingVehicleSummary[]>([]);
-  const [refunds, setRefunds] = useState<Refund[]>([]);
-  const [payouts, setPayouts] = useState<WeeklyPayout[]>([]);
   const [trips, setTrips] = useState<DriverTrip[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [routesCount, setRoutesCount] = useState(0);
@@ -47,11 +87,9 @@ export default function AdminDashboardPage() {
 
       try {
         const headers = { Authorization: `Bearer ${token}` };
-        const [verificationData, vehicleData, refundData, payoutData, tripData, reservationData, routeData, incidentData, farePolicyData, peopleSummaryData] = await Promise.all([
+        const [verificationData, vehicleData, tripData, reservationData, routeData, incidentData, farePolicyData, peopleSummaryData] = await Promise.all([
           apiRequest<PendingVerificationSummary[]>('/admin/verifications/pending', { headers }),
           apiRequest<PendingVehicleSummary[]>('/admin/vehicles/pending', { headers }),
-          apiRequest<Refund[]>('/refunds', { headers }),
-          apiRequest<WeeklyPayout[]>('/weekly-payouts', { headers }),
           apiRequest<DriverTrip[]>('/trips/admin/all', { headers }),
           apiRequest<Reservation[]>('/reservations/admin/all', { headers }),
           apiRequest<any[]>('/admin/routes', { headers }),
@@ -62,8 +100,6 @@ export default function AdminDashboardPage() {
 
         setPendingVerifications(verificationData);
         setPendingVehicles(vehicleData);
-        setRefunds(refundData);
-        setPayouts(payoutData);
         setTrips(tripData);
         setReservations(reservationData);
         setRoutesCount(routeData.length);
@@ -80,21 +116,25 @@ export default function AdminDashboardPage() {
     void load();
   }, []);
 
+  const openIncidents = incidents.filter((item) => item.status === 'open').length;
+  const activeTrips = trips.filter((trip) => ['scheduled', 'started'].includes(trip.status)).length;
+  const completedTrips = trips.filter((trip) => ['finished', 'completed'].includes(trip.status)).length;
+  const confirmedReservations = reservations.filter((reservation) => ['confirmed', 'paid', 'boarded'].includes(reservation.status)).length;
+
   const cards = useMemo<SummaryCard[]>(() => [
-    { label: 'Usuarios totales', value: peopleSummary?.total ?? 0, href: '/dashboard/admin/people', helper: `${peopleSummary?.drivers ?? 0} conductores / ${peopleSummary?.passengers ?? 0} usuarios` },
-    { label: 'Suspendidos', value: peopleSummary?.suspended ?? 0, href: '/dashboard/admin/people', helper: 'Cuentas bloqueadas por admin' },
-    { label: 'Usuarios en prueba', value: peopleSummary?.trialUsers ?? 0, href: '/dashboard/admin/people', helper: 'Prueba digital de 7 dias' },
-    { label: 'Accesos activos', value: peopleSummary?.activeSubscriptions ?? 0, href: '/dashboard/admin/payments', helper: 'Acceso digital vigente' },
-    { label: 'Verificaciones pendientes', value: pendingVerifications.length, href: '/dashboard/admin/verifications', helper: 'Usuarios esperando revision' },
-    { label: 'Vehiculos pendientes', value: pendingVehicles.length, href: '/dashboard/admin/vehicles', helper: 'Conductores bloqueados por vehiculo' },
-    { label: 'Estimacion por km activa', value: farePolicy ? `$${farePolicy.ratePerKm.toFixed(2)}` : 'Sin definir', href: '/dashboard/admin/fare-policy', helper: farePolicy ? `Modo: ${farePolicy.mode === 'fixed_per_km' ? 'fija' : 'maxima'} por km` : 'Configura referencia orientativa' },
-    { label: 'Refunds', value: refunds.length, href: '/dashboard/admin/refunds', helper: 'Reembolsos manuales e internos' },
-    { label: 'Archivo legacy', value: payouts.length, href: '/dashboard/admin/weekly-payouts', helper: 'Modulo historico desactivado' },
-    { label: 'Rutas piloto', value: routesCount, href: '/dashboard/admin/routes', helper: 'Rutas especificas creadas por administracion' },
-    { label: 'Soporte abierto', value: incidents.filter((item) => item.status === 'open').length, href: '/dashboard/admin/incidents', helper: 'Comentarios, reportes y alertas' },
-    { label: 'Viajes', value: trips.length, href: '/dashboard/admin/trips', helper: 'Operacion de salidas reales' },
-    { label: 'Solicitudes', value: reservations.length, href: '/dashboard/admin/reservations', helper: 'Seguimiento de ocupacion y pagos' }
-  ] , [payouts.length, pendingVerifications.length, pendingVehicles.length, refunds.length, reservations.length, routesCount, trips.length, incidents, farePolicy, peopleSummary]);
+    { label: 'Personas registradas', value: peopleSummary?.total ?? 0, href: '/dashboard/admin/people', helper: `${peopleSummary?.drivers ?? 0} conductores / ${peopleSummary?.passengers ?? 0} usuarios`, tone: 'slate' },
+    { label: 'Planes activos', value: peopleSummary?.activeSubscriptions ?? 0, href: '/dashboard/admin/payments', helper: 'Planes semanales pagados o activados', tone: 'emerald' },
+    { label: 'Usuarios en prueba', value: peopleSummary?.trialUsers ?? 0, href: '/dashboard/admin/people', helper: 'Prueba digital de 7 dias', tone: 'sky' },
+    { label: 'Suspendidos', value: peopleSummary?.suspended ?? 0, href: '/dashboard/admin/people', helper: 'Cuentas bloqueadas por admin', tone: 'rose' },
+    { label: 'Documentos pendientes', value: pendingVerifications.length, href: '/dashboard/admin/verifications', helper: 'Usuarios esperando revision', tone: 'amber' },
+    { label: 'Vehiculos pendientes', value: pendingVehicles.length, href: '/dashboard/admin/vehicles', helper: 'Conductores esperando validacion', tone: 'amber' },
+    { label: 'Rutas piloto', value: routesCount, href: '/dashboard/admin/routes', helper: 'Rutas especificas creadas para operar', tone: 'slate' },
+    { label: 'Soporte abierto', value: openIncidents, href: '/dashboard/admin/incidents', helper: 'Comentarios, sugerencias y alertas', tone: openIncidents > 0 ? 'rose' : 'emerald' },
+    { label: 'Viajes activos', value: activeTrips, href: '/dashboard/admin/trips', helper: 'Programados o en curso', tone: 'emerald' },
+    { label: 'Viajes terminados', value: completedTrips, href: '/dashboard/admin/trips', helper: 'Historial operativo', tone: 'slate' },
+    { label: 'Solicitudes confirmadas', value: confirmedReservations, href: '/dashboard/admin/reservations', helper: 'Reservas con avance operativo', tone: 'sky' },
+    { label: 'Tarifa por km', value: farePolicy ? `$${farePolicy.ratePerKm.toFixed(2)}` : 'Sin definir', href: '/dashboard/admin/fare-policy', helper: farePolicy ? `${farePolicy.currency} por km orientativo` : 'Configura referencia orientativa', tone: 'slate' }
+  ], [activeTrips, completedTrips, confirmedReservations, farePolicy, openIncidents, pendingVerifications.length, pendingVehicles.length, peopleSummary, routesCount]);
 
   if (loading) {
     return <p className="text-slate-700">Cargando resumen admin...</p>;
@@ -102,27 +142,42 @@ export default function AdminDashboardPage() {
 
   return (
     <section className="space-y-6">
-      <header className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-semibold text-slate-900">Dashboard admin</h1>
-        <p className="mt-2 text-sm text-slate-600">Centro operativo para revisar personas, verificaciones, rutas compartidas, solicitudes y seguridad del piloto.</p>
+      <header className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+        <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="p-6 md:p-8">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-700">Centro de administracion</p>
+            <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950">Control operativo del piloto</h1>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+              El admin valida documentos, confirma planes pagados, atiende soporte, revisa comentarios y mantiene visibilidad completa de usuarios, conductores, rutas, solicitudes y estadisticas.
+            </p>
+          </div>
+          <div className="bg-slate-950 p-6 text-white md:p-8">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-200">Prioridad de hoy</p>
+            <p className="mt-3 text-4xl font-black">{pendingVerifications.length + pendingVehicles.length + openIncidents}</p>
+            <p className="mt-2 text-sm leading-6 text-slate-300">Pendientes entre documentos, vehiculos y soporte abierto.</p>
+            <Link href="/dashboard/admin/incidents" className="mt-5 inline-flex rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-black text-slate-950 hover:bg-emerald-400">Abrir soporte</Link>
+          </div>
+        </div>
       </header>
+
       {error && <p className="rounded-md bg-red-50 p-3 text-red-700">{error}</p>}
 
-      <section className="rounded-2xl border border-cyan-100 bg-cyan-50 p-5 text-cyan-950 shadow-sm">
-        <h2 className="text-lg font-semibold">Guia rapida de operacion piloto</h2>
-        <div className="mt-3 grid gap-3 text-sm md:grid-cols-3">
-          <p><span className="font-semibold">Rutas:</span> crea solo rutas reales con municipio, poblado libre, referencia de abordaje y horario confirmado.</p>
-          <p><span className="font-semibold">Personas:</span> revisa documentos, suspende cuentas de riesgo y destaca conductores confiables.</p>
-          <p><span className="font-semibold">Seguridad:</span> prioriza personas verificadas, puntos visibles y seguimiento de incidentes.</p>
-        </div>
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        {adminResponsibilities.map((item) => (
+          <article key={item.title} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="text-lg font-black text-slate-950">{item.title}</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">{item.detail}</p>
+            <Link href={item.href} className="mt-4 inline-flex text-sm font-bold text-emerald-700 underline">{item.label}</Link>
+          </article>
+        ))}
       </section>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => (
-          <Link key={card.href} href={card.href} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300 hover:shadow">
-            <p className="text-sm font-medium text-slate-500">{card.label}</p>
-            <p className="mt-3 text-3xl font-semibold text-slate-900">{card.value}</p>
-            <p className="mt-2 text-sm text-slate-600">{card.helper}</p>
+          <Link key={`${card.href}-${card.label}`} href={card.href} className={`rounded-2xl border p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${toneClass(card.tone)}`}>
+            <p className="text-sm font-bold opacity-70">{card.label}</p>
+            <p className="mt-3 text-3xl font-black">{card.value}</p>
+            <p className="mt-2 text-sm opacity-80">{card.helper}</p>
           </Link>
         ))}
       </div>
@@ -130,24 +185,24 @@ export default function AdminDashboardPage() {
       <div className="grid gap-4 xl:grid-cols-2">
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold text-slate-900">Items que requieren accion</h2>
-            <span className="text-sm text-slate-500">{pendingVerifications.length + pendingVehicles.length + incidents.filter((item) => item.status === 'open').length} abiertos</span>
+            <h2 className="text-lg font-semibold text-slate-900">Acciones que requieren decision</h2>
+            <span className="text-sm text-slate-500">{pendingVerifications.length + pendingVehicles.length + openIncidents} abiertos</span>
           </div>
           <div className="mt-4 space-y-3">
             <div className="rounded-xl border border-slate-200 p-4">
-              <p className="text-sm font-semibold text-slate-900">Verificaciones pendientes</p>
+              <p className="text-sm font-semibold text-slate-900">Documentos por validar</p>
               <p className="mt-1 text-sm text-slate-600">{pendingVerifications.length === 0 ? 'Sin usuarios pendientes.' : `${pendingVerifications.length} usuarios esperan aprobacion o rechazo.`}</p>
-              <Link href="/dashboard/admin/verifications" className="mt-3 inline-block text-sm text-brand-600 underline">Abrir verificaciones</Link>
+              <Link href="/dashboard/admin/verifications" className="mt-3 inline-block text-sm text-brand-600 underline">Abrir documentos</Link>
             </div>
             <div className="rounded-xl border border-slate-200 p-4">
-              <p className="text-sm font-semibold text-slate-900">Vehiculos pendientes</p>
+              <p className="text-sm font-semibold text-slate-900">Vehiculos por validar</p>
               <p className="mt-1 text-sm text-slate-600">{pendingVehicles.length === 0 ? 'Sin vehiculos por revisar.' : `${pendingVehicles.length} vehiculos requieren revision admin.`}</p>
               <Link href="/dashboard/admin/vehicles" className="mt-3 inline-block text-sm text-brand-600 underline">Abrir vehiculos</Link>
             </div>
             <div className="rounded-xl border border-slate-200 p-4">
-              <p className="text-sm font-semibold text-slate-900">Politica comercial</p>
-              <p className="mt-1 text-sm text-slate-600">{farePolicy ? `Referencia ${farePolicy.mode === 'fixed_per_km' ? 'fija' : 'maxima'} de $${farePolicy.ratePerKm.toFixed(2)} ${farePolicy.currency} por km.` : 'Aun no existe una referencia activa por kilometro.'}</p>
-              <Link href="/dashboard/admin/fare-policy" className="mt-3 inline-block text-sm text-brand-600 underline">Configurar referencia por km</Link>
+              <p className="text-sm font-semibold text-slate-900">Planes pagados</p>
+              <p className="mt-1 text-sm text-slate-600">Valida pagos de plataforma y activa el plan semanal desde el perfil de la persona.</p>
+              <Link href="/dashboard/admin/people" className="mt-3 inline-block text-sm text-brand-600 underline">Activar plan en Personas</Link>
             </div>
           </div>
         </section>
@@ -191,7 +246,7 @@ export default function AdminDashboardPage() {
       </div>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">Navegacion operativa</h2>
+        <h2 className="text-lg font-semibold text-slate-900">Navegacion util para administracion</h2>
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {ADMIN_NAV_ITEMS.filter((item) => item.href !== '/dashboard/admin').map((item) => (
             <Link key={item.href} href={item.href} className="rounded-xl border border-slate-200 p-4 text-sm text-slate-700 transition hover:border-slate-300 hover:bg-slate-50">

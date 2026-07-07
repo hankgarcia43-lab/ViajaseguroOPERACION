@@ -73,13 +73,13 @@ MAX_ACTIVE_DRIVERS=20
 MAX_ACTIVE_USERS=100
 ALLOWED_MUNICIPALITIES=acolman,ecatepec,tecamac,texcoco,teotihuacan
 ALLOWED_DESTINATIONS=indios-verdes,pantitlan,buenavista,ciudad-azteca
-# Mercado Pago solo para membresias/verificaciones/servicios digitales
+# Mercado Pago solo para planes semanales/verificaciones/servicios digitales
 MERCADOPAGO_PAYMENT_LINK=https://link.mercadopago.com.mx/viajaseguro2026
 MERCADOPAGO_ACCESS_TOKEN=
 MERCADOPAGO_WEBHOOK_SECRET=
 MERCADOPAGO_WEBHOOK_URL=https://TU-BACKEND-RENDER.onrender.com/api/webhooks/mercadopago
-MERCADOPAGO_SUBSCRIPTION_AMOUNT=99
-MERCADOPAGO_SUBSCRIPTION_DAYS=30
+MERCADOPAGO_SUBSCRIPTION_AMOUNT=150
+MERCADOPAGO_SUBSCRIPTION_DAYS=7
 MERCADOPAGO_USE_SANDBOX=false
 MANUAL_PAYMENT_PROCESSOR_LABEL=Mercado Pago
 MANUAL_PAYMENT_REFERENCE=VIAJA SEGURO

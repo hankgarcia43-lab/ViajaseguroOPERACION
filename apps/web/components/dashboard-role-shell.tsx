@@ -28,7 +28,7 @@ function roleCopy(role: MeResponse['role']) {
   if (role === 'admin') {
     return {
       title: 'Panel admin',
-      subtitle: 'Control operativo de personas, rutas, solicitudes y pagos de plataforma.'
+      subtitle: 'Control operativo de personas, rutas, solicitudes, planes y soporte.'
     };
   }
 

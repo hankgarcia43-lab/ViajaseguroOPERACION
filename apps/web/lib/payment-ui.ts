@@ -9,7 +9,7 @@ export function getPaymentFlowMessage(status?: string) {
     case 'refunded':
       return 'Pago de plataforma marcado como reembolsado.';
     default:
-      return 'Los pagos se usan solo para membresias, verificaciones o servicios digitales de VIAJA SEGURO.';
+      return 'Los pagos se usan solo para planes semanales, verificaciones o servicios digitales de VIAJA SEGURO.';
   }
 }
 

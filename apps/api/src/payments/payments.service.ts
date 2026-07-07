@@ -99,7 +99,7 @@ export class PaymentsService {
 
   async myPayments(userId: string, role: string, options: { includeArchived?: boolean } = {}) {
     if (role !== 'passenger') {
-      throw new ForbiddenException('Solo usuarios pueden ver pagos de membresia o servicios digitales');
+      throw new ForbiddenException('Solo usuarios pueden ver pagos de planes o servicios digitales');
     }
 
     const payments = (await this.paymentDelegate().findMany({

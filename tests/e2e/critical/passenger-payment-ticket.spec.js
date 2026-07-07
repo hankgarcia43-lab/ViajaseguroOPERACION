@@ -1,8 +1,8 @@
-﻿const { test, expect } = require('@playwright/test');
+const { test, expect } = require('@playwright/test');
 const { login } = require('../helpers/session');
 
 test.describe('Flujo critico de pasajero y pago manual', () => {
-  test('PSG-CRIT-001 pasajero ve reservas y pagos', async ({ page }) => {
+  test('PSG-CRIT-001 pasajero ve solicitudes y pases', async ({ page }) => {
     const email = process.env.E2E_PASSENGER_EMAIL;
     const password = process.env.E2E_PASSENGER_PASSWORD;
 
@@ -10,7 +10,7 @@ test.describe('Flujo critico de pasajero y pago manual', () => {
 
     await login(page, email, password);
     await page.goto('/dashboard/my-reservations');
-    await expect(page.getByText(/reservas|pagos|ticket/i).first()).toBeVisible();
+    await expect(page.getByText(/solicitudes|pases|ticket|codigo/i).first()).toBeVisible();
   });
 
   test('PSG-CRIT-002 ticket muestra estado coherente del codigo de abordaje', async ({ page }) => {

@@ -271,7 +271,7 @@ export default function MyReservationsPage() {
         )}
 
         <div className="mt-4 flex flex-wrap gap-2">
-          <Link href={`/dashboard/my-reservations/${reservation.id}/pase`} className="rounded-md bg-slate-950 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800">
+          <Link href={`/dashboard/my-reservations/${reservation.id}/ticket`} className="rounded-md bg-slate-950 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800">
             Ver pase
           </Link>
           <Link href={`/dashboard/chat/${reservation.id}`} className="rounded-md border border-cyan-300 px-3 py-2 text-sm text-cyan-700">
@@ -319,7 +319,7 @@ export default function MyReservationsPage() {
             <div className="mt-3 flex flex-wrap gap-2">
               {canPayOnline && (
                 <button type="button" onClick={() => payWithMercadoPago(payment)} disabled={isBusy} className="rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">
-                  {isBusy ? 'Preparando pago...' : 'Pagar membresia/servicio'}
+                  {isBusy ? 'Preparando pago...' : 'Pagar plan/servicio'}
                 </button>
               )}
               {canUploadProof && (
@@ -361,7 +361,7 @@ export default function MyReservationsPage() {
         </div>
         <div className="flex gap-2">
           <Link href="/dashboard/my-payments" className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">
-            Membresia
+            Mi plan
           </Link>
           <Link href="/dashboard/search-trips" className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">
             Buscar rutas

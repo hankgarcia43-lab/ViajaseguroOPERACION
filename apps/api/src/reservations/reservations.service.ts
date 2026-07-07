@@ -1131,9 +1131,9 @@ export class ReservationsService {
                 amount: this.roundCurrency(data.paymentAmountOverride ?? data.totalAmount),
                 status: PAYMENT_STATUS.PENDING,
                 provider: 'platform_membership',
-                paymentMethodLabel: 'Membresia / servicio digital VIAJA SEGURO',
+                paymentMethodLabel: 'Plan semanal / servicio digital VIAJA SEGURO',
                 paymentInstructions:
-                  'Este pago corresponde a membresias, verificaciones o servicios digitales de la plataforma. VIAJA SEGURO no cobra traslados ni administra pagos entre usuario y conductor.',
+                  'Este pago corresponde a planes semanales, verificaciones o servicios digitales de la plataforma. VIAJA SEGURO no cobra traslados ni administra pagos entre usuario y conductor.',
                 appCommissionAmount: this.roundCurrency((data.paymentAmountOverride ?? data.totalAmount) * appCommissionRate),
                 driverNetAmount: this.roundCurrency((data.paymentAmountOverride ?? data.totalAmount) * (1 - appCommissionRate))
               }
@@ -1393,7 +1393,7 @@ export class ReservationsService {
             paymentReference: paymentConfig.reference,
             paymentBusinessAccount: null,
             paymentProcessorLabel: paymentConfig.processorLabel,
-            paymentProcessingMessage: `Los pagos a VIAJA SEGURO corresponden solo a membresias, verificaciones o servicios digitales; no a traslados.`,
+            paymentProcessingMessage: `Los pagos a VIAJA SEGURO corresponden solo a planes semanales, verificaciones o servicios digitales; no a traslados.`,
             paymentInstructions: reservation.payment.paymentInstructions ?? paymentConfig.instructions,
             proofFileName: reservation.payment.proofFileName ?? null,
             proofFilePath: reservation.payment.proofFilePath ?? null,

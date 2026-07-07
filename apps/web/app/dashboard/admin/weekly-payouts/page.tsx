@@ -3,7 +3,7 @@ import Link from 'next/link';
 const ACTIONS = [
   { href: '/dashboard/admin/trips', label: 'Revisar rutas activas', helper: 'Consulta salidas, estados y actividad de conductores.' },
   { href: '/dashboard/admin/reservations', label: 'Revisar solicitudes', helper: 'Audita solicitudes aceptadas, pendientes o canceladas.' },
-  { href: '/dashboard/admin/payments', label: 'Pagos de plataforma', helper: 'Solo membresias, verificaciones o servicios digitales.' }
+  { href: '/dashboard/admin/payments', label: 'Planes pagados', helper: 'Solo planes semanales, verificaciones o servicios digitales.' }
 ];
 
 export default function AdminWeeklyPayoutsPage() {
@@ -20,7 +20,7 @@ export default function AdminWeeklyPayoutsPage() {
       <article className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-950 shadow-sm">
         <p className="font-semibold">Regla del modelo actual</p>
         <p className="mt-2 text-sm leading-6">
-          Los pagos en Mercado Pago se reservan para membresias, verificaciones, suscripciones o servicios digitales de la plataforma. Las rutas compartidas se coordinan entre miembros verificados y solo muestran una estimacion orientativa.
+          Los pagos en Mercado Pago se reservan para planes semanales, verificaciones o servicios digitales de la plataforma. Las rutas compartidas se coordinan entre miembros verificados y solo muestran una estimacion orientativa.
         </p>
       </article>
 

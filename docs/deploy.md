@@ -141,4 +141,4 @@ Pruebas manuales minimas:
 - Conductor valida pase del dia.
 - Probar SOS/reporte.
 - Finalizar ruta y revisar historial.
-- Probar Mercado Pago solo para membresia/verificacion de plataforma.
+- Probar Mercado Pago solo para plan semanal/verificacion de plataforma.

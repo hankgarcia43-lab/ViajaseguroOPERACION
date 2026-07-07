@@ -12,7 +12,7 @@ test.describe('Flujo critico admin', () => {
     await page.goto('/dashboard/admin');
     await expect(page.getByRole('link', { name: /verificaciones/i })).toBeVisible();
     await expect(page.getByRole('link', { name: /vehiculos|vehículos/i })).toBeVisible();
-    await expect(page.getByRole('link', { name: /pagos/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /planes pagados|planes|pagos/i })).toBeVisible();
   });
 
   test('ADM-CRIT-002 admin revisa pagos pendientes', async ({ page }) => {

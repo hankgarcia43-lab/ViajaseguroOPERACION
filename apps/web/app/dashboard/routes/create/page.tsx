@@ -52,6 +52,10 @@ const PILOT_DESTINATIONS: PilotDestination[] = [
 ];
 
 const DEFAULT_UI_RATE_PER_KM = 2.5;
+const DEFAULT_ROUTE_WEEKDAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'] as const;
+const DEFAULT_ROUTE_DEPARTURE_TIME = '06:00';
+const DEFAULT_ROUTE_ARRIVAL_TIME = '07:00';
+const DEFAULT_ROUTE_SEATS = 4;
 
 function roundCurrency(value: number) {
   return Math.round(value * 100) / 100;
@@ -113,6 +117,10 @@ export default function CreateRoutePage() {
           title: `${municipality} -> ${destination}`,
           origin: municipality,
           destination: destination.trim(),
+          weekdays: [...DEFAULT_ROUTE_WEEKDAYS],
+          departureTime: DEFAULT_ROUTE_DEPARTURE_TIME,
+          estimatedArrivalTime: DEFAULT_ROUTE_ARRIVAL_TIME,
+          availableSeats: DEFAULT_ROUTE_SEATS,
           stopsText: 'Ruta base del piloto. Horario, dias, asientos y referencia se publican al tomar la ruta.'
         })
       });
@@ -182,6 +190,7 @@ export default function CreateRoutePage() {
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
             <p className="font-bold">Siguiente paso obligatorio</p>
             <p className="mt-1">Despues de crear la base, publica disponibilidad: dias, horario, asientos reales, referencia publica y punto seguro de encuentro.</p>
+            <p className="mt-2 text-xs">La app envia valores tecnicos seguros para compatibilidad; el conductor solo decide los datos importantes en el siguiente paso.</p>
           </div>
 
           <button type="submit" disabled={saving} className="rounded-md bg-brand-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">

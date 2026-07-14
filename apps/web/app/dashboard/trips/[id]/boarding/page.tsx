@@ -2,18 +2,16 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { FormEvent, useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { SafetyActionsPanel } from '@/components/safety-actions-panel';
 import { apiRequest, getToken } from '@/lib/api';
-import { Reservation, ValidateBoardingPayload } from '@/lib/reservations';
+import { Reservation } from '@/lib/reservations';
 import { getReservationStatusMeta, getTripStatusMeta } from '@/lib/status';
 import { DriverTrip } from '@/lib/trips';
 
-type BarcodeDetectorLike = {
-  detect: (source: ImageBitmapSource) => Promise<Array<{ rawValue?: string }>>;
-};
-
-type BarcodeDetectorConstructor = new (options?: { formats?: string[] }) => BarcodeDetectorLike;
+const BOARDING_TOLERANCE_MS = 10 * 60 * 1000;
+const BOARDABLE_STATUSES = new Set(['accepted', 'paid']);
+const CLOSED_RESERVATION_STATUSES = new Set(['rejected', 'cancelled', 'cancelled_by_user', 'cancelled_by_driver', 'refunded']);
 
 function capitalize(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
@@ -45,425 +43,256 @@ function formatTimeLabel(value?: string | null) {
     .replace(' p.m.', ' PM');
 }
 
+function formatCountdown(milliseconds: number) {
+  const totalSeconds = Math.ceil(Math.max(0, milliseconds) / 1000);
+  const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+  const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+  return `${minutes}:${seconds}`;
+}
+
+function canBoardReservation(reservation: Reservation) {
+  return BOARDABLE_STATUSES.has(reservation.status);
+}
+
 export default function TripBoardingPage() {
   const params = useParams<{ id: string }>();
   const tripId = params?.id;
 
   const [trip, setTrip] = useState<DriverTrip | null>(null);
-  const [numericCode, setNumericCode] = useState('');
-  const [qrToken, setQrToken] = useState('');
-  const [result, setResult] = useState<Reservation | null>(null);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const [busyReservationId, setBusyReservationId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [scannerActive, setScannerActive] = useState(false);
-  const [scannerSupported, setScannerSupported] = useState(false);
-  const [qrDetectedSignal, setQrDetectedSignal] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
 
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const detectorRef = useRef<BarcodeDetectorLike | null>(null);
-  const scanRafRef = useRef<number | null>(null);
-  const scannerRunningRef = useRef(false);
-  const detectedSignalTimeoutRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const hasMedia = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
-    const hasBarcodeDetector = typeof (window as any).BarcodeDetector !== 'undefined';
-    setScannerSupported(hasMedia && hasBarcodeDetector);
-  }, []);
-
-  useEffect(() => {
-    async function loadTrip() {
-      const token = getToken();
-      if (!token || !tripId) {
-        setError('No hay sesion activa o ruta invalida.');
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const data = await apiRequest<DriverTrip>(`/trips/${tripId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-        setTrip(data);
-      } catch (requestError) {
-        setError(requestError instanceof Error ? requestError.message : 'No se pudo cargar la ruta');
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    void loadTrip();
-  }, [tripId]);
-
-  useEffect(() => {
-    return () => {
-      stopScanner();
-      if (detectedSignalTimeoutRef.current !== null) {
-        clearTimeout(detectedSignalTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  function extractQrToken(raw: string) {
-    const trimmed = raw.trim();
-    if (!trimmed) return '';
-
-    if (trimmed.startsWith('VS-RES:') || trimmed.startsWith('VS-ROUTE:')) {
-      const parts = trimmed.split(':');
-      if (parts.length >= 3) {
-        return parts.slice(2).join(':').trim();
-      }
-    }
-
-    return trimmed;
-  }
-
-  function playBeep() {
-    if (typeof window === 'undefined') return;
-    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioCtx) return;
-
-    try {
-      const audioCtx = new AudioCtx();
-      const oscillator = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-
-      oscillator.type = 'sine';
-      oscillator.frequency.value = 880;
-      gain.gain.value = 0.08;
-
-      oscillator.connect(gain);
-      gain.connect(audioCtx.destination);
-
-      oscillator.start();
-      oscillator.stop(audioCtx.currentTime + 0.12);
-      oscillator.onended = () => {
-        void audioCtx.close();
-      };
-    } catch {
-      // no-op
-    }
-  }
-
-  function notifyQrDetected() {
-    setQrDetectedSignal(true);
-
-    if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
-      navigator.vibrate([120, 60, 120]);
-    }
-
-    playBeep();
-
-    if (detectedSignalTimeoutRef.current !== null) {
-      clearTimeout(detectedSignalTimeoutRef.current);
-    }
-
-    detectedSignalTimeoutRef.current = window.setTimeout(() => {
-      setQrDetectedSignal(false);
-    }, 1600);
-  }
-
-  function stopScanner() {
-    scannerRunningRef.current = false;
-
-    if (scanRafRef.current !== null) {
-      cancelAnimationFrame(scanRafRef.current);
-      scanRafRef.current = null;
-    }
-
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-
-    setScannerActive(false);
-  }
-
-  async function startScanner() {
-    setError(null);
-    setSuccess(null);
-
-    if (!scannerSupported) {
-      setError('Tu navegador no soporta escaneo QR directo. Usa el codigo numerico o pega el token manual.');
-      return;
-    }
-
-    try {
-      const BarcodeDetectorCtor = (window as any).BarcodeDetector as BarcodeDetectorConstructor;
-      detectorRef.current = new BarcodeDetectorCtor({ formats: ['qr_code'] });
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: 'environment' }
-        }
-      });
-
-      streamRef.current = stream;
-      scannerRunningRef.current = true;
-
-      if (!videoRef.current) {
-        throw new Error('No se pudo iniciar la vista de camara');
-      }
-
-      videoRef.current.srcObject = stream;
-      await videoRef.current.play();
-
-      setScannerActive(true);
-
-      const scanLoop = async () => {
-        if (!scannerRunningRef.current || !videoRef.current || !detectorRef.current) return;
-
-        try {
-          const detections = await detectorRef.current.detect(videoRef.current);
-          const rawValue = detections?.[0]?.rawValue;
-
-          if (rawValue) {
-            const token = extractQrToken(rawValue);
-            if (token) {
-              setQrToken(token);
-              setSuccess('QR detectado correctamente. Puedes validar el pase ahora.');
-              notifyQrDetected();
-              stopScanner();
-              return;
-            }
-          }
-        } catch {
-          // Ignora errores intermitentes de lectura y continua escaneando.
-        }
-
-        scanRafRef.current = requestAnimationFrame(scanLoop);
-      };
-
-      scanRafRef.current = requestAnimationFrame(scanLoop);
-    } catch (requestError) {
-      stopScanner();
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo acceder a la camara. Revisa permisos del navegador.');
-    }
-  }
-
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
+  async function loadData() {
     const token = getToken();
     if (!token || !tripId) {
       setError('No hay sesion activa o ruta invalida.');
+      setLoading(false);
       return;
     }
-
-    if (trip?.status !== 'started') {
-      setError('Esta ruta aun no esta lista para validacion. Primero inicia la ruta desde Mis rutas.');
-      return;
-    }
-
-    const sanitizedNumericCode = numericCode.replace(/\D/g, '').slice(0, 6).trim();
-    const sanitizedQrToken = qrToken.trim();
-
-    if (!sanitizedNumericCode && !sanitizedQrToken) {
-      setError('Ingresa el codigo numerico de 6 digitos o, de forma secundaria, un qr token.');
-      return;
-    }
-
-    setSubmitting(true);
-    setError(null);
-    setSuccess(null);
-    setResult(null);
-
-    const payload: ValidateBoardingPayload = {
-      tripId,
-      numericCode: sanitizedNumericCode || undefined,
-      qrToken: sanitizedQrToken || undefined
-    };
 
     try {
-      const data = await apiRequest<Reservation>('/reservations/validate-boarding', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
-
-      setResult(data);
-      setSuccess(`Pase validado correctamente para el codigo ${data.numericCode}.`);
-      setNumericCode('');
-      setQrToken('');
+      const headers = { Authorization: `Bearer ${token}` };
+      const [tripData, reservationData] = await Promise.all([
+        apiRequest<DriverTrip>(`/trips/${tripId}`, { headers }),
+        apiRequest<Reservation[]>(`/reservations/driver/trip/${tripId}`, { headers })
+      ]);
+      setTrip(tripData);
+      setReservations(reservationData);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo validar el pase');
+      setError(requestError instanceof Error ? requestError.message : 'No se pudo cargar la ruta');
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   }
 
+  useEffect(() => {
+    void loadData();
+  }, [tripId]);
+
+  useEffect(() => {
+    if (trip?.status !== 'started') return;
+    const intervalId = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(intervalId);
+  }, [trip?.status]);
+
+  async function updateReservationStatus(reservationId: string, action: 'board' | 'no-show') {
+    const token = getToken();
+    if (!token) {
+      setError('No hay sesion activa.');
+      return;
+    }
+
+    setBusyReservationId(`${reservationId}:${action}`);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const updated = await apiRequest<Reservation>(`/reservations/${reservationId}/${action}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setReservations((current) => current.map((reservation) => (reservation.id === reservationId ? updated : reservation)));
+      setSuccess(action === 'board' ? 'Usuario identificado y abordaje confirmado.' : 'Usuario marcado como no presentado. Puedes iniciar con quienes estan presentes.');
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'No se pudo actualizar la solicitud.');
+    } finally {
+      setBusyReservationId(null);
+    }
+  }
+
+  const canControlBoarding = trip?.status === 'started';
+  const tripStartedAt = trip?.status === 'started' ? new Date(trip.updatedAt).getTime() : 0;
+  const toleranceRemainingMs = tripStartedAt > 0 ? Math.max(0, tripStartedAt + BOARDING_TOLERANCE_MS - now) : BOARDING_TOLERANCE_MS;
+  const toleranceExpired = canControlBoarding && toleranceRemainingMs === 0;
+  const tripStatusMeta = getTripStatusMeta(trip?.status ?? 'scheduled');
+
+  const visibleReservations = useMemo(
+    () => reservations.filter((reservation) => !CLOSED_RESERVATION_STATUSES.has(reservation.status)),
+    [reservations]
+  );
+  const boardedSeats = visibleReservations
+    .filter((reservation) => reservation.status === 'boarded' || reservation.status === 'completed')
+    .reduce((total, reservation) => total + reservation.totalSeats, 0);
+  const pendingSeats = visibleReservations
+    .filter(canBoardReservation)
+    .reduce((total, reservation) => total + reservation.totalSeats, 0);
+
   if (loading) {
-    return <p className="text-slate-700">Cargando ruta...</p>;
+    return <p className="text-slate-700">Cargando control de abordaje...</p>;
   }
 
   if (!trip) {
     return <p className="rounded-md bg-red-50 p-3 text-red-700">{error ?? 'Ruta no disponible'}</p>;
   }
 
-  const tripStatusMeta = getTripStatusMeta(trip.status);
-  const resultStatusMeta = getReservationStatusMeta(result?.status);
-  const normalizedError = (error ?? '').toLowerCase();
-  const showVerificationLink = normalizedError.includes('verific');
-  const showVehicleLink = normalizedError.includes('vehiculo');
-  const canValidateBoarding = trip.status === 'started';
-
   return (
-    <section className="mx-auto max-w-2xl space-y-4">
+    <section className="mx-auto max-w-5xl space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Validar pase</h1>
-          <p className="text-sm text-slate-600">Primero inicia la ruta. Despues captura el codigo numerico de 6 digitos del usuario.</p>
-          <p className="mt-1 text-xs font-semibold text-slate-700">El QR es respaldo; el codigo numerico es el flujo principal.</p>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700">VIAJASEGURO piensa en tu bolsillo y seguridad</p>
+          <h1 className="mt-1 text-2xl font-semibold text-slate-900">Control de abordaje por identidad</h1>
+          <p className="text-sm text-slate-600">Identifica al usuario, revisa fecha/lugares y confirma abordaje desde esta lista.</p>
         </div>
-        <div className="flex gap-2">
-          <Link href="/dashboard/trips" className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">Volver a mis rutas</Link>
+        <Link href="/dashboard/trips" className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">Volver a mis rutas</Link>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-950 shadow-sm">
+          <p className="font-bold">Primero inicia la ruta, despues identifica usuarios.</p>
+          <p className="mt-1">Confirma nombre, punto de encuentro y lugares reservados. No abordes usuarios que no aparecen en esta lista.</p>
+        </div>
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 shadow-sm">
+          <p className="font-bold">Tolerancia operativa: 10 minutos.</p>
+          <p className="mt-1">Si alguien no llega, al terminar el cronometro puedes salir con quienes estan presentes y marcar faltantes como no presentados.</p>
         </div>
       </div>
 
-      <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-950 shadow-sm">
-        <p className="font-bold">Valida unicamente los pases del dia y horario correspondiente.</p>
-        <p className="mt-1">Revisa la fecha del pase antes de permitir el abordaje. No aceptes codigos de dias anteriores o futuros.</p>
-      </div>
-
-      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 shadow-sm">
-        <p className="font-bold">La ruta debe iniciar y terminarse desde el panel para mantener el control operativo.</p>
-        <p className="mt-1">Reporta cualquier situacion sospechosa desde el boton SOS o alertas.</p>
-      </div>
+      {error && <p className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-800 shadow-sm">{error}</p>}
+      {success && <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800 shadow-sm">{success}</p>}
 
       <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">{trip.route?.title || `${trip.route?.origin || 'Ruta'} -> ${trip.route?.destination || ''}`}</h2>
-        <div className="mt-3 rounded-2xl border border-sky-200 bg-sky-50 p-4">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-sky-700">Dia que se esta validando</p>
-          <p className="mt-1 text-xl font-black leading-tight text-slate-950">{formatFullTripDate(trip.tripDate)} - {formatTimeLabel(trip.departureTimeSnapshot)}</p>
-          <p className="mt-2 text-xs font-semibold text-sky-900">Solo acepta codigos de pases asociados a esta fecha.</p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">{trip.route?.title || `${trip.route?.origin || 'Ruta'} -> ${trip.route?.destination || ''}`}</h2>
+            <p className="text-xs text-slate-500">Ruta # {trip.publicId ?? '-'}</p>
+          </div>
+          <span className={`rounded-full px-2 py-1 text-xs font-medium ${tripStatusMeta.className}`}>{tripStatusMeta.label}</span>
         </div>
-        <p className="text-sm text-slate-700">Estado de la ruta: <span className={`rounded-full px-2 py-1 text-xs font-medium ${tripStatusMeta.className}`}>{tripStatusMeta.label}</span></p>
-        <p className="text-sm text-slate-700">Solicitudes activas: {trip.reservationSummary?.reservationsCount ?? 0}</p>
-        <p className="text-sm text-slate-700">Lugares solicitados: {trip.reservationSummary?.reservedSeats ?? 0}</p>
-        <p className="text-sm text-slate-700">Lugares disponibles: {trip.reservationSummary?.remainingSeats ?? trip.availableSeatsSnapshot}</p>
-        <p className="text-sm text-slate-700">Referencia de abordaje: {trip.boardingReference ?? 'Sin definir'}</p>
-        <p className="mt-2 rounded-md bg-amber-50 p-2 text-xs text-amber-800">Confirma que el encuentro sea en un punto publico, identificado y seguro.</p>
+        <div className="mt-3 grid gap-3 md:grid-cols-4">
+          <div className="rounded-xl border border-sky-200 bg-sky-50 p-4">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-sky-700">Fecha</p>
+            <p className="mt-1 font-black text-slate-950">{formatFullTripDate(trip.tripDate)}</p>
+            <p className="text-sm text-slate-700">{formatTimeLabel(trip.departureTimeSnapshot)}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs font-bold uppercase text-slate-500">Abordados</p>
+            <p className="mt-1 text-2xl font-black text-slate-950">{boardedSeats}</p>
+          </div>
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <p className="text-xs font-bold uppercase text-amber-700">Pendientes</p>
+            <p className="mt-1 text-2xl font-black text-slate-950">{pendingSeats}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs font-bold uppercase text-slate-500">Lugares ruta</p>
+            <p className="mt-1 text-2xl font-black text-slate-950">{trip.availableSeatsSnapshot}</p>
+          </div>
+        </div>
+        <p className="mt-3 text-sm text-slate-700">Referencia de abordaje: {trip.boardingReference ?? 'Sin definir'}</p>
       </article>
 
-      {!canValidateBoarding ? (
+      {!canControlBoarding ? (
         <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950 shadow-sm">
-          <p className="text-base font-bold">Antes de validar pases debes iniciar la ruta.</p>
-          <p className="mt-1 text-sm">Esta ruta aun no esta lista para validacion. Regresa a <strong>Mis rutas</strong>, inicia la salida y despues vuelve a esta pantalla.</p>
+          <p className="text-base font-bold">Antes de confirmar abordajes debes iniciar la ruta.</p>
+          <p className="mt-1 text-sm">Regresa a Mis rutas, presiona iniciar y vuelve a este control para identificar usuarios.</p>
           <Link href="/dashboard/trips" className="mt-3 inline-block rounded-md bg-amber-700 px-4 py-2 text-sm font-semibold text-white">
             Volver a Mis rutas
           </Link>
         </div>
       ) : (
-        <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-emerald-950 shadow-sm">
-          <p className="text-base font-bold">Ruta iniciada: ya puedes validar pases.</p>
-          <p className="mt-1 text-sm">Pide al usuario el <strong>codigo numerico de 6 digitos</strong> que aparece en su pase aprobado.</p>
+        <div className={`rounded-xl border p-4 text-sm shadow-sm ${toleranceExpired ? 'border-emerald-300 bg-emerald-50 text-emerald-950' : 'border-cyan-300 bg-cyan-50 text-cyan-950'}`}>
+          <p className="font-bold">Cronometro de tolerancia para usuarios faltantes</p>
+          <p className="mt-1 text-3xl font-black tracking-tight">{formatCountdown(toleranceRemainingMs)}</p>
+          <p className="mt-1">{toleranceExpired ? 'Tolerancia cumplida. Puedes iniciar con quienes estan presentes y marcar faltantes.' : 'Espera este tiempo antes de marcar no presentado a un usuario aceptado.'}</p>
         </div>
       )}
 
-      {canValidateBoarding && (
+      {canControlBoarding && (
         <SafetyActionsPanel
           role="driver"
           tripId={trip.id}
           routeId={trip.routeId}
-          contextLabel={trip.route?.title ?? 'Validacion de abordaje'}
+          contextLabel={trip.route?.title ?? 'Control de abordaje'}
         />
       )}
 
-      <form onSubmit={onSubmit} className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="rounded-lg border border-brand-200 bg-brand-50 p-4">
-          <p className="text-sm font-semibold text-brand-700">Paso principal</p>
-          <p className="mt-1 text-sm text-slate-700">Pide al usuario su codigo numerico y escribelo aqui. El QR se mantiene solo como apoyo.</p>
-        </div>
-
-        <label className="block text-sm text-slate-700">
-          Codigo numerico
-          <input type="text" inputMode="numeric" maxLength={6} value={numericCode} onChange={(event) => setNumericCode(event.target.value.replace(/\D/g, '').slice(0, 6))} disabled={!canValidateBoarding} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-lg tracking-[0.35em] disabled:bg-slate-100 disabled:text-slate-400" placeholder="123456" />
-        </label>
-
-        <label className="block text-sm text-slate-700">
-          QR token (opcional, via secundaria)
-          <input type="text" value={qrToken} onChange={(event) => setQrToken(event.target.value)} disabled={!canValidateBoarding} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 disabled:bg-slate-100 disabled:text-slate-400" placeholder="Pega token si necesitas soporte" />
-        </label>
-
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-          <p className="text-sm font-semibold text-slate-900">Escaneo QR con camara (movil)</p>
-          <p className="mt-1 text-xs text-slate-600">Funciona en navegadores compatibles y con permisos de camara. Si no, sigue usando el codigo numerico.</p>
-
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => void startScanner()}
-              disabled={scannerActive || !scannerSupported || !canValidateBoarding}
-              className="rounded-md border border-emerald-300 px-3 py-2 text-sm text-emerald-700 disabled:opacity-50"
-            >
-              {scannerActive ? 'Camara activa' : 'Escanear QR con camara'}
-            </button>
-            {scannerActive && (
-              <button
-                type="button"
-                onClick={stopScanner}
-                className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700"
-              >
-                Detener camara
-              </button>
-            )}
+      <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Usuarios del viaje</h2>
+            <p className="text-sm text-slate-600">Identifica al usuario por nombre y confirma solo los lugares aceptados para esta fecha.</p>
           </div>
-
-          {!scannerSupported && (
-            <p className="mt-2 text-xs text-amber-700">Este navegador no soporta lector QR nativo. Usa codigo numerico o token manual.</p>
-          )}
-
-          {qrDetectedSignal && (
-            <p className="mt-2 rounded-md bg-emerald-100 px-3 py-2 text-xs font-semibold text-emerald-800">QR detectado. Token cargado.</p>
-          )}
-
-          {scannerActive && (
-            <div className={`mt-3 overflow-hidden rounded-md border ${qrDetectedSignal ? 'border-emerald-400' : 'border-slate-300'} bg-black`}>
-              <video ref={videoRef} autoPlay playsInline muted className="h-64 w-full object-cover" />
-            </div>
-          )}
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">{visibleReservations.length} solicitud(es)</span>
         </div>
 
-        {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 shadow-sm">
-            <p className="font-semibold">{error}</p>
-            {showVerificationLink && <Link href="/dashboard/verification" className="mt-2 inline-block underline">Completar verificacion</Link>}
-            {showVehicleLink && <Link href="/dashboard/vehicle" className="mt-2 ml-3 inline-block underline">Registrar o revisar mi vehiculo</Link>}
+        {visibleReservations.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">Aun no hay usuarios aceptados o pendientes para esta ruta.</p>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2">
+            {visibleReservations.map((reservation) => {
+              const reservationStatusMeta = getReservationStatusMeta(reservation.status);
+              const boardBusy = busyReservationId === `${reservation.id}:board`;
+              const noShowBusy = busyReservationId === `${reservation.id}:no-show`;
+              const canBoard = canControlBoarding && canBoardReservation(reservation);
+              const canNoShow = canBoard && toleranceExpired;
+
+              return (
+                <article key={reservation.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="text-base font-black text-slate-950">{reservation.passenger?.fullName ?? 'Usuario verificado'}</p>
+                      <p className="text-xs text-slate-600">{reservation.passenger?.email ?? 'Correo no disponible'}</p>
+                    </div>
+                    <span className={`rounded-full px-2 py-1 text-xs font-bold ${reservationStatusMeta.className}`}>{reservationStatusMeta.label}</span>
+                  </div>
+                  <div className="mt-3 grid gap-2 text-sm text-slate-700 sm:grid-cols-2">
+                    <p>Lugares: <span className="font-bold text-slate-950">{reservation.totalSeats}</span></p>
+                    <p>Solicitud # <span className="font-bold text-slate-950">{reservation.publicId ?? '-'}</span></p>
+                  </div>
+
+                  {reservation.status === 'boarded' || reservation.status === 'completed' ? (
+                    <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">Abordaje confirmado por identidad.</p>
+                  ) : reservation.status === 'no_show' ? (
+                    <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-900">Marcado como no presentado.</p>
+                  ) : (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={!canBoard || boardBusy || noShowBusy}
+                        onClick={() => void updateReservationStatus(reservation.id, 'board')}
+                        className="rounded-md bg-emerald-700 px-3 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-600"
+                      >
+                        {boardBusy ? 'Confirmando...' : 'Identificado y abordo'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!canNoShow || boardBusy || noShowBusy}
+                        onClick={() => void updateReservationStatus(reservation.id, 'no-show')}
+                        className="rounded-md border border-amber-300 px-3 py-2 text-xs font-bold text-amber-800 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
+                      >
+                        {noShowBusy ? 'Marcando...' : toleranceExpired ? 'Marcar no presentado' : 'No presentado al terminar tolerancia'}
+                      </button>
+                    </div>
+                  )}
+                </article>
+              );
+            })}
           </div>
         )}
-        {success && <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800 shadow-sm">{success}</p>}
-
-        <button type="submit" disabled={submitting || !canValidateBoarding} className="w-full rounded-md bg-slate-950 px-4 py-2 font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-700">
-          {submitting ? 'Validando...' : canValidateBoarding ? 'Validar pase' : 'Primero inicia la ruta'}
-        </button>
-      </form>
-
-      {result && (
-        <article className="rounded-xl border border-green-200 bg-green-50 p-5">
-          <h3 className="font-semibold text-green-900">Abordaje validado</h3>
-          <p className="text-sm text-green-800">Solicitud: {result.id}</p>
-          <p className="text-sm text-green-800">Codigo: {result.numericCode}</p>
-          <p className="text-sm text-green-800">Usuario titular: {result.passenger?.fullName ?? 'No disponible'}</p>
-          <p className="text-sm text-green-800">Lugares aceptados: {result.totalSeats}</p>
-          <p className="text-sm text-green-800">Estado actual: <span className={resultStatusMeta.className}>{resultStatusMeta.label}</span></p>
-          <Link href={`/dashboard/chat/${result.id}`} className="mt-2 inline-block rounded-md border border-emerald-300 px-3 py-1 text-xs text-emerald-800">
-            Chat con usuario
-          </Link>
-        </article>
-      )}
+      </section>
     </section>
   );
 }

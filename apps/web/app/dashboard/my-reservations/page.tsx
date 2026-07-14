@@ -209,7 +209,7 @@ export default function MyReservationsPage() {
     const paseStatus = getPaseStatusLabel(reservation, groupPayment);
     const payment = paymentForReservation(reservation, groupPayment);
     const vehiclePhotoUrl = buildApiAssetUrl(reservation.trip?.vehiclePhotoUrl);
-    const canShowCode = reservation.boardingCodeEnabled && Boolean(reservation.numericCode);
+    const canShowIdentityPass = reservation.boardingCodeEnabled;
     const isBusy = busyReservationId === reservation.id || busyReservationId === payment?.reservationId;
 
     return (
@@ -238,7 +238,7 @@ export default function MyReservationsPage() {
         {reservation.trip?.status === 'started' && (
           <div className="mt-3 space-y-3">
             <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">
-              Ruta en curso. Revisa la fecha antes de compartir tu codigo de pase.
+              Ruta en curso. Revisa la fecha y confirma conductor/vehiculo antes de abordar.
             </p>
             <SafetyActionsPanel
               role="passenger"
@@ -251,19 +251,19 @@ export default function MyReservationsPage() {
           </div>
         )}
 
-        {canShowCode ? (
+        {canShowIdentityPass ? (
           <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-800">Codigo de pase para este dia</p>
-            <p className="mt-2 text-4xl font-black tracking-[0.32em] text-slate-950">{reservation.numericCode}</p>
-            <p className="mt-2 text-xs font-semibold text-emerald-900">Muestra este codigo solo el dia de la ruta y solo cuando verifiques conductor, vehiculo y placas.</p>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-800">Pase de identidad listo</p>
+            <p className="mt-2 text-lg font-black text-slate-950">Identificate con el conductor y confirma tus lugares.</p>
+            <p className="mt-2 text-xs font-semibold text-emerald-900">El conductor marcara tu abordaje desde su lista. Revisa fecha, vehiculo y placas antes de subir.</p>
           </div>
         ) : (
           <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900">
-            Tu codigo aparecera cuando el conductor acepte tu solicitud.
+            Tu pase de identidad se habilitara cuando el conductor acepte tu solicitud.
           </p>
         )}
 
-        {vehiclePhotoUrl && canShowCode && (
+        {vehiclePhotoUrl && canShowIdentityPass && (
           <div className="mt-3">
             <p className="text-xs font-medium text-slate-700">Vehiculo asignado</p>
             <img src={vehiclePhotoUrl} alt="Foto del vehiculo" className="mt-1 h-28 w-full rounded-md object-cover" />
@@ -303,7 +303,7 @@ export default function MyReservationsPage() {
             <h2 className="mt-1 text-lg font-bold text-slate-950">
               {group.isWeekly ? `${group.reservations.length} pases separados por dia` : 'Pase de ruta'}
             </h2>
-            <p className="mt-1 text-sm text-slate-700">Tus pases apareceran separados por dia. El dia de la ruta muestra al conductor el codigo correspondiente a esa fecha.</p>
+            <p className="mt-1 text-sm text-slate-700">Tus pases apareceran separados por dia. El dia de la ruta identificate con el conductor usando el pase correspondiente a esa fecha.</p>
           </div>
           {payment && <span className={`rounded-full px-3 py-1 text-xs font-bold ${paymentStatusMeta.className}`}>Pago: {paymentStatusMeta.label}</span>}
         </div>
@@ -357,7 +357,7 @@ export default function MyReservationsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Mis solicitudes y pases</h1>
-          <p className="text-sm text-slate-600">Revisa la fecha antes de compartir tu codigo de pase.</p>
+          <p className="text-sm text-slate-600">Revisa la fecha antes de identificarte con el conductor.</p>
         </div>
         <div className="flex gap-2">
           <Link href="/dashboard/my-payments" className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">
@@ -371,7 +371,7 @@ export default function MyReservationsPage() {
 
       <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-950 shadow-sm">
         <p className="font-bold">Tus pases apareceran separados por dia.</p>
-        <p className="mt-1">El dia de la ruta muestra al conductor el codigo correspondiente a esa fecha. No compartas tu codigo antes de verificar conductor, vehiculo y placas.</p>
+        <p className="mt-1">El dia de la ruta identifica tu solicitud con el conductor. No abordes antes de verificar conductor, vehiculo y placas.</p>
       </div>
 
       {error && <p className="rounded-md bg-red-50 p-3 text-red-700">{error}</p>}

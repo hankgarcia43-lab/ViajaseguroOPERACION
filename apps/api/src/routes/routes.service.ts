@@ -23,14 +23,17 @@ export class RoutesService {
   async create(userId: string, dto: CreateRouteDto) {
     await this.usersService.ensurePremiumAccess(userId, 'publicar rutas compartidas');
     await this.ensureApprovedDriver(userId);
+    const existingRoute = await this.findDuplicateRouteForPublisher(userId, dto, false);
+    if (existingRoute) return this.mapRoute(existingRoute, false);
     const route = await this.createRouteRecord(userId, dto, false);
-    const initialTrip = await this.createInitialTripForRoute(route);
-    return this.mapRoute(route, false, initialTrip);
+    return this.mapRoute(route, false);
   }
 
   async createPublic(userId: string, dto: CreateRouteDto) {
     await this.usersService.ensurePremiumAccess(userId, 'publicar rutas compartidas');
     await this.ensureUserCanPublishPublicRoute(userId);
+    const existingRoute = await this.findDuplicateRouteForPublisher(userId, dto, true);
+    if (existingRoute) return this.mapRoute(existingRoute, true);
     const route = await this.createRouteRecord(userId, dto, true);
     return this.mapRoute(route, true);
   }
@@ -38,24 +41,22 @@ export class RoutesService {
   async createForAdminOrDriver(userId: string, dto: AdminCreateRouteDto) {
     const user = await this.ensureRoutePublisher(userId);
     await this.usersService.ensurePremiumAccess(user.id, 'publicar rutas compartidas');
-    const route = await this.createRouteRecord(
-      user.id,
-      {
-        title: dto.title?.trim() || `${dto.origin} -> ${dto.destination}`,
-        origin: dto.origin,
-        destination: dto.destination,
-        stopsText: this.composeRouteDescription(dto),
-        weekdays: dto.weekdays,
-        departureTime: dto.departureTime,
-        estimatedArrivalTime: dto.estimatedArrivalTime,
-        availableSeats: dto.availableSeats,
-        status: dto.status ?? RouteStatusDto.ACTIVE
-      },
-      true
-    );
+    const normalizedDto = {
+      title: dto.title?.trim() || `${dto.origin} -> ${dto.destination}`,
+      origin: dto.origin,
+      destination: dto.destination,
+      stopsText: this.composeRouteDescription(dto),
+      weekdays: dto.weekdays,
+      departureTime: dto.departureTime,
+      estimatedArrivalTime: dto.estimatedArrivalTime,
+      availableSeats: dto.availableSeats,
+      status: dto.status ?? RouteStatusDto.ACTIVE
+    };
+    const existingRoute = await this.findDuplicateRouteForPublisher(user.id, normalizedDto, true);
+    if (existingRoute) return this.mapRoute(existingRoute, true);
+    const route = await this.createRouteRecord(user.id, normalizedDto, true);
     return this.mapRoute(route, true);
   }
-
   async findPublicRoutes() {
     const routes = await this.routeDelegate().findMany({ where: { status: 'active' }, include: this.routeInclude(true), orderBy: { createdAt: 'desc' } });
     return routes.map((r: any) => this.mapRoute(r, true));
@@ -142,24 +143,30 @@ export class RoutesService {
     const dep = (dto.departureTime ?? route.departureTime).trim();
     const arr = (dto.estimatedArrivalTime ?? route.estimatedArrivalTime).trim();
     const ref = (dto.boardingReference ?? '').trim();
+    const seats = dto.availableSeats ?? route.availableSeats;
 
     if (existing) {
       const updateData: any = {};
       if (dep) updateData.departureTimeSnapshot = dep;
       if (arr) updateData.estimatedArrivalTimeSnapshot = arr;
       if (ref) updateData.boardingReference = ref;
+      updateData.availableSeatsSnapshot = seats;
       const trip = Object.keys(updateData).length ? await this.tripDelegate().update({ where: { id: existing.id }, data: updateData }) : existing;
       return { route: this.mapRoute(route, true), trip: this.mapInitialTrip(trip), message: 'Viaje actualizado con horario y referencia de abordaje.' };
     }
 
-    const trip = await this.tripDelegate().create({ data: { publicId: await this.nextPublicId('trip'), routeId: route.id, driverUserId, tripDate: nextTripDate, departureTimeSnapshot: dep, estimatedArrivalTimeSnapshot: arr, availableSeatsSnapshot: route.availableSeats, pricePerSeatSnapshot: route.pricePerSeat, boardingReference: ref || null, status: 'scheduled' } });
+    const trip = await this.tripDelegate().create({ data: { publicId: await this.nextPublicId('trip'), routeId: route.id, driverUserId, tripDate: nextTripDate, departureTimeSnapshot: dep, estimatedArrivalTimeSnapshot: arr, availableSeatsSnapshot: seats, pricePerSeatSnapshot: route.pricePerSeat, boardingReference: ref || null, status: 'scheduled' } });
     return { route: this.mapRoute(route, true), trip: this.mapInitialTrip(trip), message: ref ? 'Viaje tomado, con horario y referencia guardados correctamente.' : 'Viaje tomado correctamente. Ahora agrega la referencia de abordaje.' };
   }
 
   private async createRouteRecord(userId: string, dto: CreateRouteDto, includeDriver: boolean) {
     const distanceKm = this.estimateDistanceFromRouteInput(dto);
     const pricing = await this.farePolicyService.resolveRoutePricing(distanceKm);
-    const data: any = { publicId: await this.nextPublicId('route'), driverUserId: userId, farePolicyId: pricing.farePolicyId, title: dto.title, origin: dto.origin, destination: dto.destination, originPlaceId: dto.originPlaceId, destinationPlaceId: dto.destinationPlaceId, originLat: dto.originLat, originLng: dto.originLng, destinationLat: dto.destinationLat, destinationLng: dto.destinationLng, stopsText: dto.stopsText, weekdaysText: this.serializeWeekdays(dto.weekdays), departureTime: dto.departureTime, estimatedArrivalTime: dto.estimatedArrivalTime, availableSeats: dto.availableSeats, distanceKm: pricing.distanceKm, pricePerSeat: pricing.finalPricePerSeat, farePolicyMode: pricing.farePolicyMode, fareRatePerKmApplied: pricing.fareRatePerKmApplied, maxAllowedPrice: pricing.maxAllowedPrice, status: this.toStorageStatus(dto.status ?? RouteStatusDto.ACTIVE) };
+    const weekdays = this.resolveRouteWeekdays(dto.weekdays);
+    const departureTime = dto.departureTime ?? '06:00';
+    const estimatedArrivalTime = dto.estimatedArrivalTime ?? '07:00';
+    const availableSeats = dto.availableSeats ?? 4;
+    const data: any = { publicId: await this.nextPublicId('route'), driverUserId: userId, farePolicyId: pricing.farePolicyId, title: dto.title, origin: dto.origin, destination: dto.destination, originPlaceId: dto.originPlaceId, destinationPlaceId: dto.destinationPlaceId, originLat: dto.originLat, originLng: dto.originLng, destinationLat: dto.destinationLat, destinationLng: dto.destinationLng, stopsText: dto.stopsText, weekdaysText: this.serializeWeekdays(weekdays), departureTime, estimatedArrivalTime, availableSeats, distanceKm: pricing.distanceKm, pricePerSeat: pricing.finalPricePerSeat, farePolicyMode: pricing.farePolicyMode, fareRatePerKmApplied: pricing.fareRatePerKmApplied, maxAllowedPrice: pricing.maxAllowedPrice, status: this.toStorageStatus(dto.status ?? RouteStatusDto.ACTIVE) };
     return this.execute(() => this.routeDelegate().create({ data, include: this.routeInclude(includeDriver) }));
   }
 
@@ -170,6 +177,9 @@ export class RoutesService {
     return this.execute(() => this.routeDelegate().update({ where: { id: routeId }, data: { title: dto.title, origin: dto.origin, destination: dto.destination, originPlaceId: dto.originPlaceId, destinationPlaceId: dto.destinationPlaceId, originLat: dto.originLat, originLng: dto.originLng, destinationLat: dto.destinationLat, destinationLng: dto.destinationLng, stopsText: dto.stopsText, weekdaysText: dto.weekdays ? this.serializeWeekdays(dto.weekdays) : undefined, departureTime: dto.departureTime, estimatedArrivalTime: dto.estimatedArrivalTime, availableSeats: dto.availableSeats, status: dto.status ? this.toStorageStatus(dto.status) : undefined, distanceKm: pricing.distanceKm, pricePerSeat: pricing.finalPricePerSeat, farePolicyId: pricing.farePolicyId, farePolicyMode: pricing.farePolicyMode, fareRatePerKmApplied: pricing.fareRatePerKmApplied, maxAllowedPrice: pricing.maxAllowedPrice }, include: this.routeInclude(includeDriver) }));
   }
 
+  private resolveRouteWeekdays(weekdays?: WeekdayDto[] | null) { return weekdays?.length ? weekdays : [WeekdayDto.MONDAY, WeekdayDto.TUESDAY, WeekdayDto.WEDNESDAY, WeekdayDto.THURSDAY, WeekdayDto.FRIDAY]; }
+  private async findDuplicateRouteForPublisher(userId: string, dto: Pick<CreateRouteDto, 'origin' | 'destination'>, includeDriver: boolean) { const originKey = this.normalizeRouteText(dto.origin); const destinationKey = this.normalizeRouteText(dto.destination); if (!originKey || !destinationKey) return null; const routes = await this.routeDelegate().findMany({ where: { driverUserId: userId, status: { in: ['active', 'paused'] } }, include: this.routeInclude(includeDriver), orderBy: { createdAt: 'desc' } }); return routes.find((route: any) => this.normalizeRouteText(route.origin) === originKey && this.normalizeRouteText(route.destination) === destinationKey) ?? null; }
+  private normalizeRouteText(value?: string | null) { return String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
   private async createInitialTripForRoute(route: any) { const tripDate = this.findNextTripDate(this.parseWeekdays(route.weekdaysText)); const existing = await this.tripDelegate().findFirst({ where: { routeId: route.id, tripDate, status: { in: ['scheduled', 'started', 'finished'] } } }); if (existing) return this.mapInitialTrip(existing); const trip = await this.tripDelegate().create({ data: { publicId: await this.nextPublicId('trip'), routeId: route.id, driverUserId: route.driverUserId, tripDate, departureTimeSnapshot: route.departureTime, estimatedArrivalTimeSnapshot: route.estimatedArrivalTime, availableSeatsSnapshot: route.availableSeats, pricePerSeatSnapshot: route.pricePerSeat, status: 'scheduled' } }); return this.mapInitialTrip(trip); }
   private findNextTripDate(weekdays: WeekdayDto[]) { const n = weekdays.length ? weekdays : [this.weekdayFromDate(new Date())]; const nums = n.map((d) => this.weekdayToNumber(d)); const now = new Date(); const base = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0)); for (let i = 0; i <= 7; i += 1) { const c = new Date(base); c.setUTCDate(base.getUTCDate() + i); if (nums.includes(c.getUTCDay())) return c; } return base; }
   private weekdayToNumber(d: WeekdayDto) { const m: Record<WeekdayDto, number> = { [WeekdayDto.SUNDAY]: 0, [WeekdayDto.MONDAY]: 1, [WeekdayDto.TUESDAY]: 2, [WeekdayDto.WEDNESDAY]: 3, [WeekdayDto.THURSDAY]: 4, [WeekdayDto.FRIDAY]: 5, [WeekdayDto.SATURDAY]: 6 }; return m[d]; }

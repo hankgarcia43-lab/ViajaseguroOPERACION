@@ -228,7 +228,7 @@ export default function DashboardPage() {
             'Manten tu verificacion y vehiculo en estado aprobado.',
             'Toma una ruta que coincida con tu trayecto real de trabajo.',
             'Registra horario, dias, asientos y referencia exacta de abordaje.',
-            'Inicia ruta y valida a cada usuario con su codigo numerico.',
+            'Inicia ruta, identifica a cada usuario y confirma abordaje desde tu lista.',
             'Consulta actividad de ruta y reportes.'
           ],
           nextStep: 'Publicar ruta activa y continuar en Mis rutas.',
@@ -293,17 +293,17 @@ export default function DashboardPage() {
 
   const quickActions = me.role === 'passenger'
     ? [
+        { href: '/dashboard/verification', label: 'Seguridad y verificacion', helper: 'Primer paso: confirma tu identidad antes de solicitar rutas.' },
         { href: '/dashboard/routes/request', label: 'Solicitar apertura', helper: 'Envia comunidad, destino, dias y horario a soporte.' },
         { href: '/dashboard/search-trips', label: 'Buscar rutas disponibles', helper: 'Compara conductores y horarios.' },
-        { href: '/dashboard/routes/request', label: 'Mis solicitudes', helper: 'Responde propuestas de conductores.' },
-        { href: '/dashboard/verification', label: 'Seguridad y verificacion', helper: 'Manten tu identidad lista antes de abordar.' }
+        { href: '/dashboard/routes/request', label: 'Mis solicitudes', helper: 'Responde propuestas de conductores.' }
       ]
     : me.role === 'driver'
       ? [
-          { href: '/dashboard/routes/create', label: 'Publicar ruta', helper: 'Da de alta tu ruta recurrente.' },
-          { href: '/dashboard/route-needs', label: 'Ver rutas solicitadas', helper: 'Toma necesidades compatibles.' },
-          { href: '/dashboard/trips', label: 'Mis rutas activas', helper: 'Inicia ruta y valida pases.' },
-          { href: '/dashboard/verification', label: 'Mi verificacion', helper: 'Mantente aprobado para operar.' }
+          { href: '/dashboard/verification', label: 'Mi verificacion', helper: 'Primer paso: documentos aprobados para operar.' },
+          { href: '/dashboard/vehicle', label: 'Mi vehiculo', helper: 'Mantiene vehiculo y placas listos para confianza.' },
+          { href: '/dashboard/routes/create', label: 'Crear ruta base', helper: 'Solo origen y destino; despues publicas disponibilidad.' },
+          { href: '/dashboard/trips', label: 'Mis rutas activas', helper: 'Inicia ruta y controla abordaje.' }
         ]
       : [
           { href: '/dashboard/admin/verifications', label: 'Conductores pendientes', helper: 'Aprueba o rechaza documentos.' },
@@ -311,7 +311,6 @@ export default function DashboardPage() {
           { href: '/dashboard/admin/people', label: 'Usuarios en piloto', helper: 'Suspende, reactiva o revisa registros.' },
           { href: '/dashboard/admin/incidents', label: 'Seguridad e incidentes', helper: 'Revisa reportes y alertas.' }
         ];
-
   return (
     <section className="space-y-6">
       <header className="relative overflow-hidden rounded-[32px] bg-slate-950 p-8 text-white shadow-[0_30px_90px_-45px_rgba(7,17,31,0.85)] md:p-10">
@@ -334,6 +333,21 @@ export default function DashboardPage() {
         </div>
       </header>
 
+      {me.role !== 'admin' && me.verificationStatus !== 'approved' && (
+        <section className="rounded-2xl border border-amber-300 bg-amber-50 p-5 text-amber-950 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-700">Primer paso obligatorio</p>
+              <h2 className="mt-1 text-xl font-black text-slate-950">Completa tu verificacion antes de operar</h2>
+              <p className="mt-1 text-sm font-semibold">VIAJASEGURO siempre pensando en tu bolsillo y seguridad: identidad clara, puntos publicos y miembros verificados.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link href="/dashboard/verification" className="rounded-md bg-slate-950 px-4 py-2 text-sm font-bold text-white hover:bg-slate-800">Subir verificacion</Link>
+              {me.role === 'driver' && <Link href="/dashboard/vehicle" className="rounded-md border border-amber-400 bg-white px-4 py-2 text-sm font-bold text-amber-900">Registrar vehiculo</Link>}
+            </div>
+          </div>
+        </section>
+      )}
       {me.role !== 'admin' && subscription && (
         <section className={`rounded-2xl border p-4 shadow-sm ${subscriptionTone}`}>
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -454,7 +468,7 @@ export default function DashboardPage() {
             <div className="rounded-xl bg-white p-4 shadow-sm">
               <p className="text-xs font-bold uppercase text-slate-500">Validacion</p>
               <Link href={`/dashboard/trips/${currentDriverTrip.id}/boarding`} className="mt-1 inline-flex rounded-md bg-emerald-700 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-800">
-                Validar pases
+                Control de abordaje
               </Link>
             </div>
           </div>
@@ -471,7 +485,7 @@ export default function DashboardPage() {
         <section className="space-y-3">
           <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-950 shadow-sm">
             <p className="font-bold">Tus datos terminados quedan en historial para no saturar el panel principal.</p>
-            <p className="mt-1">Muestra al conductor el codigo correspondiente a la fecha de la ruta y revisa la fecha antes de compartirlo.</p>
+            <p className="mt-1">Identificate con el conductor, revisa la fecha de tu pase y confirma que vehiculo/placas coincidan antes de abordar.</p>
           </div>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <StatCard label="Rutas proximas" value={passengerUpcoming} tone="sky" />
@@ -489,7 +503,7 @@ export default function DashboardPage() {
       {me.role === 'driver' && (
         <section className="space-y-3">
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 shadow-sm">
-            <p className="font-bold">Valida unicamente pases del dia y horario correspondiente.</p>
+            <p className="font-bold">Confirma unicamente usuarios del dia y horario correspondiente.</p>
             <p className="mt-1">El panel principal muestra rutas activas o pendientes; los terminados y cancelados pasan a historial/archivo.</p>
           </div>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -550,7 +564,7 @@ export default function DashboardPage() {
               <article className="vs-card">
                 <p className="vs-kicker">Solicitar</p>
                 <h2 className="mt-3 text-xl font-semibold text-slate-950">Sigue tus solicitudes sin perderte</h2>
-                <p className="mt-3 text-sm leading-6 text-slate-600">Revisa pase, estado de solicitud y codigo de abordaje.</p>
+                <p className="mt-3 text-sm leading-6 text-slate-600">Revisa pase, estado de solicitud y datos para identificarte con el conductor.</p>
                 <div className="mt-5 flex flex-wrap gap-2">
                   <Link href="/dashboard/my-reservations" className="vs-button-secondary">Mis solicitudes</Link>
 

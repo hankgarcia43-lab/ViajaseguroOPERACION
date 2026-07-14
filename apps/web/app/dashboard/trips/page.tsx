@@ -195,7 +195,7 @@ function TripsPageContent() {
     }
 
     if (trip.status !== 'scheduled') {
-      setError('Solo puedes validar pases en rutas programadas o en curso.');
+      setError('Solo puedes abrir control de abordaje en rutas programadas o en curso.');
       return;
     }
 
@@ -212,7 +212,7 @@ function TripsPageContent() {
       });
       router.push(`/dashboard/trips/${trip.id}/boarding`);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo iniciar la ruta para validar pases');
+      setError(requestError instanceof Error ? requestError.message : 'No se pudo iniciar la ruta para controlar abordaje');
     } finally {
       setBusyAction(null);
     }
@@ -306,7 +306,7 @@ function TripsPageContent() {
                 <p className="font-semibold text-slate-950">Pendientes: {pendingRequests.length} / Aceptadas: {acceptedRequests.length}</p>
               </div>
               <Link href={`/dashboard/trips/${trip.id}/boarding`} className="rounded-md border border-cyan-300 bg-white px-3 py-2 text-xs font-bold text-cyan-800">
-                Validar pases
+                Control de abordaje
               </Link>
             </div>
             {pendingRequests.length > 0 && (
@@ -336,6 +336,7 @@ function TripsPageContent() {
         <p className="mt-3 text-sm text-slate-700">Lugares configurados: {trip.availableSeatsSnapshot}</p>
         <p className="text-sm text-slate-700">Lugares disponibles: {trip.reservationSummary?.remainingSeats ?? trip.availableSeatsSnapshot}</p>
         <p className="text-sm text-slate-700">Estimacion orientativa: ${trip.pricePerSeatSnapshot.toFixed(2)} MXN</p>
+        <p className="mt-2 rounded-md bg-amber-50 p-2 text-xs font-semibold text-amber-900">Recuerda considerar gasolina, caseta y mantenimiento. VIAJASEGURO siempre pensando en tu bolsillo y seguridad.</p>
         <p className="text-sm text-slate-700">Referencia de abordaje: {trip.boardingReference ?? 'Sin definir'}</p>
         {!isArchived && <p className="mt-2 rounded-md bg-amber-50 p-2 text-xs text-amber-800">Usa siempre una referencia visible y publica para proteger al usuario y al conductor.</p>}
 
@@ -344,14 +345,14 @@ function TripsPageContent() {
           {!isArchived && trip.status === 'scheduled' && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
               <p className="font-bold">Esta ruta aun no esta lista para validacion.</p>
-              <p className="mt-1">Cuando estes en el punto de abordaje, usa <strong>Iniciar y validar pases</strong> para abrir la captura de codigos.</p>
+              <p className="mt-1">Cuando estes en el punto de abordaje, usa <strong>Iniciar y controlar abordaje</strong> para identificar usuarios. Los faltantes tienen 10 minutos de tolerancia.</p>
             </div>
           )}
           {!isArchived && trip.status === 'started' && (
             <div className="space-y-3">
               <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
-                <p className="font-bold">Ruta en curso: ya puedes validar pases.</p>
-                <p className="mt-1">Pide el <strong>codigo numerico de 6 digitos</strong> y valida unicamente pases del dia y horario correspondiente.</p>
+                <p className="font-bold">Ruta en curso: ya puedes controlar abordaje.</p>
+                <p className="mt-1">Identifica al usuario por nombre, confirma lugares y marca abordaje solo para esta fecha y horario.</p>
               </div>
               <SafetyActionsPanel
                 role="driver"
@@ -373,7 +374,7 @@ function TripsPageContent() {
             {!isArchived && trip.status === 'scheduled' && (
               <>
                 <button type="button" disabled={isStartBoardingBusy} onClick={() => startAndValidate(trip)} className="rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-wait disabled:bg-slate-300 disabled:text-slate-700">
-                  {isStartBoardingBusy ? 'Abriendo validacion...' : 'Iniciar y validar pases'}
+                  {isStartBoardingBusy ? 'Abriendo abordaje...' : 'Iniciar y controlar abordaje'}
                 </button>
                 <button type="button" disabled={isStartBusy || isStartBoardingBusy} onClick={() => changeStatus(trip, 'start')} className="rounded-md border border-emerald-300 px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm disabled:opacity-50">
                   {isStartBusy ? 'Iniciando...' : 'Solo iniciar ruta'}
@@ -382,7 +383,7 @@ function TripsPageContent() {
             )}
             {!isArchived && trip.status === 'started' && (
               <Link href={`/dashboard/trips/${trip.id}/boarding`} className="rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">
-                Validar pases
+                Control de abordaje
               </Link>
             )}
             {!isArchived && trip.status === 'started' && (
@@ -439,7 +440,7 @@ function TripsPageContent() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h1 className="text-2xl font-semibold text-slate-900">Mis rutas compartidas</h1>
-              <p className="text-sm text-slate-600">Opera en orden: <strong>1) iniciar ruta</strong>, <strong>2) validar pases</strong>, <strong>3) finalizar salida</strong>.</p>
+              <p className="text-sm text-slate-600">Opera en orden: <strong>1) iniciar ruta</strong>, <strong>2) identificar usuarios</strong>, <strong>3) finalizar salida</strong>.</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={() => setShowArchived((current) => !current)} className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700">
@@ -481,8 +482,8 @@ function TripsPageContent() {
                 <p className="mt-1 text-xs text-slate-700">Cuando estes en el punto de abordaje, presiona <strong>Iniciar ruta</strong>.</p>
               </div>
               <div className="rounded-lg bg-white p-3 shadow-sm">
-                <p className="font-bold text-slate-950">2. Validar pases</p>
-                <p className="mt-1 text-xs text-slate-700">Despues de iniciar, entra a <strong>Validar pases</strong> y captura el codigo de 6 digitos.</p>
+                <p className="font-bold text-slate-950">2. Control de abordaje</p>
+                <p className="mt-1 text-xs text-slate-700">Despues de iniciar, entra a <strong>Control de abordaje</strong>, identifica usuarios y confirma quienes subieron.</p>
               </div>
               <div className="rounded-lg bg-white p-3 shadow-sm">
                 <p className="font-bold text-slate-950">3. Finalizar salida</p>
@@ -551,10 +552,10 @@ function TripsPageContent() {
           points={[
             'Sigue los pasos para operar tu ruta con claridad.',
             'Verifica siempre el punto de encuentro antes de iniciar.',
-            'Valida el abordaje usando el codigo numerico del usuario.',
+            'Confirma abordaje por identidad del usuario; revisa nombre, fecha y lugares antes de permitir subida.',
             'Archiva rutas finalizadas o canceladas para mantener limpia tu lista principal.'
           ]}
-          nextStep="Inicia ruta, valida pases y archiva rutas cerradas."
+          nextStep="Inicia ruta, identifica usuarios y archiva rutas cerradas."
           ctaHref="/dashboard/routes"
           ctaLabel="Publicar ruta"
         />

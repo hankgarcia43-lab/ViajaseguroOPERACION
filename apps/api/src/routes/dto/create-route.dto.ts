@@ -62,25 +62,29 @@ export class CreateRouteDto {
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   stopsText?: string;
 
+  @IsOptional()
   @IsArray()
   @ArrayMinSize(1)
   @ArrayMaxSize(7)
   @IsEnum(WeekdayDto, { each: true })
-  weekdays!: WeekdayDto[];
+  weekdays?: WeekdayDto[];
 
+  @IsOptional()
   @IsString()
   @Matches(TIME_REGEX, { message: 'departureTime debe tener formato HH:mm' })
-  departureTime!: string;
+  departureTime?: string;
 
+  @IsOptional()
   @IsString()
   @Matches(TIME_REGEX, { message: 'estimatedArrivalTime debe tener formato HH:mm' })
-  estimatedArrivalTime!: string;
+  estimatedArrivalTime?: string;
 
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(20)
-  availableSeats!: number;
+  availableSeats?: number;
 
   @IsOptional()
   @Type(() => Number)

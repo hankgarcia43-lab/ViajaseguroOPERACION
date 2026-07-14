@@ -87,6 +87,9 @@ export interface DriverRoute {
 
 export interface TakeViajePayload {
   boardingReference?: string;
+  departureTime?: string;
+  estimatedArrivalTime?: string;
+  availableSeats?: number;
 }
 export interface TakeViajeResponse {
   route: DriverRoute;
@@ -112,10 +115,10 @@ export interface RoutePayload {
   destinationLat?: number;
   destinationLng?: number;
   stopsText?: string;
-  weekdays: string[];
-  departureTime: string;
-  estimatedArrivalTime: string;
-  availableSeats: number;
+  weekdays?: string[];
+  departureTime?: string;
+  estimatedArrivalTime?: string;
+  availableSeats?: number;
   pricePerSeat?: number;
 }
 

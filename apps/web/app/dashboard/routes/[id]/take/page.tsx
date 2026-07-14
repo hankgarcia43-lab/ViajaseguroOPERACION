@@ -257,7 +257,9 @@ export default function DriverTakeRoutePage() {
         headers,
         body: JSON.stringify({
           departureTime,
-          estimatedArrivalTime
+          estimatedArrivalTime,
+          availableSeats: seats,
+          boardingReference: boardingReferenceText
         })
       });
 
@@ -279,9 +281,10 @@ export default function DriverTakeRoutePage() {
   return (
     <section className="space-y-5">
       <header className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h1 className="text-2xl font-semibold text-slate-900">Publica tu disponibilidad de ruta compartida</h1>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700">VIAJASEGURO piensa en tu bolsillo y seguridad</p>
+        <h1 className="mt-2 text-2xl font-semibold text-slate-900">Publica horario, asientos y punto de encuentro</h1>
         <p className="text-sm text-slate-600">Ruta seleccionada: {routeLabel}</p>
-        <p className="text-xs text-slate-500">Indica cuando pasas, donde abordas y cuantos lugares puedes ofrecer. La idea es llenar lugares libres en un trayecto que ya haces o que te queda cerca.</p>
+        <p className="text-xs text-slate-500">Aqui si defines dias, horario, asientos disponibles y referencia segura. Recuerda que casetas, gasolina y mantenimiento corren por cuenta del conductor.</p>
       </header>
 
       <section className="grid gap-3 md:grid-cols-3">
@@ -293,9 +296,9 @@ export default function DriverTakeRoutePage() {
           <p className="font-semibold">Que hace atractiva tu publicacion</p>
           <p className="mt-1">Horario claro, referencia facil, punto seguro y dias reales de operacion.</p>
         </article>
-        <article className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
-          <p className="font-semibold text-slate-950">Despues de publicar</p>
-          <p className="mt-1">Cuando un usuario solicite unirse, podras aceptar o rechazar desde tu panel de rutas.</p>
+        <article className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+          <p className="font-semibold">Costos del trayecto</p>
+          <p className="mt-1">El conductor considera gasolina, caseta y tiempo. Publica solo lugares reales para mantener sana la operacion.</p>
         </article>
       </section>
 
@@ -452,7 +455,7 @@ export default function DriverTakeRoutePage() {
               <p><strong>Destino:</strong> {route.destination}</p>
               <p><strong>Estimacion por lugar:</strong> ${route.pricePerSeat.toFixed(2)} MXN</p>
               <p><strong>Distancia estimada:</strong> {route.distanceKm.toFixed(2)} km</p>
-              <p><strong>Horario base:</strong> {route.departureTime} - {route.estimatedArrivalTime}</p>
+              <p><strong>Horario base:</strong> se define al publicar disponibilidad</p>
             </div>
           ) : (
             <p className="mt-3 text-sm text-slate-600">No se encontro la informacion de la ruta.</p>

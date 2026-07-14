@@ -128,7 +128,7 @@ export default function AdminReservationsPage() {
                   <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Usuario</p>
                   <p className="mt-2 text-sm text-slate-700">{(selectedReservation as Reservation & { passenger?: { fullName?: string; email?: string } | null }).passenger?.fullName ?? selectedReservation.passengerUserId}</p>
                   <p className="text-sm text-slate-700">{(selectedReservation as Reservation & { passenger?: { email?: string } | null }).passenger?.email ?? 'Sin email visible'}</p>
-                  <p className="text-sm text-slate-700">Codigo: {selectedReservation.numericCode ?? 'Pendiente hasta aceptacion del conductor'}</p>
+                  <p className="text-sm text-slate-700">Identificador interno de pase: {selectedReservation.numericCode ?? 'Pendiente hasta aceptacion del conductor'}</p>
                 </div>
                 <div className="rounded-xl border border-slate-200 p-4">
                   <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Viaje</p>

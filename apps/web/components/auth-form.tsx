@@ -29,7 +29,7 @@ const COPY = {
     icon: 'VS',
     accent: 'from-blue-600 to-indigo-600',
     bullets: ['Rutas compartidas verificadas', 'Conductores verificados', 'Estimacion orientativa'],
-    guide: ['Registra tu nombre real y telefono activo.', 'Despues sube INE frente y reverso en Verificacion.', 'Al solicitar, revisa la estimacion y espera la aceptacion del conductor.'],
+    guide: ['Registra tu nombre real y telefono activo.', 'Primer paso al entrar: pulsa Verificacion y sube INE frente/reverso.', 'Al solicitar, revisa la estimacion y espera la aceptacion del conductor.'],
     button: 'Crear cuenta de usuario',
     secondaryHref: '/login',
     secondaryText: 'Ya tienes cuenta? Inicia sesion'
@@ -40,7 +40,7 @@ const COPY = {
     icon: 'VS',
     accent: 'from-indigo-600 to-violet-600',
     bullets: ['Solicitudes claras', 'Verificacion confiable', 'Define tus horarios'],
-    guide: ['Registra datos reales para que admin pueda validarte.', 'Despues sube INE, licencia y documentos del vehiculo.', 'Cuando estes aprobado, publica o toma una ruta compatible con tu traslado.'],
+    guide: ['Registra datos reales para que admin pueda validarte.', 'Primer paso al entrar: pulsa Verificacion y despues registra tu vehiculo.', 'Cuando estes aprobado, crea ruta base o toma una ruta compatible con tu traslado.'],
     button: 'Crear cuenta de conductor',
     secondaryHref: '/login',
     secondaryText: 'Ya tienes cuenta? Inicia sesion'
@@ -130,6 +130,14 @@ export function AuthForm({ mode }: AuthFormProps) {
             ))}
           </ul>
         </div>
+
+        {!isLogin && (
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-left text-sm leading-6 text-emerald-950">
+            <p className="font-black">Verificacion primero</p>
+            <p className="mt-1">Al crear tu cuenta, entra al panel y usa el boton de verificacion antes de solicitar u operar rutas. VIAJASEGURO siempre pensando en tu bolsillo y seguridad.</p>
+            {mode === 'driver' && <p className="mt-1 font-semibold">Como conductor tambien deberas registrar vehiculo y placas antes de publicar disponibilidad.</p>}
+          </div>
+        )}
 
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left text-sm leading-6 text-amber-950">
           <p className="font-semibold">Aviso de confidencialidad y seguridad</p>

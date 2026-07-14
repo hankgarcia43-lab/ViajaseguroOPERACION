@@ -10,7 +10,7 @@ services:
         value: production
       - key: PORT
         value: 4000
-      # Configure this in Render with the direct Neon/PostgreSQL URL. Do not commit real secrets.
+      # Configure this in Render with the Neon PostgreSQL URL. Do not use the old dpg-* Render internal database host and do not commit real secrets.
       - key: DATABASE_URL
         sync: false
       - key: JWT_SECRET
@@ -39,9 +39,3 @@ services:
         value: Mercado Pago
       - key: MANUAL_PAYMENT_REFERENCE
         value: VIAJA SEGURO
-
-databases:
-  - name: viajasegurooperacion-db
-    databaseName: viaja_seguro
-    user: viaja_seguro
-    plan: free

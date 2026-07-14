@@ -5,7 +5,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { apiRequest, getToken } from '@/lib/api';
 import { DriverRouteProposal, RequestedRoute, WEEKDAY_OPTIONS, formatWeekdays, getProposalStatusLabel, getRequestedRouteStatusLabel } from '@/lib/route-needs';
 
-const CASH_NOTICE = 'El monto mostrado es una aportacion sugerida en efectivo acordada directamente entre usuario y conductor. VIAJASEGURO no cobra traslados, no fija tarifas obligatorias y no administra pagos entre las partes.';
+const CASH_NOTICE = 'El monto mostrado es una aportacion sugerida diaria en efectivo acordada directamente entre usuario y conductor. VIAJASEGURO no cobra traslados, no fija tarifas obligatorias y no administra pagos entre las partes. No pagues toda la semana por adelantado.';
 function buildWhatsAppUrl(phone?: string | null) {
   const digits = String(phone ?? '').replace(/\D/g, '');
   if (digits.length < 10) return null;
@@ -83,7 +83,7 @@ export default function RequestRoutePage() {
       setOriginText('');
       setDestinationText('');
       setMessage('');
-      setSuccess('Tu necesidad de ruta fue publicada. Los conductores verificados podran responderla.');
+      setSuccess('Tu solicitud de apertura fue enviada. Soporte y conductores verificados podran revisarla y responder si existe disponibilidad.');
       await loadNeeds();
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'No se pudo publicar la ruta solicitada.');
@@ -120,10 +120,10 @@ export default function RequestRoutePage() {
   return (
     <section className="space-y-6">
       <header className="rounded-2xl border border-sky-200 bg-sky-50 p-5 text-sky-950 shadow-sm">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-sky-700">Usuario miembro</p>
-        <h1 className="mt-1 text-2xl font-black text-slate-950">Necesito una ruta</h1>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-sky-700">Solicitud a soporte</p>
+        <h1 className="mt-1 text-2xl font-black text-slate-950">Solicitar apertura de ruta en mi comunidad</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6">
-          Publica la ruta que necesitas en pocos pasos. Un conductor verificado puede responder con horario, punto de abordaje y aportacion sugerida en efectivo.
+          Cuentanos que ruta necesitas. Esto no crea una ruta publica automaticamente: soporte/admin la revisa y los conductores verificados pueden responder con horario, punto de abordaje y aportacion sugerida diaria en efectivo.
         </p>
         <p className="mt-3 rounded-xl border border-white/70 bg-white p-3 text-xs font-semibold text-slate-700">{CASH_NOTICE}</p>
       </header>
@@ -131,8 +131,8 @@ export default function RequestRoutePage() {
       <div className="grid gap-5 xl:grid-cols-[minmax(0,420px)_1fr]">
         <form onSubmit={submitNeed} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div>
-            <h2 className="text-lg font-bold text-slate-950">Publicar necesidad</h2>
-            <p className="text-sm text-slate-600">Usa referencias claras: colonia, municipio, terminal o zona de trabajo.</p>
+            <h2 className="text-lg font-bold text-slate-950">Enviar solicitud de apertura</h2>
+            <p className="text-sm text-slate-600">Escribe comunidad, colonia, municipio, terminal o zona de trabajo para que soporte pueda ubicar la demanda.</p>
           </div>
 
           <label className="block text-sm font-medium text-slate-700">
@@ -177,7 +177,7 @@ export default function RequestRoutePage() {
           {success && <p className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">{success}</p>}
 
           <button type="submit" disabled={saving || recurrenceDays.length === 0} className="w-full rounded-md bg-sky-700 px-4 py-3 text-sm font-bold text-white hover:bg-sky-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600">
-            {saving ? 'Publicando...' : 'Publicar ruta solicitada'}
+            {saving ? 'Enviando...' : 'Enviar solicitud de apertura'}
           </button>
         </form>
 
@@ -193,7 +193,7 @@ export default function RequestRoutePage() {
           </div>
 
           {loading ? <p className="text-sm text-slate-600">Cargando solicitudes...</p> : needs.length === 0 ? (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">Aun no has publicado necesidades de ruta.</div>
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">Aun no has enviado solicitudes de apertura.</div>
           ) : needs.map((need) => {
             const acceptedProposal = acceptedProposalForNeed(need);
             const whatsappUrl = buildWhatsAppUrl(acceptedProposal?.driver?.phone);
@@ -234,9 +234,9 @@ export default function RequestRoutePage() {
                       <p className="text-xs text-slate-600">{acceptedProposal.boardingReference}</p>
                     </div>
                     <div className="rounded-xl bg-white p-3 shadow-sm">
-                      <p className="text-xs font-bold uppercase text-slate-500">Aportacion sugerida</p>
+                      <p className="text-xs font-bold uppercase text-slate-500">Aportacion diaria sugerida</p>
                       <p className="mt-1 font-black text-slate-950">${acceptedProposal.suggestedCashContribution.toFixed(2)} MXN efectivo</p>
-                      <p className="text-xs text-slate-600">No es tarifa obligatoria.</p>
+                      <p className="text-xs text-slate-600">No es tarifa obligatoria y se paga en efectivo cada dia.</p>
                     </div>
                     <div className="rounded-xl bg-white p-3 shadow-sm">
                       <p className="text-xs font-bold uppercase text-slate-500">Contacto</p>
@@ -266,7 +266,7 @@ export default function RequestRoutePage() {
                         <p className="mt-2 text-sm text-slate-700">Horario: <span className="font-semibold">{proposal.proposedTime}</span></p>
                         <p className="text-sm text-slate-700">Punto: <span className="font-semibold">{proposal.boardingPoint}</span></p>
                         <p className="text-sm text-slate-700">Referencia: <span className="font-semibold">{proposal.boardingReference}</span></p>
-                        <p className="text-sm text-slate-700">Aportacion sugerida: <span className="font-semibold">${proposal.suggestedCashContribution.toFixed(2)} MXN</span></p>
+                        <p className="text-sm text-slate-700">Aportacion diaria sugerida: <span className="font-semibold">${proposal.suggestedCashContribution.toFixed(2)} MXN</span></p>
                         {proposal.messageToUser && <p className="mt-2 text-sm text-slate-600">{proposal.messageToUser}</p>}
                         <p className="mt-2 text-xs font-semibold text-amber-800">{CASH_NOTICE}</p>
                         <p className="mt-2 text-xs font-semibold text-rose-700">Antes de abordar, verifica que conductor, vehiculo y placas coincidan. No abordes si algun dato no coincide.</p>
@@ -275,7 +275,7 @@ export default function RequestRoutePage() {
                     </div>
                     {proposal.status === 'pending_user_response' && (
                       <div className="mt-3 flex flex-wrap gap-2">
-                        <button type="button" disabled={busyProposalId === proposal.id} onClick={() => void respondProposal(proposal, 'accept')} className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-800 disabled:bg-slate-300">Aceptar conductor</button>
+                        <button type="button" disabled={busyProposalId === proposal.id} onClick={() => void respondProposal(proposal, 'accept')} className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-800 disabled:bg-slate-300">Aceptar propuesta</button>
                         <button type="button" disabled={busyProposalId === proposal.id} onClick={() => void respondProposal(proposal, 'reject')} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-white disabled:text-slate-400">Rechazar propuesta</button>
                       </div>
                     )}

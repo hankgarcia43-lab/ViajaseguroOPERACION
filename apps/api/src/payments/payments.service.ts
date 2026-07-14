@@ -66,7 +66,8 @@ const PAYMENT_PROVIDER = {
 } as const;
 
 const SUBSCRIPTION_REFERENCE_PREFIX = 'viajaseguro:subscription';
-const DEFAULT_SUBSCRIPTION_DAYS = 7;
+const DEFAULT_DRIVER_SUBSCRIPTION_DAYS = 7;
+const DEFAULT_PASSENGER_SUBSCRIPTION_DAYS = 30;
 
 @Injectable()
 export class PaymentsService {
@@ -509,11 +510,15 @@ export class PaymentsService {
   }
 
   private resolveSubscriptionCheckoutPlan(role: 'passenger' | 'driver' | 'admin', requestedPlanType?: string) {
-    const defaultPlanType = 'pilot_weekly';
+    const defaultPlanType = role === 'driver' ? 'driver_weekly' : 'user_monthly';
     const planType = this.normalizeSubscriptionPlanType(requestedPlanType || defaultPlanType, role);
-    const amount = this.getRequiredPositiveMoneyEnv('MERCADOPAGO_SUBSCRIPTION_AMOUNT');
-    const days = this.getPositiveIntegerEnv('MERCADOPAGO_SUBSCRIPTION_DAYS', DEFAULT_SUBSCRIPTION_DAYS);
-    const title = planType.includes('driver') ? 'Plan semanal conductor VIAJASEGURO' : 'Plan semanal VIAJASEGURO';
+    const isDriverPlan = planType.includes('driver');
+    const roleAmountKey = isDriverPlan ? 'MERCADOPAGO_DRIVER_SUBSCRIPTION_AMOUNT' : 'MERCADOPAGO_PASSENGER_SUBSCRIPTION_AMOUNT';
+    const roleDaysKey = isDriverPlan ? 'MERCADOPAGO_DRIVER_SUBSCRIPTION_DAYS' : 'MERCADOPAGO_PASSENGER_SUBSCRIPTION_DAYS';
+    const fallbackDays = isDriverPlan ? DEFAULT_DRIVER_SUBSCRIPTION_DAYS : DEFAULT_PASSENGER_SUBSCRIPTION_DAYS;
+    const amount = this.getOptionalPositiveMoneyEnv(roleAmountKey) ?? this.getRequiredPositiveMoneyEnv('MERCADOPAGO_SUBSCRIPTION_AMOUNT');
+    const days = this.getPositiveIntegerEnv(roleDaysKey, this.getPositiveIntegerEnv('MERCADOPAGO_SUBSCRIPTION_DAYS', fallbackDays));
+    const title = isDriverPlan ? 'Plan semanal conductor VIAJASEGURO' : 'Plan mensual usuario VIAJASEGURO';
 
     return { planType, amount, days, title };
   }
@@ -524,10 +529,10 @@ export class PaymentsService {
     const driverPlans = new Set(['pilot_weekly', 'driver_weekly', 'driver_monthly']);
 
     if (role === 'driver') {
-      return driverPlans.has(normalized) ? normalized : 'pilot_weekly';
+      return driverPlans.has(normalized) ? normalized : 'driver_weekly';
     }
 
-    return passengerPlans.has(normalized) ? normalized : 'pilot_weekly';
+    return passengerPlans.has(normalized) ? normalized : 'user_monthly';
   }
 
   private buildSubscriptionExternalReference(userId: string, planType: string, days: number) {
@@ -597,14 +602,23 @@ export class PaymentsService {
     };
   }
 
-  private getRequiredPositiveMoneyEnv(key: string) {
+  private getOptionalPositiveMoneyEnv(key: string) {
     const raw = process.env[key];
-    const value = Number.parseFloat(String(raw ?? ''));
-    if (!Number.isFinite(value) || value <= 0) {
+    if (raw === undefined || raw === null || String(raw).trim() === '') {
+      return null;
+    }
+
+    const value = Number.parseFloat(String(raw));
+    return Number.isFinite(value) && value > 0 ? Math.round(value * 100) / 100 : null;
+  }
+
+  private getRequiredPositiveMoneyEnv(key: string) {
+    const value = this.getOptionalPositiveMoneyEnv(key);
+    if (!value) {
       throw new InternalServerErrorException(`${key} debe configurarse con un monto mayor a 0 para checkout automatico de plan`);
     }
 
-    return Math.round(value * 100) / 100;
+    return value;
   }
 
   private getPositiveIntegerEnv(key: string, fallback: number) {
@@ -700,7 +714,7 @@ export class PaymentsService {
     const businessAccount = null;
     const instructions =
       [
-        'Abre el link oficial de Mercado Pago desde VIAJA SEGURO solo para planes semanales, verificaciones o servicios digitales.',
+        'Abre el link oficial de Mercado Pago desde VIAJA SEGURO solo para planes de usuario/conductor, verificaciones o servicios digitales.',
         'No realices pagos de traslado dentro de la plataforma.',
         `Referencia: ${reference}`,
         'VIAJA SEGURO no fija tarifas de transporte ni realiza pagos a conductores.'

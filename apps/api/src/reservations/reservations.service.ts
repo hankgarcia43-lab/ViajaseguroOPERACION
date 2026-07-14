@@ -76,7 +76,8 @@ const TRIP_STATUS = {
   CANCELLED: 'cancelled'
 } as const;
 
-const WEEKLY_RESERVATION_DISCOUNT_RATE = 0;
+const WEEKLY_RESERVATION_DISCOUNT_RATE = 0.1;
+const WEEKLY_RESERVATION_MIN_DAYS = 5;
 
 @Injectable()
 export class ReservationsService {
@@ -137,7 +138,7 @@ export class ReservationsService {
 
     const selectedWeekdays = this.normalizeSelectedWeekdays(dto.selectedWeekdays);
     if (selectedWeekdays.length > 0) {
-      return this.createReservationsFromTripWeekdays(passenger.id, trip, selectedWeekdays, dto.totalSeats, companionCount);
+      return this.createReservationsFromTripWeekdays(passenger.id, trip, selectedWeekdays, dto.totalSeats, companionCount, Boolean(dto.referralDiscountRequested));
     }
 
     const totalAmount = this.roundCurrency(dto.totalSeats * trip.pricePerSeatSnapshot);
@@ -163,7 +164,8 @@ export class ReservationsService {
     seedTrip: TripRecord,
     selectedWeekdays: string[],
     totalSeats: number,
-    companionCount: number
+    companionCount: number,
+    referralDiscountRequested = false
   ) {
     if (selectedWeekdays.length === 0) {
       throw new BadRequestException('Selecciona al menos un dia para solicitar unirte.');
@@ -175,8 +177,8 @@ export class ReservationsService {
 
     const weeklyReservationGroupId = randomUUID();
     const weeklyGrossAmount = this.roundCurrency(selectedWeekdays.length * totalSeats * seedTrip.pricePerSeatSnapshot);
-    const weeklyDiscountApplied = false;
-    const weeklyDiscountAmount = 0;
+    const weeklyDiscountApplied = referralDiscountRequested && selectedWeekdays.length >= WEEKLY_RESERVATION_MIN_DAYS;
+    const weeklyDiscountAmount = weeklyDiscountApplied ? this.roundCurrency(weeklyGrossAmount * WEEKLY_RESERVATION_DISCOUNT_RATE) : 0;
     const weeklyTotalAmount = this.roundCurrency(weeklyGrossAmount - weeklyDiscountAmount);
     const items: ReservationRecord[] = [];
 
@@ -230,7 +232,7 @@ export class ReservationsService {
         passengerUserId,
         totalSeats,
         companionCount,
-        totalAmount: totalSeats * trip.pricePerSeatSnapshot,
+        totalAmount: weeklyDiscountApplied ? this.roundCurrency(totalSeats * trip.pricePerSeatSnapshot * (1 - WEEKLY_RESERVATION_DISCOUNT_RATE)) : this.roundCurrency(totalSeats * trip.pricePerSeatSnapshot),
         status: RESERVATION_STATUS.PENDING,
         routeOfferId: seedTrip.routeOfferId ?? undefined,
         weeklyReservationGroupId,
@@ -262,7 +264,7 @@ export class ReservationsService {
       primaryReservationId: mapped[0]?.id ?? null,
       message: mapped.length === 1
         ? 'Solicitud enviada para 1 dia. El conductor debe aceptarla para habilitar el pase de ruta.'
-        : 'Solicitud semanal enviada para ' + mapped.length + ' dias. El conductor debe aceptar cada dia para habilitar los pases de ruta.'
+        : 'Solicitud enviada para ' + mapped.length + ' dias. Con 5 dias o mas cuenta como viaje semanal; el conductor debe aceptar cada dia para habilitar los pases.'
     };
   }
 
@@ -293,8 +295,8 @@ export class ReservationsService {
     const companionCount = normalizedTotalSeats - 1;
     const weeklyReservationGroupId = randomUUID();
     const weeklyGrossAmount = this.roundCurrency(selectedWeekdays.length * normalizedTotalSeats * offer.pricePerSeat);
-    const weeklyDiscountApplied = false;
-    const weeklyDiscountAmount = 0;
+    const weeklyDiscountApplied = Boolean(dto.referralDiscountRequested) && selectedWeekdays.length >= WEEKLY_RESERVATION_MIN_DAYS;
+    const weeklyDiscountAmount = weeklyDiscountApplied ? this.roundCurrency(weeklyGrossAmount * WEEKLY_RESERVATION_DISCOUNT_RATE) : 0;
     const weeklyTotalAmount = this.roundCurrency(weeklyGrossAmount - weeklyDiscountAmount);
     const items: ReservationRecord[] = [];
 

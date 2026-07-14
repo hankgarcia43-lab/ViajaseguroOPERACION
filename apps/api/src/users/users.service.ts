@@ -220,14 +220,17 @@ export class UsersService {
     await this.ensureAdminActionAllowed(adminUserId, userId, 'activar plan pagado');
     const current = await this.findAdminPersonOrThrow(userId);
     const now = new Date();
-    const accessDays = this.getAccessDays();
+    const targetRole = this.mapRole(current.role) as 'passenger' | 'driver' | 'admin';
+    const accessDays = this.getAccessDaysForRole(targetRole);
+    const planType = targetRole === 'driver' ? 'driver_weekly' : 'user_monthly';
+    const periodLabel = targetRole === 'driver' ? 'semanal' : 'mensual';
     const updated = await (this.prisma as any).user.update({
       where: { id: userId },
       data: {
         subscriptionStatus: 'active',
-        planType: 'pilot_weekly',
+        planType,
         subscriptionExpiresAt: this.addDays(now, accessDays),
-        adminNotes: this.appendAdminNote(current.adminNotes, notes, `Plan semanal activado por admin por ${accessDays} dias`)
+        adminNotes: this.appendAdminNote(current.adminNotes, notes, `Plan ${periodLabel} activado por admin por ${accessDays} dias`)
       },
       include: this.adminPeopleInclude()
     });
@@ -473,9 +476,14 @@ export class UsersService {
     return Number.isFinite(value) && value > 0 ? value : 7;
   }
 
-  private getAccessDays() {
-    const value = Number.parseInt(process.env.MERCADOPAGO_SUBSCRIPTION_DAYS || '7', 10);
-    return Number.isFinite(value) && value > 0 ? value : 7;
+  private getAccessDaysForRole(role: 'passenger' | 'driver' | 'admin') {
+    const roleKey = role === 'driver' ? 'MERCADOPAGO_DRIVER_SUBSCRIPTION_DAYS' : 'MERCADOPAGO_PASSENGER_SUBSCRIPTION_DAYS';
+    const fallback = role === 'driver' ? 7 : 30;
+    const roleValue = Number.parseInt(process.env[roleKey] || '', 10);
+    if (Number.isFinite(roleValue) && roleValue > 0) return roleValue;
+
+    const globalValue = Number.parseInt(process.env.MERCADOPAGO_SUBSCRIPTION_DAYS || '', 10);
+    return Number.isFinite(globalValue) && globalValue > 0 ? globalValue : fallback;
   }
 
   private addDays(date: Date, days: number) {

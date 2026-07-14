@@ -103,6 +103,7 @@ export interface CreateReservationPayload {
   tripId: string;
   totalSeats: number;
   selectedWeekdays?: string[];
+  referralDiscountRequested?: boolean;
 }
 
 export interface ValidateBoardingPayload {

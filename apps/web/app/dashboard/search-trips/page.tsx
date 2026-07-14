@@ -256,7 +256,7 @@ export default function SearchTripsPage() {
         <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-4 text-sm text-cyan-900">
           <p className="font-semibold">Elige una ruta con calma</p>
           <p className="mt-1">Revisa punto de partida, destino, conductor disponible, referencia de abordaje y horario antes de solicitar unirte.</p>
-          <p className="mt-1">Si viajas varios dias, usa solicitud semanal para coordinar la ruta completa con el conductor.</p>
+          <p className="mt-1">Si viajas 5 dias o mas, cuenta como viaje semanal; paga el trayecto en efectivo cada dia al abordar.</p>
         </div>
       )}
       {isAdmin && (
@@ -283,7 +283,7 @@ export default function SearchTripsPage() {
           <p className="text-sm">Prueba con otro punto de partida, destino u horario. Tambien puedes publicar una necesidad de ruta para que un conductor verificado responda.</p>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={clearFilters} className="rounded-md border border-amber-300 bg-white px-4 py-2 text-sm font-bold text-amber-900">Limpiar filtros</button>
-            {isPassenger && <Link href="/dashboard/routes/request" className="rounded-md bg-sky-700 px-4 py-2 text-sm font-bold text-white">Necesito una ruta</Link>}
+            {isPassenger && <Link href="/dashboard/routes/request" className="rounded-md bg-sky-700 px-4 py-2 text-sm font-bold text-white">Solicitar apertura</Link>}
           </div>
         </div>
       ) : (

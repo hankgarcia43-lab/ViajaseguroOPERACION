@@ -35,6 +35,7 @@ const ALLOWED_USER_ROLES = ['passenger', 'driver'] as const;
 const INE_FRONT_TYPE = 'identity_document_front';
 const INE_BACK_TYPE = 'identity_document_back';
 const LEGACY_INE_TYPE = 'identity_document';
+const SUBSCRIPTION_PAYMENT_PROOF_TYPE = 'subscription_payment_proof';
 
 @Injectable()
 export class UserDocumentsService {
@@ -53,10 +54,10 @@ export class UserDocumentsService {
     }
 
     const role = this.usersService.mapRole(user.role) as 'passenger' | 'driver';
-    const allowedDocumentTypes = new Set([INE_FRONT_TYPE, INE_BACK_TYPE, LEGACY_INE_TYPE]);
+    const allowedDocumentTypes = new Set([INE_FRONT_TYPE, INE_BACK_TYPE, LEGACY_INE_TYPE, SUBSCRIPTION_PAYMENT_PROOF_TYPE]);
 
     if (!allowedDocumentTypes.has(dto.documentType)) {
-      throw new BadRequestException('En esta etapa la verificacion de usuario solo permite INE frente y reverso');
+      throw new BadRequestException('Tipo de documento no permitido para esta etapa');
     }
 
     const document = await this.prisma.userDocument.create({
@@ -72,7 +73,7 @@ export class UserDocumentsService {
       }
     });
 
-    if (this.usersService.mapStatus(user.verificationStatus) === 'rejected') {
+    if (dto.documentType !== SUBSCRIPTION_PAYMENT_PROOF_TYPE && this.usersService.mapStatus(user.verificationStatus) === 'rejected') {
       await this.syncUserVerificationStatus(user.id, role, DOCUMENT_STATUS.PENDING);
     }
 

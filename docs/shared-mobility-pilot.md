@@ -83,7 +83,7 @@ ALLOWED_DESTINATIONS=indios-verdes,pantitlan,buenavista,ciudad-azteca
 La UI debe comunicar: VIAJA SEGURO se encuentra en piloto cerrado con acceso limitado a zonas y miembros autorizados.
 ## Flujo nuevo: ruta solicitada por usuario
 
-1. Usuario entra a `Necesito una ruta` y publica origen, destino, dias, horario y lugares necesarios.
+1. Usuario entra a `Solicitar apertura` y envia origen, destino, dias, horario y lugares a soporte necesarios.
 2. La solicitud se guarda en `requested_routes` con estado `open`.
 3. Conductores verificados y con acceso digital vigente pueden verla en `Rutas solicitadas`.
 4. El conductor responde con horario, punto de abordaje, referencia visual, cupos y aportacion sugerida en efectivo.

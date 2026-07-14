@@ -116,7 +116,7 @@ Resumen:
 El schema Prisma actual usa PostgreSQL y conserva campos historicos de reservas, pagos y liquidaciones del MVP anterior. Para este pivot no se hizo migracion destructiva: la capa de aplicacion deja de crear pagos de traslado nuevos y reinterpreta el flujo como solicitudes/pases. La deuda tecnica esta documentada en `docs/shared-mobility-pilot.md`.
 ## Ruta solicitada por usuario y trial
 
-- Usuario: `Dashboard -> Necesito una ruta` publica origen, destino, dias, horario y lugares.
+- Usuario: `Dashboard -> Solicitar apertura` envia origen, destino, dias, horario y lugares a soporte.
 - Conductor: `Dashboard -> Rutas solicitadas` responde con horario, punto de abordaje, referencia, cupos y aportacion sugerida en efectivo.
 - Usuario: acepta o rechaza la propuesta desde sus solicitudes.
 - Admin: `Dashboard admin -> Rutas solicitadas` supervisa necesidades y propuestas.

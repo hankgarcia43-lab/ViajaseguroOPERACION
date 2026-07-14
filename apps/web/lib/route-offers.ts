@@ -71,6 +71,7 @@ export interface CreateReservationByOfferPayload {
   offerId: string;
   selectedWeekdays: string[];
   totalSeats: number;
+  referralDiscountRequested?: boolean;
 }
 
 export interface ReservationByOfferResponse {

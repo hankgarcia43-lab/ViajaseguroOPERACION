@@ -1,10 +1,11 @@
 export type VerificationStatus = 'pending' | 'approved' | 'rejected' | 'suspended';
-export type UserDocumentType = 'identity_document_front' | 'identity_document_back' | 'identity_document';
+export type UserDocumentType = 'identity_document_front' | 'identity_document_back' | 'identity_document' | 'subscription_payment_proof';
 
 export const USER_DOCUMENT_TYPE_OPTIONS: Array<{ value: UserDocumentType; label: string }> = [
   { value: 'identity_document_front', label: 'INE frente' },
   { value: 'identity_document_back', label: 'INE reverso' },
-  { value: 'identity_document', label: 'INE (legado)' }
+  { value: 'identity_document', label: 'INE (legado)' },
+  { value: 'subscription_payment_proof', label: 'Comprobante de plan' }
 ];
 
 export interface UserDocument {

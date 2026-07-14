@@ -43,11 +43,11 @@ export default function HomePage() {
                 Rutas compartidas con datos claros antes de abordar
               </h1>
               <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-600">
-                Publica la ruta que necesitas o encuentra conductores verificados que ya se mueven hacia tu zona. VIAJASEGURO te ayuda a coordinar mejor, con referencias visibles y reglas simples de seguridad.
+                Solicita apertura de ruta en tu comunidad o encuentra conductores verificados que ya se mueven hacia tu zona. VIAJASEGURO te ayuda a coordinar mejor, con referencias visibles y reglas simples de seguridad.
               </p>
 
               <div className="mt-8 flex flex-wrap gap-3">
-                <Link href="/register/passenger" className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white shadow-lg transition hover:bg-slate-800">Necesito una ruta</Link>
+                <Link href="/register/passenger" className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white shadow-lg transition hover:bg-slate-800">Solicitar apertura</Link>
                 <Link href="/register/driver" className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white shadow-lg transition hover:bg-emerald-700">Soy conductor</Link>
                 <Link href="/login" className="rounded-2xl border border-slate-300 px-5 py-3 text-sm font-black text-slate-800 transition hover:bg-slate-50">Ver rutas disponibles</Link>
               </div>

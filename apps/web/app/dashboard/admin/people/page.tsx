@@ -22,6 +22,7 @@ const DOCUMENT_LABEL: Record<string, string> = {
   identity_document_front: 'INE frente',
   identity_document_back: 'INE reverso',
   identity_document: 'INE legado',
+  subscription_payment_proof: 'Comprobante de plan',
   vehicle_photo: 'Foto vehiculo',
   circulation_card: 'Tarjeta circulacion',
   insurance_policy: 'Seguro'

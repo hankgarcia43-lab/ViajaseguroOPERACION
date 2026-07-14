@@ -32,6 +32,8 @@ const WEEKDAY_ES_LABEL: Record<string, string> = {
 };
 
 const WEEKDAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+const WEEKLY_TRIP_MIN_DAYS = 5;
+const REFERRAL_DISCOUNT_RATE = 0.1;
 
 function formatWeekdayInSpanish(value: string) {
   return WEEKDAY_ES_LABEL[value] ?? value;
@@ -67,7 +69,7 @@ export default function RouteOffersDetailPage() {
   const [selectedOfferId, setSelectedOfferId] = useState<string>('');
   const [selectedWeekdays, setSelectedWeekdays] = useState<string[]>([]);
   const [totalSeats, setTotalSeats] = useState('1');
-  const [reservationMode, setReservationMode] = useState<'single' | 'weekly'>('single');
+  const [referralDiscountRequested, setReferralDiscountRequested] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -151,7 +153,7 @@ export default function RouteOffersDetailPage() {
 
   useEffect(() => {
     setSelectedWeekdays([]);
-    setReservationMode('single');
+    setReferralDiscountRequested(false);
     setError(null);
   }, [selectedOfferId]);
 
@@ -170,9 +172,13 @@ export default function RouteOffersDetailPage() {
     return selectedWeekdays.length * seats * selectedOffer.pricePerSeat;
   }, [selectedOffer, totalSeats, selectedWeekdays]);
 
-  const weeklyDiscountApplied = false;
-  const discountAmount = 0;
+  const selectedDaysCount = selectedWeekdays.length;
+  const isWeeklyTrip = selectedDaysCount >= WEEKLY_TRIP_MIN_DAYS;
+  const weeklyDiscountApplied = isWeeklyTrip && referralDiscountRequested;
+  const discountAmount = weeklyDiscountApplied ? Math.round(grossAmount * REFERRAL_DISCOUNT_RATE * 100) / 100 : 0;
   const finalAmount = Math.max(0, Math.round((grossAmount - discountAmount) * 100) / 100);
+  const parsedSeats = Number.parseInt(totalSeats, 10) || 0;
+  const dailyCashAmount = selectedOffer ? Math.round(parsedSeats * selectedOffer.pricePerSeat * (weeklyDiscountApplied ? 1 - REFERRAL_DISCOUNT_RATE : 1) * 100) / 100 : 0;
 
   function toggleWeekday(weekday: string) {
     if (!availableWeekdays.has(weekday)) {
@@ -189,41 +195,6 @@ export default function RouteOffersDetailPage() {
       }
       return [...current, weekday];
     });
-  }
-
-  function selectSingleDay() {
-    if (!selectedOffer) {
-      setError('Selecciona un conductor disponible.');
-      return;
-    }
-
-    const nextDay = availableWeekdayList[0];
-    if (!nextDay) {
-      setError('No hay dias disponibles para este conductor.');
-      return;
-    }
-
-    setReservationMode('single');
-    setError(null);
-    setSelectedWeekdays([nextDay]);
-  }
-
-  function selectWeeklyTrip() {
-    if (!selectedOffer) {
-      setError('Selecciona un conductor disponible.');
-      return;
-    }
-
-    const nextDays = availableWeekdayList.slice(0, 7);
-    if (nextDays.length < 2) {
-      setError('Para solicitud semanal se necesitan al menos 2 dias disponibles.');
-      setSelectedWeekdays(nextDays);
-      return;
-    }
-
-    setReservationMode('weekly');
-    setError(null);
-    setSelectedWeekdays(nextDays);
   }
 
   async function reserveByOffer(event: FormEvent<HTMLFormElement>) {
@@ -245,6 +216,11 @@ export default function RouteOffersDetailPage() {
       return;
     }
 
+    if (seats > selectedOffer.availableSeats) {
+      setError('La cantidad de lugares excede el limite publicado por el conductor.');
+      return;
+    }
+
     if (selectedWeekdays.length === 0) {
       setError('Selecciona el dia de la ruta compartida.');
       return;
@@ -263,7 +239,8 @@ export default function RouteOffersDetailPage() {
     const payload: CreateReservationByOfferPayload = {
       offerId: selectedOffer.id,
       selectedWeekdays,
-      totalSeats: seats
+      totalSeats: seats,
+      referralDiscountRequested: weeklyDiscountApplied
     };
 
     try {
@@ -430,32 +407,20 @@ export default function RouteOffersDetailPage() {
         ) : (
           <form onSubmit={reserveByOffer} className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="text-lg font-semibold text-slate-900">Solicitar unirme</h2>
-            <p className="text-sm text-slate-600">Elige 1 dia o varios dias de ruta. El conductor debe aceptar tu solicitud; VIAJA SEGURO no cobra el traslado.</p>
+            <p className="text-sm text-slate-600">Selecciona los dias reales que vas a viajar. Con 5 dias o mas cuenta como viaje semanal; el pago del trayecto se realiza en efectivo cada dia con el conductor.</p>
 
             <label className="block text-sm text-slate-700">
               Lugares solicitados
-              <input type="number" min={1} max={10} value={totalSeats} onChange={(e) => setTotalSeats(e.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" />
+              <input type="number" min={1} max={Math.max(1, selectedOffer?.availableSeats ?? 1)} value={totalSeats} onChange={(e) => setTotalSeats(e.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" />
             </label>
 
             <div>
-              <p className="text-sm text-slate-700">Tipo de solicitud</p>
-              <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                <button
-                  type="button"
-                  disabled={availableWeekdayList.length === 0}
-                  onClick={selectSingleDay}
-                  className={`rounded-md border px-3 py-2 text-sm font-medium ${reservationMode === 'single' ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-300 text-slate-700'} disabled:cursor-not-allowed disabled:opacity-50`}
-                >
-                  1 dia
-                </button>
-                <button
-                  type="button"
-                  disabled={availableWeekdayList.length < 2}
-                  onClick={selectWeeklyTrip}
-                  className={`rounded-md border px-3 py-2 text-sm font-medium ${reservationMode === 'weekly' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-300 text-slate-700'} disabled:cursor-not-allowed disabled:opacity-50`}
-                >
-                  Solicitud semanal
-                </button>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">Calendario de dias que vas a viajar</p>
+                  <p className="text-xs text-slate-500">1 a 4 dias = solicitud por dia. 5 dias o mas = viaje semanal.</p>
+                </div>
+                <span className={`rounded-full px-3 py-1 text-xs font-bold ${isWeeklyTrip ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>{isWeeklyTrip ? 'Viaje semanal' : 'Viaje por dia'}</span>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 {WEEKDAY_ORDER.map((weekday) => {
@@ -474,20 +439,38 @@ export default function RouteOffersDetailPage() {
                   );
                 })}
               </div>
-              <p className="mt-2 text-xs text-slate-500">Puedes ajustar los dias disponibles del conductor. Cada dia genera un pase separado si la solicitud es aceptada.</p>
+              <p className="mt-2 text-xs text-slate-500">Cada dia genera un pase separado si la solicitud es aceptada. El conductor define el limite de lugares disponibles.</p>
             </div>
+
+            <label className={`block rounded-xl border p-4 text-sm ${isWeeklyTrip ? 'border-emerald-200 bg-emerald-50 text-emerald-950' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>
+              <span className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  disabled={!isWeeklyTrip}
+                  checked={weeklyDiscountApplied}
+                  onChange={(event) => setReferralDiscountRequested(event.target.checked)}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="block font-bold">Tengo 1 miembro invitado confirmado</span>
+                  <span className="mt-1 block text-xs leading-5">Aplica 10% de descuento orientativo solo en viaje semanal de 5 dias o mas. Soporte o conductor puede validar la invitacion.</span>
+                </span>
+              </span>
+            </label>
 
             <div className="rounded-md bg-slate-50 p-3 text-sm text-slate-700">
               <p>Conductor: {selectedOffer?.driver?.fullName ?? 'Sin seleccionar'}</p>
               <p>Poblado: {selectedTownGroup?.town ?? 'Sin seleccionar'}</p>
               <p>Dias seleccionados: {selectedWeekdays.length ? selectedWeekdays.map((day) => formatWeekdayInSpanish(day)).join(', ') : 'Sin seleccionar'}</p>
-              <p className="mt-2 text-slate-600">Estimacion por lugar: ${selectedOffer?.pricePerSeat.toFixed(2) ?? '0.00'} MXN</p>
-              <p className="text-slate-600">Lugares: {Number.parseInt(totalSeats, 10) || 0}</p>
-              <p className="mt-2 text-slate-600">Referencia orientativa: ${grossAmount.toFixed(2)} MXN</p>
-              {weeklyDiscountApplied && <p className="text-emerald-700">Ajuste semanal: -${discountAmount.toFixed(2)} MXN</p>}
-              <p className="mt-2 text-lg font-semibold text-emerald-700">Estimacion total: ${finalAmount.toFixed(2)} MXN</p>
+              <p className="mt-2 text-slate-600">Aportacion sugerida por lugar/dia: ${selectedOffer?.pricePerSeat.toFixed(2) ?? '0.00'} MXN</p>
+              <p className="text-slate-600">Lugares: {parsedSeats}</p>
+              <p className="text-slate-600">Limite del conductor: {selectedOffer?.availableSeats ?? 0} lugar(es)</p>
+              <p className="mt-2 text-slate-600">Referencia semanal sin descuento: ${grossAmount.toFixed(2)} MXN</p>
+              {weeklyDiscountApplied && <p className="font-semibold text-emerald-700">Descuento por invitacion confirmada: -${discountAmount.toFixed(2)} MXN</p>}
+              <p className="mt-2 text-lg font-semibold text-emerald-700">Estimacion total de planeacion: ${finalAmount.toFixed(2)} MXN</p>
+              <p className="mt-1 font-semibold text-slate-800">Pago recomendado: ${dailyCashAmount.toFixed(2)} MXN en efectivo cada dia al abordar.</p>
               <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
-                Este monto es unicamente una referencia orientativa de costos compartidos, como gasolina, casetas o mantenimiento. VIAJA SEGURO no fija tarifas de transporte, no cobra el traslado y no administra pagos entre usuarios y conductores.
+                No pagues todos los dias juntos. Este monto es una referencia orientativa de costos compartidos; VIAJA SEGURO no cobra el traslado ni administra pagos entre usuarios y conductores.
               </p>
             </div>
 

@@ -5,7 +5,7 @@ export type DashboardNavItem = {
 
 export const PASSENGER_DASHBOARD_NAV: DashboardNavItem[] = [
   { href: '/dashboard', label: 'Resumen' },
-  { href: '/dashboard/routes/request', label: 'Necesito una ruta' },
+  { href: '/dashboard/routes/request', label: 'Solicitar apertura' },
   { href: '/dashboard/search-trips', label: 'Buscar rutas' },
   { href: '/dashboard/my-reservations', label: 'Mis solicitudes' },
   { href: '/dashboard/my-payments', label: 'Mi acceso' }

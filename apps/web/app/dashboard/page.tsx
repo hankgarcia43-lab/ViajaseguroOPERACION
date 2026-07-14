@@ -191,8 +191,8 @@ export default function DashboardPage() {
   const roleCopy = {
     passenger: {
       title: 'Encuentra rutas compartidas hacia tu trabajo, escuela o zona de destino',
-      subtitle: 'Publica la ruta que necesitas o solicita unirte a rutas de conductores verificados de tu zona.',
-      chips: ['Necesito una ruta', 'Buscar rutas disponibles', 'Coordinacion directa']
+      subtitle: 'Solicita apertura de ruta en tu comunidad o pide unirte a rutas de conductores verificados de tu zona.',
+      chips: ['Solicitar apertura', 'Buscar rutas disponibles', 'Coordinacion directa']
     },
     driver: {
       title: 'Publica rutas recurrentes y coordina con miembros verificados',
@@ -219,7 +219,7 @@ export default function DashboardPage() {
           ],
           nextStep: 'Ir a buscar rutas o revisar tus solicitudes.',
           ctaHref: '/dashboard/routes/request',
-          ctaLabel: 'Necesito una ruta'
+          ctaLabel: 'Solicitar apertura'
         }
       : me.role === 'driver'
       ? {
@@ -293,7 +293,7 @@ export default function DashboardPage() {
 
   const quickActions = me.role === 'passenger'
     ? [
-        { href: '/dashboard/routes/request', label: 'Necesito una ruta', helper: 'Publica origen, destino, dias y horario.' },
+        { href: '/dashboard/routes/request', label: 'Solicitar apertura', helper: 'Envia comunidad, destino, dias y horario a soporte.' },
         { href: '/dashboard/search-trips', label: 'Buscar rutas disponibles', helper: 'Compara conductores y horarios.' },
         { href: '/dashboard/routes/request', label: 'Mis solicitudes', helper: 'Responde propuestas de conductores.' },
         { href: '/dashboard/verification', label: 'Seguridad y verificacion', helper: 'Manten tu identidad lista antes de abordar.' }
